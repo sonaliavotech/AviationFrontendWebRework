@@ -1,5 +1,23 @@
 import React from "react";
 
+export function TitleRoundIcon({ color = "currentColor", ...props }) {
+  return (
+    <svg
+      width="30"
+      height="38"
+      viewBox="0 0 30 38"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M15 0L0 5.625V17.0438C0 26.5125 6.39375 35.3438 15 37.5C23.6063 35.3438 30 26.5125 30 17.0438V5.625L15 0ZM26.25 17.0438C26.25 24.5438 21.4688 31.4813 15 33.6C8.53125 31.4813 3.75 24.5625 3.75 17.0438V8.23125L15 4.0125L26.25 8.23125V17.0438Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
 export const SearchIcon = () => (
   <svg
     width="16"
