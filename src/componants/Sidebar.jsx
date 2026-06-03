@@ -1,457 +1,231 @@
-import React from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Box, Tooltip } from "@mui/material";
+import { Box, Tooltip, tooltipClasses, Typography } from "@mui/material";
+import * as AppAssets from "../assets/Assets";
+import { colorTokens } from "./theme";
 import logo from "../assets/logo2.png";
-
-// SVG Icons from your design
-const AllEventsIcon = ({ active }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M15.8327 6.66602C16.0688 6.66602 16.2667 6.58615 16.4264 6.42643C16.5862 6.26671 16.666 6.06879 16.666 5.83268C16.666 5.59657 16.5862 5.39865 16.4264 5.23893C16.2667 5.07921 16.0688 4.99935 15.8327 4.99935C15.5966 4.99935 15.3987 5.07921 15.2389 5.23893C15.0792 5.39865 14.9993 5.59657 14.9993 5.83268C14.9993 6.06879 15.0792 6.26671 15.2389 6.42643C15.3987 6.58615 15.5966 6.66602 15.8327 6.66602ZM15.8327 8.33268C15.1243 8.33268 14.5306 8.0931 14.0514 7.61393C13.5723 7.13477 13.3327 6.54102 13.3327 5.83268C13.3327 5.13824 13.5723 4.54796 14.0514 4.06185C14.5306 3.57574 15.1243 3.33268 15.8327 3.33268C16.5271 3.33268 17.1174 3.57574 17.6035 4.06185C18.0896 4.54796 18.3327 5.13824 18.3327 5.83268C18.3327 6.54102 18.0896 7.13477 17.6035 7.61393C17.1174 8.0931 16.5271 8.33268 15.8327 8.33268ZM9.99935 5.83268C10.3466 5.83268 10.6417 5.71463 10.8848 5.47852C11.1278 5.2424 11.2493 4.94379 11.2493 4.58268C11.2493 4.23546 11.1278 3.94032 10.8848 3.69727C10.6417 3.45421 10.3466 3.33268 9.99935 3.33268C9.63824 3.33268 9.33963 3.45421 9.10352 3.69727C8.8674 3.94032 8.74935 4.23546 8.74935 4.58268C8.74935 4.94379 8.8674 5.2424 9.10352 5.47852C9.33963 5.71463 9.63824 5.83268 9.99935 5.83268ZM9.99935 7.49935C9.1799 7.49935 8.48893 7.2181 7.92643 6.6556C7.36393 6.0931 7.08268 5.40213 7.08268 4.58268C7.08268 3.77713 7.36393 3.08963 7.92643 2.52018C8.48893 1.95074 9.1799 1.66602 9.99935 1.66602C10.8049 1.66602 11.4924 1.95074 12.0618 2.52018C12.6313 3.08963 12.916 3.77713 12.916 4.58268C12.916 5.40213 12.6313 6.0931 12.0618 6.6556C11.4924 7.2181 10.8049 7.49935 9.99935 7.49935ZM6.66602 11.1452C6.66602 11.5618 6.88824 12.048 7.33268 12.6035C7.77713 13.1591 8.66602 14.041 9.99935 15.2493C11.3049 14.0688 12.1868 13.2007 12.6452 12.6452C13.1035 12.0896 13.3327 11.5896 13.3327 11.1452C13.3327 10.8257 13.2285 10.5549 13.0202 10.3327C12.8118 10.1105 12.5549 9.99935 12.2493 9.99935C12.0549 9.99935 11.8709 10.041 11.6973 10.1243C11.5237 10.2077 11.3813 10.3257 11.2702 10.4785L10.2702 11.666H9.70768L8.70768 10.4785C8.59657 10.3257 8.45421 10.2077 8.2806 10.1243C8.10699 10.041 7.9299 9.99935 7.74935 9.99935C7.4299 9.99935 7.16949 10.1105 6.9681 10.3327C6.76671 10.5549 6.66602 10.8257 6.66602 11.1452ZM4.99935 11.1452C4.99935 10.4091 5.24935 9.75629 5.74935 9.18685C6.24935 8.6174 6.91602 8.33268 7.74935 8.33268C8.1799 8.33268 8.5931 8.4299 8.98893 8.62435C9.38477 8.81879 9.72157 9.08268 9.99935 9.41602C10.2771 9.08268 10.6105 8.81879 10.9993 8.62435C11.3882 8.4299 11.8049 8.33268 12.2493 8.33268C13.0827 8.33268 13.7493 8.62088 14.2493 9.19727C14.7493 9.77365 14.9993 10.423 14.9993 11.1452C14.9993 11.8813 14.732 12.607 14.1973 13.3223C13.6625 14.0375 12.5688 15.1521 10.916 16.666L9.99935 17.4993L9.08268 16.666C7.40213 15.1382 6.30143 14.0202 5.7806 13.3118C5.25977 12.6035 4.99935 11.8813 4.99935 11.1452ZM4.16602 6.66602C4.40213 6.66602 4.60004 6.58615 4.75977 6.42643C4.91949 6.26671 4.99935 6.06879 4.99935 5.83268C4.99935 5.59657 4.91949 5.39865 4.75977 5.23893C4.60004 5.07921 4.40213 4.99935 4.16602 4.99935C3.9299 4.99935 3.73199 5.07921 3.57227 5.23893C3.41254 5.39865 3.33268 5.59657 3.33268 5.83268C3.33268 6.06879 3.41254 6.26671 3.57227 6.42643C3.73199 6.58615 3.9299 6.66602 4.16602 6.66602ZM10.0618 18.3327V16.666H16.666V10.8327H14.2077V9.16602H16.666C17.1243 9.16602 17.5167 9.32921 17.8431 9.6556C18.1695 9.98199 18.3327 10.3743 18.3327 10.8327V18.3327H10.0618ZM3.33268 16.666H10.0618V18.3327H1.66602V10.8327C1.66602 10.3743 1.82574 9.98199 2.14518 9.6556C2.46463 9.32921 2.86046 9.16602 3.33268 9.16602H5.79102V10.8327H3.33268V16.666ZM4.16602 8.33268C3.45768 8.33268 2.86393 8.0931 2.38477 7.61393C1.9056 7.13477 1.66602 6.54102 1.66602 5.83268C1.66602 5.13824 1.9056 4.54796 2.38477 4.06185C2.86393 3.57574 3.45768 3.33268 4.16602 3.33268C4.86046 3.33268 5.45074 3.57574 5.93685 4.06185C6.42296 4.54796 6.66602 5.13824 6.66602 5.83268C6.66602 6.54102 6.42296 7.13477 5.93685 7.61393C5.45074 8.0931 4.86046 8.33268 4.16602 8.33268Z"
-      fill={active ? "#ffffff" : "#0277E9"}
-    />
-  </svg>
-);
-
-const NewEventIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M15.0007 11.6673V9.16732H12.5007V7.50065H15.0007V5.00065H16.6673V7.50065H19.1673V9.16732H16.6673V11.6673H15.0007ZM5.14648 9.02148C4.49371 8.36871 4.16732 7.58398 4.16732 6.66732C4.16732 5.75065 4.49371 4.96593 5.14648 4.31315C5.79926 3.66037 6.58398 3.33398 7.50065 3.33398C8.41732 3.33398 9.20204 3.66037 9.85482 4.31315C10.5076 4.96593 10.834 5.75065 10.834 6.66732C10.834 7.58398 10.5076 8.36871 9.85482 9.02148C9.20204 9.67426 8.41732 10.0007 7.50065 10.0007C6.58398 10.0007 5.79926 9.67426 5.14648 9.02148ZM0.833984 16.6673V14.334C0.833984 13.8618 0.955512 13.4277 1.19857 13.0319C1.44162 12.6361 1.76454 12.334 2.16732 12.1257C3.02843 11.6951 3.90343 11.3722 4.79232 11.1569C5.68121 10.9416 6.58398 10.834 7.50065 10.834C8.41732 10.834 9.3201 10.9416 10.209 11.1569C11.0979 11.3722 11.9729 11.6951 12.834 12.1257C13.2368 12.334 13.5597 12.6361 13.8027 13.0319C14.0458 13.4277 14.1673 13.8618 14.1673 14.334V16.6673H0.833984ZM2.50065 15.0007H12.5007V14.334C12.5007 14.1812 12.4625 14.0423 12.3861 13.9173C12.3097 13.7923 12.209 13.6951 12.084 13.6257C11.334 13.2507 10.577 12.9694 9.81315 12.7819C9.04926 12.5944 8.27843 12.5007 7.50065 12.5007C6.72287 12.5007 5.95204 12.5944 5.18815 12.7819C4.42426 12.9694 3.66732 13.2507 2.91732 13.6257C2.79232 13.6951 2.69162 13.7923 2.61523 13.9173C2.53885 14.0423 2.50065 14.1812 2.50065 14.334V15.0007ZM8.67773 7.8444C9.00412 7.51801 9.16732 7.12565 9.16732 6.66732C9.16732 6.20898 9.00412 5.81662 8.67773 5.49023C8.35135 5.16385 7.95898 5.00065 7.50065 5.00065C7.04232 5.00065 6.64996 5.16385 6.32357 5.49023C5.99718 5.81662 5.83398 6.20898 5.83398 6.66732C5.83398 7.12565 5.99718 7.51801 6.32357 7.8444C6.64996 8.17079 7.04232 8.33398 7.50065 8.33398C7.95898 8.33398 8.35135 8.17079 8.67773 7.8444Z"
-      fill="#7F7F7F"
-    />
-  </svg>
-);
-
-const SearchKitIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M7.1875 17.5C5.88194 17.5 4.77431 17.0451 3.86458 16.1354C2.95486 15.2257 2.5 14.1181 2.5 12.8125C2.5 12.1875 2.61806 11.5903 2.85417 11.0208C3.09028 10.4514 3.43056 9.94444 3.875 9.5L9.5 3.875C9.94444 3.43056 10.4514 3.09028 11.0208 2.85417C11.5903 2.61806 12.1875 2.5 12.8125 2.5C14.1181 2.5 15.2257 2.95486 16.1354 3.86458C17.0451 4.77431 17.5 5.88194 17.5 7.1875C17.5 7.8125 17.3819 8.40972 17.1458 8.97917C16.9097 9.54861 16.5694 10.0556 16.125 10.5L10.5 16.125C10.0556 16.5694 9.54861 16.9097 8.97917 17.1458C8.40972 17.3819 7.8125 17.5 7.1875 17.5ZM12.7292 11.5417L14.9583 9.33333C15.2361 9.05556 15.4514 8.72917 15.6042 8.35417C15.7569 7.97917 15.8333 7.59028 15.8333 7.1875C15.8333 6.35417 15.5382 5.64236 14.9479 5.05208C14.3576 4.46181 13.6458 4.16667 12.8125 4.16667C12.4097 4.16667 12.0208 4.24306 11.6458 4.39583C11.2708 4.54861 10.9444 4.76389 10.6667 5.04167L8.45833 7.27083L12.7292 11.5417ZM7.1875 15.8333C7.59028 15.8333 7.97917 15.7569 8.35417 15.6042C8.72917 15.4514 9.05556 15.2361 9.33333 14.9583L11.5417 12.7292L7.27083 8.45833L5.04167 10.6667C4.76389 10.9444 4.54861 11.2708 4.39583 11.6458C4.24306 12.0208 4.16667 12.4097 4.16667 12.8125C4.16667 13.6458 4.46181 14.3576 5.05208 14.9479C5.64236 15.5382 6.35417 15.8333 7.1875 15.8333Z"
-      fill="#7F7F7F"
-    />
-  </svg>
-);
-
-const FAQsIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M10.6973 14.6973C10.8987 14.4959 10.9993 14.2493 10.9993 13.9577C10.9993 13.666 10.8987 13.4195 10.6973 13.2181C10.4959 13.0167 10.2493 12.916 9.95768 12.916C9.66602 12.916 9.41949 13.0167 9.2181 13.2181C9.01671 13.4195 8.91602 13.666 8.91602 13.9577C8.91602 14.2493 9.01671 14.4959 9.2181 14.6973C9.41949 14.8987 9.66602 14.9993 9.95768 14.9993C10.2493 14.9993 10.4959 14.8987 10.6973 14.6973ZM9.20768 11.791H10.7493C10.7493 11.3327 10.8014 10.9716 10.9056 10.7077C11.0098 10.4438 11.3049 10.0827 11.791 9.62435C12.1521 9.26324 12.4368 8.91949 12.6452 8.5931C12.8535 8.26671 12.9577 7.87435 12.9577 7.41602C12.9577 6.63824 12.673 6.04102 12.1035 5.62435C11.5341 5.20768 10.8605 4.99935 10.0827 4.99935C9.29102 4.99935 8.64865 5.20768 8.1556 5.62435C7.66254 6.04102 7.31879 6.54102 7.12435 7.12435L8.49935 7.66602C8.56879 7.41602 8.72504 7.14518 8.9681 6.85352C9.21115 6.56185 9.58268 6.41602 10.0827 6.41602C10.5271 6.41602 10.8605 6.53754 11.0827 6.7806C11.3049 7.02365 11.416 7.29102 11.416 7.58268C11.416 7.86046 11.3327 8.12088 11.166 8.36393C10.9993 8.60699 10.791 8.83268 10.541 9.04102C9.9299 9.58268 9.5549 9.9924 9.41602 10.2702C9.27713 10.548 9.20768 11.0549 9.20768 11.791ZM9.99935 18.3327C8.84657 18.3327 7.76324 18.1139 6.74935 17.6764C5.73546 17.2389 4.85352 16.6452 4.10352 15.8952C3.35352 15.1452 2.75977 14.2632 2.32227 13.2493C1.88477 12.2355 1.66602 11.1521 1.66602 9.99935C1.66602 8.84657 1.88477 7.76324 2.32227 6.74935C2.75977 5.73546 3.35352 4.85352 4.10352 4.10352C4.85352 3.35352 5.73546 2.75977 6.74935 2.32227C7.76324 1.88477 8.84657 1.66602 9.99935 1.66602C11.1521 1.66602 12.2355 1.88477 13.2493 2.32227C14.2632 2.75977 15.1452 3.35352 15.8952 4.10352C16.6452 4.85352 17.2389 5.73546 17.6764 6.74935C18.1139 7.76324 18.3327 8.84657 18.3327 9.99935C18.3327 11.1521 18.1139 12.2355 17.6764 13.2493C17.2389 14.2632 16.6452 15.1452 15.8952 15.8952C15.1452 16.6452 14.2632 17.2389 13.2493 17.6764C12.2355 18.1139 11.1521 18.3327 9.99935 18.3327ZM9.99935 16.666C11.8605 16.666 13.4368 16.0202 14.7285 14.7285C16.0202 13.4368 16.666 11.8605 16.666 9.99935C16.666 8.13824 16.0202 6.56185 14.7285 5.27018C13.4368 3.97852 11.8605 3.33268 9.99935 3.33268C8.13824 3.33268 6.56185 3.97852 5.27018 5.27018C3.97852 6.56185 3.33268 8.13824 3.33268 9.99935C3.33268 11.8605 3.97852 13.4368 5.27018 14.7285C6.56185 16.0202 8.13824 16.666 9.99935 16.666Z"
-      fill="#7F7F7F"
-    />
-  </svg>
-);
-
-const TiaAiIcon = () => (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 22 22"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <g clipPath="url(#clip0_9519_10702)">
-      <path
-        d="M22 11.022C19.1458 11.1972 16.4541 12.41 14.432 14.432C12.41 16.4541 11.1972 19.1458 11.022 22H10.978C10.8031 19.1457 9.59038 16.4538 7.56828 14.4317C5.54617 12.4096 2.85434 11.1969 0 11.022L0 10.978C2.85434 10.8031 5.54617 9.59038 7.56828 7.56828C9.59038 5.54617 10.8031 2.85434 10.978 0L11.022 0C11.1972 2.85424 12.41 5.54591 14.432 7.56795C16.4541 9.59 19.1458 10.8028 22 10.978V11.022Z"
-        fill="url(#paint0_radial_9519_10702)"
-      />
-      <g clipPath="url(#clip1_9519_10702)">
-        <path
-          d="M22.1667 4.0915C21.1071 4.15652 20.108 4.60674 19.3574 5.35735C18.6067 6.10796 18.1565 7.10714 18.0915 8.16667H18.0752C18.0103 7.1071 17.5601 6.10786 16.8094 5.35723C16.0588 4.6066 15.0596 4.15641 14 4.0915V4.07517C15.0596 4.01025 16.0588 3.56007 16.8094 2.80944C17.5601 2.05881 18.0103 1.05956 18.0752 0L18.0915 0C18.1565 1.05953 18.6067 2.05871 19.3574 2.80932C20.108 3.55992 21.1071 4.01015 22.1667 4.07517V4.0915Z"
-          fill="url(#paint1_radial_9519_10702)"
-        />
-      </g>
-    </g>
-    <defs>
-      <radialGradient
-        id="paint0_radial_9519_10702"
-        cx="0"
-        cy="0"
-        r="1"
-        gradientUnits="userSpaceOnUse"
-        gradientTransform="translate(2.1835 8.94162) rotate(18.6832) scale(23.4163 187.579)"
-      >
-        <stop stopColor="#24C9F6" />
-        <stop offset="1" stopColor="#015DFF" />
-      </radialGradient>
-      <radialGradient
-        id="paint1_radial_9519_10702"
-        cx="0"
-        cy="0"
-        r="1"
-        gradientUnits="userSpaceOnUse"
-        gradientTransform="translate(14.8105 3.31924) rotate(18.6832) scale(8.6924 69.6316)"
-      >
-        <stop stopColor="#24C9F6" />
-        <stop offset="1" stopColor="#015DFF" />
-      </radialGradient>
-      <clipPath id="clip0_9519_10702">
-        <rect width="22" height="22" fill="white" />
-      </clipPath>
-      <clipPath id="clip1_9519_10702">
-        <rect
-          width="8.16667"
-          height="8.16667"
-          fill="white"
-          transform="translate(14)"
-        />
-      </clipPath>
-    </defs>
-  </svg>
-);
-
-const DevisecIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M2.08398 7.70833V5.25646C2.08398 4.83549 2.22982 4.47917 2.52148 4.1875C2.81315 3.89583 3.16947 3.75 3.59044 3.75H16.4109C16.8318 3.75 17.1882 3.89583 17.4798 4.1875C17.7715 4.47917 17.9173 4.83549 17.9173 5.25646V7.70833H16.6673V5.25646C16.6673 5.19229 16.6406 5.13354 16.5871 5.08021C16.5338 5.02674 16.475 5 16.4109 5H3.59044C3.52628 5 3.46753 5.02674 3.41419 5.08021C3.36072 5.13354 3.33398 5.19229 3.33398 5.25646V7.70833H2.08398ZM3.59044 16.25C3.16947 16.25 2.81315 16.1042 2.52148 15.8125C2.22982 15.5208 2.08398 15.1645 2.08398 14.7435V12.2917H3.33398V14.7435C3.33398 14.8077 3.36072 14.8665 3.41419 14.9198C3.46753 14.9733 3.52628 15 3.59044 15H16.4109C16.475 15 16.5338 14.9733 16.5871 14.9198C16.6406 14.8665 16.6673 14.8077 16.6673 14.7435V12.2917H17.9173V14.7435C17.9173 15.1645 17.7715 15.5208 17.4798 15.8125C17.1882 16.1042 16.8318 16.25 16.4109 16.25H3.59044ZM8.66336 13.8719C8.76753 13.8141 8.84628 13.7275 8.89961 13.6121L11.6673 8.07688L12.7684 10.2788C12.8217 10.3942 12.9004 10.4808 13.0046 10.5385C13.1088 10.5962 13.2186 10.625 13.334 10.625H17.9173V9.375H13.7267L12.2329 6.38792C12.1796 6.27778 12.1022 6.19951 12.0007 6.15312C11.8991 6.1066 11.788 6.08333 11.6673 6.08333C11.5519 6.08333 11.4421 6.1066 11.3379 6.15312C11.2338 6.19951 11.155 6.27778 11.1017 6.38792L8.33398 11.9231L7.23294 9.72125C7.17961 9.60583 7.10086 9.51924 6.99669 9.46146C6.89253 9.40382 6.78273 9.375 6.66732 9.375H2.08398V10.625H6.27461L7.76836 13.6121C7.82169 13.7275 7.90044 13.8141 8.00461 13.8719C8.10878 13.9295 8.21857 13.9583 8.33398 13.9583C8.4494 13.9583 8.55919 13.9295 8.66336 13.8719Z"
-      fill="#7F7F7F"
-    />
-  </svg>
-);
-
-const AlertsIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M3.33398 15.8327V14.166H5.00065V8.33268C5.00065 7.1799 5.34787 6.1556 6.04232 5.25977C6.73676 4.36393 7.63954 3.77713 8.75065 3.49935V2.91602C8.75065 2.56879 8.87218 2.27365 9.11523 2.0306C9.35829 1.78754 9.65343 1.66602 10.0007 1.66602C10.3479 1.66602 10.643 1.78754 10.8861 2.0306C11.1291 2.27365 11.2507 2.56879 11.2507 2.91602V3.49935C12.3618 3.77713 13.2645 4.36393 13.959 5.25977C14.6534 6.1556 15.0007 7.1799 15.0007 8.33268V14.166H16.6673V15.8327H3.33398ZM10.0007 18.3327C9.54232 18.3327 9.14996 18.1695 8.82357 17.8431C8.49718 17.5167 8.33398 17.1243 8.33398 16.666H11.6673C11.6673 17.1243 11.5041 17.5167 11.1777 17.8431C10.8513 18.1695 10.459 18.3327 10.0007 18.3327ZM6.66732 14.166H13.334V8.33268C13.334 7.41602 13.0076 6.63129 12.3548 5.97852C11.702 5.32574 10.9173 4.99935 10.0007 4.99935C9.08398 4.99935 8.29926 5.32574 7.64648 5.97852C6.99371 6.63129 6.66732 7.41602 6.66732 8.33268V14.166Z"
-      fill="#999999"
-    />
-  </svg>
-);
-
-const LogoutIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M4.16667 17.5C3.70833 17.5 3.31597 17.3368 2.98958 17.0104C2.66319 16.684 2.5 16.2917 2.5 15.8333V4.16667C2.5 3.70833 2.66319 3.31597 2.98958 2.98958C3.31597 2.66319 3.70833 2.5 4.16667 2.5H10V4.16667H4.16667V15.8333H10V17.5H4.16667ZM13.3333 14.1667L12.1875 12.9583L14.3125 10.8333H7.5V9.16667H14.3125L12.1875 7.04167L13.3333 5.83333L17.5 10L13.3333 14.1667Z"
-      fill="#7F7F7F"
-    />
-  </svg>
-);
-
-const HelpIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M8.23242 6.2657C9.20873 5.41143 10.7916 5.41143 11.768 6.2657C12.7443 7.11998 12.7443 8.50502 11.768 9.3593C11.598 9.50798 11.4097 9.63079 11.2094 9.72772C10.588 10.0285 10.0002 10.5596 10.0002 11.25V11.875M17.5 10C17.5 14.1421 14.1421 17.5 10 17.5C5.85786 17.5 2.5 14.1421 2.5 10C2.5 5.85786 5.85786 2.5 10 2.5C14.1421 2.5 17.5 5.85786 17.5 10ZM10 14.375H10.0063V14.3813H10V14.375Z"
-      stroke="#7F7F7F"
-      strokeWidth="1.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M7.99375 3.28338C8.06909 2.83132 8.46021 2.5 8.9185 2.5H11.0801C11.5384 2.5 11.9295 2.83132 12.0049 3.28338L12.1828 4.35092C12.2348 4.66262 12.4431 4.92226 12.7195 5.0753C12.7813 5.10952 12.8424 5.14486 12.9028 5.18131C13.1737 5.34487 13.5031 5.39572 13.7994 5.28471L14.8135 4.90481C15.2426 4.74404 15.7251 4.91709 15.9543 5.31398L17.0351 7.18601C17.2642 7.5829 17.1729 8.08728 16.819 8.37855L15.9821 9.06756C15.7383 9.26823 15.6175 9.5781 15.6233 9.89377C15.624 9.9291 15.6243 9.96451 15.6243 10C15.6243 10.0355 15.624 10.0709 15.6233 10.1062C15.6175 10.4219 15.7383 10.7318 15.9821 10.9324L16.819 11.6214C17.1729 11.9127 17.2642 12.4171 17.0351 12.814L15.9543 14.686C15.7251 15.0829 15.2426 15.256 14.8135 15.0952L13.7994 14.7153C13.5031 14.6043 13.1737 14.6551 12.9028 14.8187C12.8425 14.8551 12.7814 14.8905 12.7195 14.9247C12.4431 15.0777 12.2348 15.3374 12.1828 15.6491L12.0049 16.7166C11.9295 17.1687 11.5384 17.5 11.0801 17.5H8.9185C8.46021 17.5 8.06909 17.1687 7.99375 16.7166L7.81583 15.6491C7.76388 15.3374 7.55557 15.0777 7.27909 14.9247C7.21728 14.8905 7.15618 14.8551 7.09582 14.8187C6.82496 14.6551 6.49552 14.6043 6.19922 14.7153L5.18516 15.0952C4.756 15.256 4.27351 15.0829 4.04436 14.686L2.96354 12.814C2.7344 12.4171 2.82578 11.9127 3.1796 11.6215L4.01655 10.9324C4.26031 10.7318 4.38114 10.4219 4.3753 10.1062C4.37464 10.0709 4.37431 10.0355 4.37431 10C4.37431 9.96452 4.37464 9.92911 4.3753 9.89379C4.38114 9.57811 4.26031 9.26824 4.01655 9.06758L3.17959 8.37856C2.82578 8.08729 2.7344 7.58291 2.96354 7.18602L4.04436 5.31399C4.27351 4.9171 4.756 4.74405 5.18516 4.90483L6.1992 5.28472C6.49551 5.39573 6.82495 5.34487 7.09581 5.18132C7.15617 5.14487 7.21728 5.10952 7.27909 5.0753C7.55557 4.92226 7.76388 4.66262 7.81583 4.35092L7.99375 3.28338Z"
-      stroke="#7F7F7F"
-      strokeWidth="1.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12.4991 9.99993C12.4991 11.3806 11.3798 12.4999 9.99912 12.4999C8.61841 12.4999 7.49912 11.3806 7.49912 9.99993C7.49912 8.61922 8.61841 7.49993 9.99912 7.49993C11.3798 7.49993 12.4991 8.61922 12.4991 9.99993Z"
-      stroke="#7F7F7F"
-      strokeWidth="1.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const Sidebar = () => {
+import HelpIcon from '@mui/icons-material/Help';
+const Sidebar = ({ onAiClick, onRequestClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentPath = location.pathname;
+  const currentPath = location.pathname || "/";
+  const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
 
-  const handleNavigate = (path) => {
+  // Main nav items (icon + label)
+  const mainItems = [
+    { label: "All Events", Icon: AppAssets.AllEventsIcon, path: "/all-events" },
+    { label: "New Event", Icon: AppAssets.NewEventIcon, path: "/new-event" },
+    { label: "Search Kit", Icon: AppAssets.SearchKitIcon, path: "/search-kit" },
+    { label: "FAQs", Icon: AppAssets.FAQsIcon, path: "/faqs" },
+    { label: "Tia AI", Icon: AppAssets.TiaAiIcon, path: "/Ai", isAi: true },
+    { label: "Devices", Icon: AppAssets.DevisecIcon, path: "/devices" },
+    { label: "Alerts", Icon: AppAssets.AlertsIcon, path: "/alerts" },
+  ];
+
+  // Bottom items
+  const logoutItem = {
+    label: "Logout",
+    Icon: AppAssets.LogoutIcon,
+    path: "/logout",
+    showLabel: true,
+  };
+ const helpItem = {
+  label: "Help",
+  Icon: HelpIcon,
+  path: "/help",
+  showLabel: false,
+};
+  const settingsItem = {
+    label: "Settings",
+    Icon: AppAssets.SettingsIcon,
+    path: "/settings",
+    showLabel: false,
+  };
+
+  const handleNavigate = (path, isAi) => {
+    if (isAi) {
+      onAiClick?.();
+      onRequestClose?.();
+      return;
+    }
     navigate(path);
+    onRequestClose?.();
   };
 
-  const handleMicClick = () => {
-    window.dispatchEvent(new CustomEvent("openRecording", {}));
-  };
+  const isActive = (path) =>
+    currentPath === path ||
+    (path === "/rounding-list" && currentPath === "/view_details") ||
+    (path === "/Dashboard" && currentPath === "/encounters");
 
-  const iconSx = (active) => ({
-    width: 40,
-    height: 40,
-    padding: "24px",
-    borderRadius: "12px",
+  /* ── styles ── */
+  const itemSx = (active) => ({
+    width: 64,
+    borderRadius: "10px",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    transition: "all 0.2s ease",
-    background: active ? "#015DFF" : "transparent",
-    "&:hover": {
-      background: active ? "#015DFF" : "#EEF2FF",
+    py: "6px",
+    px: "4px",
+    gap: "2px",
+    background: active ? colorTokens.sidebarActiveBg : "transparent",
+    "& svg path": { fill: active ? colorTokens.sidebarIconActive : "#FFFFFF" },
+    "& svg path[stroke]": {
+      stroke: active ? colorTokens.sidebarIconActive : "#FFFFFF",
     },
+    "&:hover": { background: colorTokens.sidebarActiveBg },
+    "&:hover svg path": { fill: colorTokens.sidebarIconActive },
+    "&:hover svg path[stroke]": { stroke: colorTokens.sidebarIconActive },
   });
 
-  const sidebarImageIconSx = {
-    width: 20,
-    height: 20,
-    objectFit: "contain",
-    display: "block",
-  };
-
-  const imageColorSx = (active) => ({
-    filter: active
-      ? "brightness(0) saturate(100%) invert(100%)"
-      : "grayscale(1) saturate(0) brightness(0.55)",
-    transition: "filter 0.2s ease",
-  });
-
-  const bottomIconSx = (active) => ({
-    width: 34,
-    height: 34,
-    borderRadius: "50%",
+  const aiItemSx = {
+    width: 64,
+    borderRadius: "10px",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    transition: "all 0.2s ease",
-    background: active ? "#015DFF" : "transparent",
-    "&:hover": {
-      background: active ? "#015DFF" : "#EEF2FF",
-    },
+    py: "6px",
+    px: "4px",
+    gap: "2px",
+  };
+
+  const labelSx = (active) => ({
+    fontSize: "0.58rem",
+    fontWeight: active ? 700 : 400,
+    color: active ? colorTokens.sidebarIconActive : "#FFFFFF",
+    textAlign: "center",
+    lineHeight: 1,
+    userSelect: "none",
+    whiteSpace: "nowrap",
   });
+
+  const TooltipWrap = ({ title, children }) => (
+    <Tooltip
+      title={title}
+      placement="right"
+      arrow
+      componentsProps={{
+        tooltip: {
+          sx: {
+            bgcolor: "#000",
+            color: "#fff",
+            fontSize: "0.72rem",
+            [`& .${tooltipClasses.arrow}`]: { color: "#000" },
+          },
+        },
+      }}
+    >
+      {children}
+    </Tooltip>
+  );
+
+  const NavItem = ({ item }) => {
+    const active = !item.isAi && isActive(item.path);
+    const { Icon } = item;
+    return (
+      <TooltipWrap title={item.label}>
+        <Box
+          sx={item.isAi ? aiItemSx : itemSx(active)}
+          onClick={() => handleNavigate(item.path, item.isAi)}
+        >
+          <Icon />
+          <Typography sx={labelSx(active)}>{item.label}</Typography>
+        </Box>
+      </TooltipWrap>
+    );
+  };
+
+  const BottomItem = ({ item }) => {
+    const active = isActive(item.path);
+    const { Icon } = item;
+    return (
+      <TooltipWrap title={item.label}>
+        <Box sx={itemSx(active)} onClick={() => handleNavigate(item.path)}>
+          <Icon />
+          {item.showLabel && (
+            <Typography sx={labelSx(active)}>{item.label}</Typography>
+          )}
+        </Box>
+      </TooltipWrap>
+    );
+  };
 
   return (
     <Box
       component="aside"
       sx={{
-        width: { xs: 72, sm: 84 },
+        width: 80,
         flexShrink: 0,
-        background: "#FFFFFF",
+        background: colorTokens.bgPaper,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         py: 2,
-        borderRight: "1px solid #EEF2F7",
+        borderRight: `1px solid ${colorTokens.border}`,
+        minHeight: "100vh",
+        boxSizing: "border-box",
       }}
     >
-      {/* Logo Section */}
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          borderBottom: "1px solid #EEF2F7",
-        }}
-      >
-        <Box
-          component="img"
-          src={logo}
-          alt="TiaTele Logo"
-          sx={{
-            height: 45,
-            width: "auto",
-            objectFit: "contain",
-            display: "block",
-            marginBottom: "7px",
-          }}
-        />
-      </Box>
-
-      {/* Main Navigation Icons */}
+      {/* Logo */}
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 1.1,
-          mt: 10,
+          mb: 2,
+          gap: "2px",
         }}
       >
-        {/* All Events */}
-        <Tooltip title="All Events" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/all-events")}
-          onClick={() => handleNavigate("/all-events")}
+        <img
+          src={logo}
+          alt="TiaTELE"
+          style={{ width: 44, height: 44, objectFit: "contain" }}
+        />
+        <Typography
+          sx={{
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            color: "#FFFFFF",
+            letterSpacing: "0.02em",
+            userSelect: "none",
+          }}
         >
-          <AllEventsIcon active={currentPath === "/all-events"} />
-        </Box>
-        </Tooltip>
-
-        {/* New Event */}
-        <Tooltip title="New Event" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/new-event")}
-          onClick={() => handleNavigate("/new-event")}
-        >
-          <NewEventIcon />
-        </Box>
-        </Tooltip>
-
-        {/* Search Kit */}
-        <Tooltip title="Search Kit" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/search-kit")}
-          onClick={() => handleNavigate("/search-kit")}
-        >
-          <SearchKitIcon />
-        </Box>
-        </Tooltip>
-
-        {/* FAQs */}
-        <Tooltip title="FAQs" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/faqs")}
-          onClick={() => handleNavigate("/faqs")}
-        >
-          <FAQsIcon />
-        </Box>
-        </Tooltip>
-
-        {/* Tia AI */}
-        <Tooltip title="Tia AI" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/tia-ai")}
-          onClick={() => handleNavigate("/tia-ai")}
-        >
-          <TiaAiIcon />
-        </Box>
-        </Tooltip>
-
-        {/* Devisec */}
-        <Tooltip title="Devices" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/devisec")}
-          onClick={() => handleNavigate("/devisec")}
-        >
-          <DevisecIcon />
-        </Box>
-        </Tooltip>
-
-        {/* Alerts */}
-        <Tooltip title="Alerts" placement="right">
-        <Box
-          sx={iconSx(currentPath === "/alerts")}
-          onClick={() => handleNavigate("/alerts")}
-        >
-          <AlertsIcon />
-        </Box>
-        </Tooltip>
+          Tia<span style={{ color: "#4DA3FF" }}>TELE</span>
+        </Typography>
       </Box>
 
-      <Box sx={{ flex: 1 }} />
-
-      {/* Bottom Icons */}
+      {/* Main nav */}
       <Box
         sx={{
-          ...bottomIconSx(false),
-          width: 44,
-          height: 44,
-          borderRadius: "50%",
-          background: "#015DFF",
-          mb: 1.8,
-          "&:hover": {
-            background: "#015DFF",
-          },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "4px",
+          flex: 1,
         }}
-        onClick={handleMicClick}
-        id="mic-icon-bottom"
-        title="Recording"
       >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M10 12.5C8.62 12.5 7.5 11.38 7.5 10V4.16667C7.5 2.78667 8.62 1.66667 10 1.66667C11.38 1.66667 12.5 2.78667 12.5 4.16667V10C12.5 11.38 11.38 12.5 10 12.5ZM15.8333 10C15.8333 13.2217 13.2217 15.8333 10 15.8333C6.77833 15.8333 4.16667 13.2217 4.16667 10H2.5C2.5 13.7483 5.37667 16.8233 9.16667 17.2783V18.3333H10.8333V17.2783C14.6233 16.8233 17.5 13.7483 17.5 10H15.8333Z"
-            fill="white"
-          />
-        </svg>
+        {mainItems.map((item, i) => (
+          <NavItem key={i} item={item} />
+        ))}
       </Box>
 
-      {/* Help */}
-      <Tooltip title="Help" placement="right">
+      {/* Bottom: Logout (with label) + Help + Settings (no label) */}
       <Box
-        sx={bottomIconSx(currentPath === "/help")}
-        onClick={() => handleNavigate("/help")}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "4px",
+          pb: 1,
+        }}
       >
-        <HelpIcon />
+        <BottomItem item={logoutItem} />
+        <BottomItem item={helpItem} />
+        <BottomItem item={settingsItem} />
       </Box>
-      </Tooltip>
-
-      {/* Settings */}
-      <Tooltip title="Settings" placement="right">
-      <Box
-        sx={bottomIconSx(
-          currentPath === "/settings" || currentPath.startsWith("/settings/"),
-        )}
-        onClick={() => handleNavigate("/settings")}
-        id="sidebar-settings"
-      >
-        <SettingsIcon />
-      </Box>
-      </Tooltip>
-
-      {/* Logout */}
-      <Tooltip title="Logout" placement="right">
-      <Box
-        sx={bottomIconSx(currentPath === "/logout")}
-        onClick={() => handleNavigate("/logout")}
-      >
-        <LogoutIcon />
-      </Box>
-      </Tooltip>
     </Box>
   );
 };

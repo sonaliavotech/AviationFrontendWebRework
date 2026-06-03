@@ -1,626 +1,2937 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 import {
   Box,
   Typography,
   Avatar,
+  Grid,
   Button,
-  TextField,
-  InputAdornment,
-  Checkbox,
-  Chip,
-  IconButton,
-  Tooltip,
-  MenuItem,
-  Menu,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  useMediaQuery,
-  useTheme,
+  Chip,
+  IconButton,
+  Select,
+  InputBase,
+  Menu,
+  MenuItem,
+  Checkbox,
+  TableContainer,
+  TableSortLabel,
+  TablePagination,
+  TextField,
+  Snackbar,
+  Alert,
 } from "@mui/material";
+
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import Popover from "@mui/material/Popover";
+
+import Tooltip, { tooltipClasses } from "@mui/material/Tooltip";
+import { Dialog, DialogContent } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
-import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import PersonIcon from "@mui/icons-material/Person";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import PeopleIcon from "@mui/icons-material/People";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import AssignmentIndOutlinedIcon from "@mui/icons-material/AssignmentIndOutlined";
-import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
-import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
-import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import CallIcon from "@mui/icons-material/Call";
+import CloseIcon from "@mui/icons-material/Close";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_ROWS = [
-  {
-    id: 1,
-    flightNum: "AA1234",
-    seat: "A15",
-    name: "Lisha Cook",
-    age: "45y (F)",
-    mrn: "719471345",
-    patientId: "NA",
-    status: "assign",
-    route: "SYD → LAX",
-    physician: null,
-    crew: "Julia R",
-  },
-  ...Array.from({ length: 9 }, (_, i) => ({
-    id: i + 2,
-    flightNum: "AA1234",
-    seat: "A15",
-    name: "Lisha Cook",
-    age: "45y (F)",
-    mrn: "719471345",
-    patientId: "NA",
-    status: "critical",
-    route: "SYD → LAX",
-    physician: "Alex Tobar",
-    crew: "Julia R",
-  })),
-];
+// SVG assets
+import {
+  EventCardIcon,
+  PatientCardIcon,
+  PatientAssignCardIcon,
+  CriticalCasesIcon,
+  VisibilityIcon,
+  ActionIcon2,
+  ActionIcon3,
+  ActionIcon4,
+  FilterSortIcon,
+  ExportIcon,
+  CalendarTodayIcon,
+} from "../../assets/Assets";
 
-const STATS = [
-  {
-    label: "Events today",
-    value: "XX",
-    icon: <EventNoteOutlinedIcon sx={{ fontSize: 28, color: "#015DFF" }} />,
-  },
-  {
-    label: "Patients to see",
-    value: "XX/XX",
-    icon: <PeopleAltOutlinedIcon sx={{ fontSize: 28, color: "#015DFF" }} />,
-  },
-  {
-    label: "Patients to assign",
-    value: "XX",
-    icon: <AssignmentIndOutlinedIcon sx={{ fontSize: 28, color: "#015DFF" }} />,
-  },
-  {
-    label: "Critical Cases",
-    value: "XX",
-    icon: <ReportProblemOutlinedIcon sx={{ fontSize: 28, color: "#015DFF" }} />,
-  },
-];
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-const StatusChip = ({ status }) => {
-  if (status === "assign") {
-    return (
-      <Button
-        size="small"
-        variant="contained"
-        sx={{
-          bgcolor: "#FFF3CD",
-          color: "#856404",
-          boxShadow: "none",
-          borderRadius: "8px",
-          fontWeight: 600,
-          fontSize: 12,
-          px: 1.5,
-          py: 0.3,
-          textTransform: "none",
-          "&:hover": { bgcolor: "#FFE69C", boxShadow: "none" },
-          minWidth: 70,
-        }}
-      >
-        Assign
-      </Button>
-    );
-  }
-  return (
-    <Typography
-      variant="body2"
-      sx={{ fontWeight: 500, color: "#DC3545", fontSize: 13 }}
-    >
-      Critical
-    </Typography>
-  );
-};
-
-const PhysicianChip = ({ name }) => {
-  if (!name) return null;
-  return (
-    <Box
-      sx={{
-        display: "inline-block",
-        bgcolor: "#E8F4FD",
-        color: "#015DFF",
-        borderRadius: "8px",
-        px: 1.5,
-        py: 0.3,
-        fontSize: 12,
-        fontWeight: 500,
-      }}
-    >
-      {name}
-    </Box>
-  );
-};
-
-const CrewChip = ({ name }) => (
-  <Box
-    sx={{
-      display: "inline-block",
-      bgcolor: "#E3F9E5",
-      color: "#1A7F37",
-      borderRadius: "8px",
-      px: 1.5,
-      py: 0.3,
-      fontSize: 12,
-      fontWeight: 500,
-    }}
+const SidelistTabIcon = ({ isActive }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ color: isActive ? "rgba(15, 38, 70, 1)" : "#94A3B8" }}
   >
-    {name}
-  </Box>
+    <path
+      d="M16 11V9H22V11H16ZM6.175 10.825C5.39167 10.0417 5 9.1 5 8C5 6.9 5.39167 5.95833 6.175 5.175C6.95833 4.39167 7.9 4 9 4C10.1 4 11.0417 4.39167 11.825 5.175C12.6083 5.95833 13 6.9 13 8C13 9.1 12.6083 10.0417 11.825 10.825C11.0417 11.6083 10.1 12 9 12C7.9 12 6.95833 11.6083 6.175 10.825ZM1 20V17.2C1 16.6333 1.14583 16.1125 1.4375 15.6375C1.72917 15.1625 2.11667 14.8 2.6 14.55C3.63333 14.0333 4.68333 13.6458 5.75 13.3875C6.81667 13.1292 7.9 13 9 13C10.1 13 11.1833 13.1292 12.25 13.3875C13.3167 13.6458 14.3667 14.0333 15.4 14.55C15.8833 14.8 16.2708 15.1625 16.5625 15.6375C16.8542 16.1125 17 16.6333 17 17.2V20H1ZM3 18H15V17.2C15 17.0167 14.9542 16.85 14.8625 16.7C14.7708 16.55 14.65 16.4333 14.5 16.35C13.6 15.9 12.6917 15.5625 11.775 15.3375C10.8583 15.1125 9.93333 15 9 15C8.06667 15 7.14167 15.1125 6.225 15.3375C5.30833 15.5625 4.4 15.9 3.5 16.35C3.35 16.4333 3.22917 16.55 3.1375 16.7C3.04583 16.85 3 17.0167 3 17.2V18ZM10.4125 9.4125C10.8042 9.02083 11 8.55 11 8C11 7.45 10.8042 6.97917 10.4125 6.5875C10.0208 6.19583 9.55 6 9 6C8.45 6 7.97917 6.19583 7.5875 6.5875C7.19583 6.97917 7 7.45 7 8C7 8.55 7.19583 9.02083 7.5875 9.4125C7.97917 9.80417 8.45 10 9 10C9.55 10 10.0208 9.80417 10.4125 9.4125Z"
+      fill="currentColor"
+    />
+  </svg>
 );
 
-const ActionButtons = () => (
-  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-    <Tooltip title="View">
-      <IconButton size="small" sx={{ color: "#015DFF" }}>
-        <VisibilityOutlinedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-    <Tooltip title="Medical Kit">
-      <IconButton size="small" sx={{ color: "#015DFF" }}>
-        <MedicalServicesOutlinedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-    <Tooltip title="Vitals">
-      <IconButton size="small" sx={{ color: "#015DFF" }}>
-        <FavoriteBorderOutlinedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-    <Tooltip title="Add">
-      <IconButton size="small" sx={{ color: "#015DFF" }}>
-        <AddCircleOutlineOutlinedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-    <Tooltip title="More">
-      <IconButton size="small" sx={{ color: "#777" }}>
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-  </Box>
+const MyAppointmentsIcon = ({ isActive }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke={isActive ? "rgba(15, 38, 70, 1)" : "#94A3B8"}
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Patient Profile */}
+    <path d="M11 19v-1a3 3 0 0 0-3-3H3a3 3 0 0 0-3 3v1" />
+    <circle cx="5.5" cy="9.5" r="2.5" />
+    {/* Clock Circle Intersecting */}
+    <circle cx="16" cy="11" r="5" />
+    {/* Clock Hands */}
+    <polyline points="16 8 16 11 18 11" />
+  </svg>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-const AllEvents = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [search, setSearch] = useState("");
-  const [dateLabel] = useState("Jan 26");
+// Static patient data
+const staticPatientData = [
+  {
+    id: "enc_1",
+    patientDbId: "pat_101",
+    encounterId: "enc_1",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "",
+    providerId: "",
+    providerRole: "",
+    resident: "Julia R",
+    residentId: "res_1",
+    residentRole: "RESIDENT",
+    visitStatus: "",
+    seenByRole: "",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12345",
+    facesheet: "",
+    noteStatus: "Final",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T10:30:00Z",
+    created_at: "2026-06-01T08:00:00Z",
+  },
+  {
+    id: "enc_2",
+    patientDbId: "pat_102",
+    encounterId: "enc_2",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_2",
+    providerRole: "DOCTOR",
+    resident: "Julia R",
+    residentId: "res_1",
+    residentRole: "RESIDENT",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12346",
+    facesheet: "",
+    noteStatus: "Draft",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T09:15:00Z",
+    created_at: "2026-06-01T09:00:00Z",
+  },
+  {
+    id: "enc_3",
+    patientDbId: "pat_103",
+    encounterId: "enc_3",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_3",
+    providerRole: "PHYSICIAN",
+    resident: "Julia R",
+    residentId: "res_2",
+    residentRole: "RESIDENT",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12347",
+    facesheet: "",
+    noteStatus: "",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T11:00:00Z",
+    created_at: "2026-06-01T10:00:00Z",
+  },
+  {
+    id: "enc_4",
+    patientDbId: "pat_104",
+    encounterId: "enc_4",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_4",
+    providerRole: "PHYSICIAN",
+    resident: "Julia R",
+    residentId: "",
+    residentRole: "",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12348",
+    facesheet: "",
+    noteStatus: "",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T08:00:00Z",
+    created_at: "2026-06-01T11:00:00Z",
+  },
+  {
+    id: "enc_5",
+    patientDbId: "pat_105",
+    encounterId: "enc_5",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_4",
+    providerRole: "PHYSICIAN",
+    resident: "Julia R",
+    residentId: "res_3",
+    residentRole: "RESIDENT",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12349",
+    facesheet: "",
+    noteStatus: "Final",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T12:00:00Z",
+    created_at: "2026-06-01T12:00:00Z",
+  },
+  {
+    id: "enc_6",
+    patientDbId: "pat_106",
+    encounterId: "enc_6",
+    room: "AA1234",
+    bed: "A15",
+    name: "Lisha Cook",
+    age: "45y",
+    gender: "F",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_5",
+    providerRole: "DOCTOR",
+    resident: "Julia R",
+    residentId: "",
+    residentRole: "",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12350",
+    facesheet: "",
+    noteStatus: "Draft",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T10:00:00Z",
+    created_at: "2026-06-01T13:00:00Z",
+  },
+];
+
+// Static provider options for assign modal
+const staticProviderOptions = [
+  {
+    id: "prov_1",
+    name: "Alex Tobar",
+    specialty: "Flight Physician",
+    status: "Available",
+    isProvider: true,
+    isPcpPhysician: true,
+    isAdmittingPhysician: false,
+    isResident: false,
+  },
+  {
+    id: "prov_2",
+    name: "Dr. James Oktar",
+    specialty: "Aviation Medicine",
+    status: "Available",
+    isProvider: true,
+    isPcpPhysician: false,
+    isAdmittingPhysician: true,
+    isResident: false,
+  },
+  {
+    id: "prov_3",
+    name: "Dr. Sarah Malik",
+    specialty: "Emergency Medicine",
+    status: "On Duty",
+    isProvider: true,
+    isPcpPhysician: true,
+    isAdmittingPhysician: false,
+    isResident: false,
+  },
+  {
+    id: "prov_4",
+    name: "Dr. Kevin Ross",
+    specialty: "Critical Care",
+    status: "Available",
+    isProvider: true,
+    isPcpPhysician: false,
+    isAdmittingPhysician: true,
+    isResident: false,
+  },
+  {
+    id: "prov_5",
+    name: "Dr. Priya Nair",
+    specialty: "Cardiology",
+    status: "In Flight",
+    isProvider: true,
+    isPcpPhysician: true,
+    isAdmittingPhysician: false,
+    isResident: false,
+  },
+  {
+    id: "res_1",
+    name: "Julia R",
+    specialty: "Cabin Crew",
+    status: "Available",
+    isProvider: false,
+    isPcpPhysician: false,
+    isAdmittingPhysician: false,
+    isResident: true,
+  },
+  {
+    id: "res_2",
+    name: "Mark Davis",
+    specialty: "Cabin Crew",
+    status: "Available",
+    isProvider: false,
+    isPcpPhysician: false,
+    isAdmittingPhysician: false,
+    isResident: true,
+  },
+  {
+    id: "res_3",
+    name: "Lisa Anderson",
+    specialty: "Senior Crew",
+    status: "On Call",
+    isProvider: false,
+    isPcpPhysician: false,
+    isAdmittingPhysician: false,
+    isResident: true,
+  },
+];
+
+export default function AllEvents() {
+  const [activeTab, setActiveTab] = useState("Rounding List");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [anchorEl, setAnchorEl] = useState(null);
-  const [statusAnchor, setStatusAnchor] = useState(null);
-  const [routeAnchor, setRouteAnchor] = useState(null);
-  const [physicianAnchor, setPhysicianAnchor] = useState(null);
-  const [crewAnchor, setCrewAnchor] = useState(null);
+  const [calendarAnchorEl, setCalendarAnchorEl] = useState(null);
+  const [menuRowId, setMenuRowId] = useState(null);
+  const location = useLocation();
+  const [loadingPatients] = useState(false);
+  const [patientError] = useState("");
+  const [selectedIdsForBulkAdd, setSelectedIdsForBulkAdd] = useState([]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
+  const [roundingStatusFilter, setRoundingStatusFilter] = useState("");
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [activityLogPatient, setActivityLogPatient] = useState(null);
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedRows(MOCK_ROWS.map((r) => r.id));
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setSnackbar({ open: false, message: "", severity: "success" });
+  };
+
+  const handleActionsMenuOpen = (event) => {
+    setActionsMenuAnchor(event.currentTarget);
+  };
+
+  const handleActionsMenuClose = () => {
+    setActionsMenuAnchor(null);
+  };
+
+  const handleMarkNotSeen = async () => {
+    const selectedIds = Array.from(selectionModel);
+
+    if (selectedIds.length === 0) {
+      showSnackbar("Please select patients first", "warning");
+      handleActionsMenuClose();
+      return;
+    }
+
+    setRows((prev) =>
+      prev.map((row) =>
+        selectedIds.includes(row.id) ? { ...row, is_marked: true } : row,
+      ),
+    );
+
+    setSelectionModel(new Set());
+    showSnackbar(
+      `${selectedIds.length} patient(s) marked as Not Seen`,
+      "success",
+    );
+    handleActionsMenuClose();
+  };
+
+  const handleBulkSidelist = () => {
+    const selectedIds = Array.from(selectionModel);
+    if (selectedIds.length === 0) {
+      showSnackbar("Please select patients first", "warning");
+      handleActionsMenuClose();
+      return;
+    }
+
+    setSelectedIdsForBulkAdd(selectedIds);
+    const firstRow = displayRows.find((r) => r.id === selectedIds[0]);
+    setSelectedRow(firstRow);
+    setOpenSelectReasonModal(true);
+    handleActionsMenuClose();
+  };
+
+  const handleDiscardMarked = async () => {
+    const selectedIds = Array.from(selectionModel);
+
+    if (selectedIds.length === 0) {
+      showSnackbar("Please select patients first", "warning");
+      handleActionsMenuClose();
+      return;
+    }
+
+    setRows((prev) =>
+      prev.map((row) =>
+        selectedIds.includes(row.id) ? { ...row, is_marked: false } : row,
+      ),
+    );
+
+    setSelectionModel(new Set());
+    showSnackbar(
+      `${selectedIds.length} patient(s) removed from Marked Not Seen`,
+      "success",
+    );
+    handleActionsMenuClose();
+  };
+
+  const handleDiscardSidelist = async () => {
+    const selectedIds = Array.from(selectionModel);
+
+    if (selectedIds.length === 0) {
+      showSnackbar("Please select patients first", "warning");
+      handleActionsMenuClose();
+      return;
+    }
+
+    setRows((prev) =>
+      prev.map((row) =>
+        selectedIds.includes(row.id)
+          ? { ...row, is_sidelist: false, sidelist_reason: "" }
+          : row,
+      ),
+    );
+
+    setSelectionModel(new Set());
+    showSnackbar(
+      `${selectedIds.length} patient(s) discarded from Sidelist`,
+      "success",
+    );
+    handleActionsMenuClose();
+  };
+
+  const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
+  const [currentTranscribePatient, setCurrentTranscribePatient] =
+    useState(null);
+  const [rows, setRows] = useState(staticPatientData);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [selectionModel, setSelectionModel] = useState(new Set());
+  const [order, setOrder] = useState("asc");
+  const [orderBy, setOrderBy] = useState(null);
+
+  const [facesheetOpen, setFacesheetOpen] = useState(false);
+  const [facesheetPatient, setFacesheetPatient] = useState(null);
+
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleCopyPatients = () => {
+    navigate("/copy-patients", {
+      state: {
+        dos: selectedDate,
+      },
+    });
+  };
+
+  // Static user for UI
+  const user = {
+    id: "user_1",
+    name: "John Smith",
+    roles: ["PROVIDER"],
+    role: "PROVIDER",
+  };
+
+  const hasPermission = () => true; // Mock permission function
+  const canAddPatient = true;
+  const canEditFacesheet = true;
+  const canUseNotesEditor = true;
+  const canUploadMedicalNotes = true;
+  const canUseSpeechDetection = true;
+  const canFaxNotes = true;
+  const canUseChat = true;
+  const [providerProfile, setProviderProfile] = useState(null);
+  const roleList = Array.isArray(user?.roles) ? user.roles : [];
+
+  // Check if facesheet has been modified for a row
+  const isFacesheetModified = (row) => {
+    if (!row?.facesheet || row?.facesheet === "") return false;
+    return row.facesheet && row.facesheet.trim() !== "";
+  };
+
+  const getGreetingByTime = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning 🌤️";
+    if (hour < 17) return "Good afternoon ☀️";
+    return "Good evening 🌙";
+  };
+
+  const getAvatarInitials = (name) => {
+    if (!name) return "CT";
+    const parts = String(name).trim().split(/\s+/);
+    const first = parts[0]?.[0] || "";
+    const second = parts[1]?.[0] || "";
+    return `${first}${second}`.toUpperCase() || "CT";
+  };
+
+  const isClinicalDoctorRole = roleList.some((role) =>
+    ["PROVIDER", "PCP_PHYSICIAN", "ADMITTING_PHYSICIAN"].includes(
+      String(role).toUpperCase(),
+    ),
+  );
+
+  const isProviderUser =
+    Array.isArray(user?.roles) &&
+    user.roles.some((role) =>
+      ["PROVIDER", "PCP_PHYSICIAN", "ADMITTING_PHYSICIAN"].includes(
+        String(role).toUpperCase(),
+      ),
+    );
+
+  const canAssignProvider = true;
+  const rawName = String(user?.name || "").trim();
+  const providerDisplayName = rawName
+    ? isClinicalDoctorRole && !/^dr\.?/i.test(rawName)
+      ? `Dr. ${rawName}`
+      : rawName
+    : "Care Team Member";
+  const greetingText = getGreetingByTime();
+
+  const specializationText =
+    providerProfile?.specialty ||
+    providerProfile?.resident_specialty ||
+    providerProfile?.sub_specialty ||
+    user?.specialty ||
+    user?.specialization ||
+    (user?.userRole && String(user.userRole).trim()) ||
+    "";
+  const providerSubtitle = specializationText
+    ? `MD • ${specializationText}`
+    : "Clinical Team • On Duty";
+  const providerInitials = getAvatarInitials(providerDisplayName);
+
+  console.log("selectionModel :", selectionModel);
+
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+  const APP_TIMEZONE = "Asia/Kolkata";
+
+  const toDateOnly = (value) => {
+    if (!value) return "";
+    return dayjs(value).tz(APP_TIMEZONE).format("YYYY-MM-DD");
+  };
+
+  const dateFilteredRows = React.useMemo(() => {
+    const selectedDateStr = dayjs(selectedDate)
+      .tz(APP_TIMEZONE)
+      .format("YYYY-MM-DD");
+
+    return rows.filter((row) => {
+      const dosStr = toDateOnly(row.dos);
+      return dosStr === selectedDateStr;
+    });
+  }, [rows, selectedDate]);
+
+  const tabFilteredRows = React.useMemo(() => {
+    if (activeTab === "In Patient") {
+      return rows.filter((row) =>
+        String(row.visitType || "")
+          .toLowerCase()
+          .includes("ip"),
+      );
+    }
+
+    if (activeTab === "Out Patient") {
+      return rows.filter((row) =>
+        String(row.visitType || "")
+          .toLowerCase()
+          .includes("op"),
+      );
+    }
+
+    return dateFilteredRows;
+  }, [dateFilteredRows, activeTab]);
+
+  const searchFilteredRows = React.useMemo(() => {
+    const query = patientSearch.trim().toLowerCase();
+    if (!query) return tabFilteredRows;
+
+    return tabFilteredRows.filter((row) =>
+      [
+        row.name,
+        row.mrn,
+        row.fin,
+        row.patientDbId,
+        row.encounterId,
+        row.room,
+        row.bed,
+        row.status,
+        row.location,
+        row.physician,
+        row.resident,
+        row.visitType,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value.includes(query)),
+    );
+  }, [tabFilteredRows, patientSearch]);
+
+  const displayRows = React.useMemo(() => {
+    let filtered = searchFilteredRows;
+
+    if (roundingStatusFilter === "Sidelist") {
+      return filtered.filter(
+        (row) =>
+          row.is_sidelist === true &&
+          row.sidelist_reason &&
+          row.sidelist_reason.trim() !== "",
+      );
+    }
+
+    if (roundingStatusFilter === "Marked not seen") {
+      return filtered.filter((row) => row.is_marked === true);
+    }
+
+    if (roundingStatusFilter === "Unseen") {
+      return filtered.filter(
+        (row) => !row.is_sidelist && !row.is_marked && !isRowSeen(row),
+      );
+    }
+
+    if (roundingStatusFilter === "Seen") {
+      return filtered.filter(
+        (row) => !row.is_sidelist && !row.is_marked && isRowSeen(row),
+      );
+    }
+
+    return filtered.filter((row) => !row.is_sidelist && !row.is_marked);
+  }, [searchFilteredRows, roundingStatusFilter]);
+
+  const sortedRows = React.useMemo(() => {
+    const comparator = (a, b) => {
+      let aVal = a[orderBy];
+      let bVal = b[orderBy];
+
+      if (orderBy === "status") {
+        aVal = aVal ? new Date(aVal).getTime() : 0;
+        bVal = bVal ? new Date(bVal).getTime() : 0;
+        return order === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      if (aVal < bVal) return order === "asc" ? -1 : 1;
+      if (aVal > bVal) return order === "asc" ? 1 : -1;
+      return 0;
+    };
+    return [...displayRows].sort(comparator);
+  }, [displayRows, order, orderBy]);
+
+  const handleExportPatients = () => {
+    if (!displayRows || displayRows.length === 0) {
+      alert("No patient data to export");
+      return;
+    }
+
+    const exportData = displayRows.map((row, index) => ({
+      "Sr No": index + 1,
+      Room: row.room || "",
+      Bed: row.bed || "",
+      Name: row.name || "",
+      Age: row.age || "",
+      Gender: row.gender || "",
+      MRN: row.mrn || "",
+      status: row.status || "",
+      Location: row.location || "",
+      Physician: row.physician || "",
+      Resident: row.resident || "",
+      VisitStatus: row.visitStatus || "",
+      VisitType: row.visitType || "",
+      DOS: row.dos || "",
+      FIN: row.fin || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Patients");
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const fileData = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(fileData, `Patient_List_${dayjs().format("YYYY-MM-DD_HH-mm")}.xlsx`);
+  };
+
+  function parseAnyDate(value) {
+    if (!value) return null;
+    return toDateOnly(value);
+  }
+
+  function isSameCalendarDay(dateA, dateB) {
+    if (!dateA || !dateB) return false;
+
+    const a =
+      typeof dateA === "string"
+        ? dateA
+        : dayjs(dateA).tz(APP_TIMEZONE).format("YYYY-MM-DD");
+
+    const b = dayjs(dateB).tz(APP_TIMEZONE).format("YYYY-MM-DD");
+
+    return a === b;
+  }
+
+  const normalizeProviderName = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^dr\.?\s*/i, "")
+      .replace(/\s+/g, " ");
+
+  const dashboardStats = React.useMemo(() => {
+    const appointmentsToday = rows.filter((row) =>
+      isSameCalendarDay(parseAnyDate(row.dos), selectedDate),
+    ).length;
+
+    const patientsToSee = rows.filter((row) => !isRowSeen(row)).length;
+
+    const currentProviderIds = new Set(
+      [user?.id, user?.providerId, user?.provider_id, providerProfile?.id]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    );
+    const currentProviderNames = new Set(
+      [user?.name, providerProfile?.name, providerDisplayName, rawName]
+        .map((value) => normalizeProviderName(value))
+        .filter(Boolean),
+    );
+
+    const ownedRows = rows.filter((row) => {
+      const rowProviderId = String(
+        row.providerId || row.provider?.id || row.provider_id || "",
+      ).trim();
+      if (rowProviderId && currentProviderIds.has(rowProviderId)) {
+        return true;
+      }
+
+      const rowPhysician = normalizeProviderName(row.physician);
+      return rowPhysician && currentProviderNames.has(rowPhysician);
+    });
+
+    const ownedPatientsCount = ownedRows.length;
+    const unassignedOwnedCount = ownedRows.filter(
+      (row) => !String(row.resident || "").trim(),
+    ).length;
+    const patientsToAssign = rows.filter(
+      (row) => !String(row.providerId || "").trim(),
+    ).length;
+
+    const pendingNotes = rows.filter((row) => {
+      const status = String(row.noteStatus || "")
+        .trim()
+        .toLowerCase();
+      return status === "draft" || status === "pending" || status === "";
+    }).length;
+
+    return {
+      appointmentsToday,
+      patientsToSee,
+      patientsToAssign,
+      pendingNotes,
+    };
+  }, [
+    rows,
+    selectedDate,
+    user?.id,
+    user?.name,
+    user?.providerId,
+    user?.provider_id,
+    providerProfile?.id,
+    providerProfile?.name,
+    providerDisplayName,
+    rawName,
+  ]);
+
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelected = new Set(sortedRows.map((row) => row.id));
+      setSelectionModel(newSelected);
     } else {
-      setSelectedRows([]);
+      setSelectionModel(new Set());
     }
   };
 
-  const handleSelectRow = (id) => {
-    setSelectedRows((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+  const handleRowCheckboxClick = (id) => {
+    const newSelected = new Set(selectionModel);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectionModel(newSelected);
+  };
+
+  const handleMenuOpen = (event, rowId) => {
+    setAnchorEl(event.currentTarget);
+    setMenuRowId(rowId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuRowId(null);
+  };
+
+  const [openAssignModal, setOpenAssignModal] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [assignSearch, setAssignSearch] = useState("");
+  const [providerOptions] = useState(staticProviderOptions);
+  const [openEncounterModal, setOpenEncounterModal] = useState(false);
+  const [openSelectReasonModal, setOpenSelectReasonModal] = useState(false);
+  const [assignType, setAssignType] = useState("doctor");
+  const [selectedLocation] = useState("");
+  const [patientTab, setPatientTab] = useState("all");
+  const [patientCustomReasons, setPatientCustomReasons] = useState({});
+  const [tableData] = useState([]);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState("");
+
+  const calculateAge = (status) => {
+    if (!status) return "";
+    const birthDate = new Date(status);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return `${age}y`;
+  };
+
+  const formatstatus = (status) => {
+    if (!status) return "";
+    return dayjs(status).format("MM/DD/YYYY");
+  };
+
+  const isUuid = (value) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      String(value || "").trim(),
+    );
+
+  const EYE_COLORS = {
+    PHYSICIAN: {
+      icon: "rgba(0, 153, 81, 1)",
+      bg: "rgba(207, 247, 211, 1)",
+      hoverBg: "rgba(207, 247, 211, 0.65)",
+    },
+    RESIDENT: {
+      icon: "rgba(191, 106, 2, 1)",
+      bg: "rgba(255, 241, 194, 1)",
+      hoverBg: "rgba(255, 241, 194, 0.75)",
+    },
+    DOCTOR: {
+      icon: "rgba(207, 247, 211, 1)",
+      bg: "rgba(0, 153, 81, 1)",
+      hoverBg: "rgba(0, 153, 81, 0.75)",
+    },
+    DEFAULT: {
+      icon: "rgba(255, 107, 107, 1)",
+      bg: "rgba(255, 229, 229, 1)",
+      hoverBg: "rgba(255, 229, 229, 0.75)",
+    },
+  };
+
+  function normalizeSeenRole(value) {
+    const role = String(value || "")
+      .trim()
+      .toUpperCase();
+    if (!role) return "";
+
+    if (role.includes("RESIDENT") || role.includes("APP")) {
+      return "RESIDENT";
+    }
+
+    if (role.includes("DOCTOR") || role === "DR" || role.startsWith("DR_")) {
+      return "DOCTOR";
+    }
+
+    if (
+      role.includes("PHYSICIAN") ||
+      role.includes("PROVIDER") ||
+      role.includes("ATTENDING")
+    ) {
+      return "PHYSICIAN";
+    }
+
+    if (["RESIDENT", "APP", "RESIDENT/APP", "RESIDENT_APP"].includes(role)) {
+      return "RESIDENT";
+    }
+
+    if (["DOCTOR", "DR"].includes(role)) {
+      return "DOCTOR";
+    }
+
+    if (
+      [
+        "PHYSICIAN",
+        "PROVIDER",
+        "PCP_PHYSICIAN",
+        "ADMITTING_PHYSICIAN",
+        "ATTENDING",
+      ].includes(role)
+    ) {
+      return "PHYSICIAN";
+    }
+
+    return role;
+  }
+
+  const getCurrentUserSeenRole = () => {
+    const normalizedUserRoles = roleList.map((role) =>
+      String(role || "")
+        .trim()
+        .toUpperCase(),
+    );
+
+    if (
+      normalizedUserRoles.some((role) =>
+        ["RESIDENT", "APP", "RESIDENT/APP", "RESIDENT_APP"].includes(role),
+      )
+    ) {
+      return "RESIDENT";
+    }
+
+    if (normalizedUserRoles.some((role) => ["DOCTOR", "DR"].includes(role))) {
+      return "DOCTOR";
+    }
+
+    if (normalizedUserRoles.some((role) => role === "PROVIDER")) {
+      return "DOCTOR";
+    }
+
+    if (
+      normalizedUserRoles.some((role) =>
+        ["PHYSICIAN", "ATTENDING"].includes(role),
+      )
+    ) {
+      return "PHYSICIAN";
+    }
+
+    return "";
+  };
+
+  function isRowSeen(row) {
+    const status = String(row?.visitStatus || "")
+      .trim()
+      .toLowerCase();
+    const normalizedRole = normalizeSeenRole(
+      row?.seenByRole || row?.seen_by_role,
+    );
+
+    if (normalizedRole) return true;
+
+    return [
+      "seen",
+      "completed",
+      "in progress",
+      "in-progress",
+      "done",
+      "visited",
+    ].includes(status);
+  }
+
+  const getEyeColorsForRow = (row) => {
+    if (!isRowSeen(row)) {
+      return EYE_COLORS.DEFAULT;
+    }
+
+    const physicianRole = normalizeSeenRole(row?.providerRole);
+    const residentRole = normalizeSeenRole(row?.residentRole);
+    const seenRole = normalizeSeenRole(row?.seenByRole || row?.seen_by_role);
+
+    if (physicianRole === "DOCTOR" || physicianRole === "PROVIDER") {
+      return EYE_COLORS.DOCTOR;
+    }
+
+    if (physicianRole === "PHYSICIAN") {
+      return EYE_COLORS.PHYSICIAN;
+    }
+
+    if (residentRole === "RESIDENT") {
+      return EYE_COLORS.RESIDENT;
+    }
+
+    if (seenRole === "DOCTOR" || seenRole === "PROVIDER") {
+      return EYE_COLORS.DOCTOR;
+    }
+
+    if (seenRole === "PHYSICIAN") {
+      return EYE_COLORS.PHYSICIAN;
+    }
+
+    if (seenRole === "RESIDENT") {
+      return EYE_COLORS.RESIDENT;
+    }
+
+    return EYE_COLORS.DEFAULT;
+  };
+
+  const handleToggleSeen = async (row) => {
+    const nextSeen = !isRowSeen(row);
+
+    setRows((prev) =>
+      prev.map((r) => {
+        if ((r.encounterId || r.id) !== (row.encounterId || row.id)) return r;
+        return {
+          ...r,
+          visitStatus: nextSeen ? "Seen" : "Not Seen",
+          seenByRole: nextSeen ? getCurrentUserSeenRole() : "",
+        };
+      }),
     );
   };
 
-  const filtered = MOCK_ROWS.filter(
-    (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.flightNum.toLowerCase().includes(search.toLowerCase()) ||
-      r.mrn.includes(search)
-  );
-
-  const userStr = localStorage.getItem("user");
-  const user = userStr ? JSON.parse(userStr) : null;
-  const doctorName = user?.email ? `Dr. ${user.email.split("@")[0]}` : "Dr. James Oktar";
-  const specialty = "MD - Neurology";
-  const initials = doctorName.replace("Dr. ", "").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-
-  const columnSx = {
-    fontWeight: 700,
-    fontSize: 12,
-    color: "#555",
-    borderBottom: "1px solid #EEF2F7",
-    bgcolor: "#fff",
-    py: 1.2,
-    px: 1.5,
-    whiteSpace: "nowrap",
+  const handleCellClick = (rowId, field, currentValue) => {
+    setEditingCell({ rowId, field });
+    setEditValue(currentValue ?? "");
   };
 
-  const cellSx = {
-    fontSize: 13,
-    color: "#222",
-    borderBottom: "1px solid #F3F4F8",
-    py: 1.1,
-    px: 1.5,
+  const handleCellSave = (rowId, field) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, [field]: editValue } : r)),
+    );
+    setEditingCell(null);
+    setEditValue("");
   };
 
-  const SortableHeader = ({ label, anchor, setAnchor, options }) => (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.3,
-        cursor: "pointer",
-        userSelect: "none",
-        "&:hover": { color: "#015DFF" },
-      }}
-      onClick={(e) => setAnchor(e.currentTarget)}
-    >
-      {label}
-      <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
-      <Menu
-        anchorEl={anchor}
-        open={Boolean(anchor)}
-        onClose={() => setAnchor(null)}
-        PaperProps={{ sx: { borderRadius: 2, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" } }}
-      >
-        {(options || ["All", "Option A", "Option B"]).map((opt) => (
-          <MenuItem key={opt} onClick={() => setAnchor(null)} sx={{ fontSize: 13 }}>
-            {opt}
-          </MenuItem>
-        ))}
-      </Menu>
-    </Box>
-  );
+  const handleCellKeyDown = (e, rowId, field) => {
+    if (e.key === "Enter") handleCellSave(rowId, field);
+    if (e.key === "Escape") {
+      setEditingCell(null);
+      setEditValue("");
+    }
+  };
+
+  useEffect(() => {
+    if (location.state?.newPatient) {
+      setRows((prev) => [...prev, location.state.newPatient]);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [patientSearch, activeTab]);
+
+  const handleAddCustomReason = (reason) => {
+    if (!selectedRow) return;
+    setPatientCustomReasons((prev) => {
+      const existing = prev[selectedRow.id] || [];
+      if (existing.includes(reason)) return prev;
+      return { ...prev, [selectedRow.id]: [reason, ...existing] };
+    });
+  };
+
+  const handleOpenEncounterModal = (row) => {
+    setSelectedRow(row);
+    setOpenEncounterModal(true);
+  };
+
+  const handleSidelistClick = async (row, reason = null) => {
+    if (!reason) {
+      setSelectedRow(row);
+      setOpenSelectReasonModal(true);
+      handleMenuClose();
+      return;
+    }
+
+    const idsToUpdate =
+      selectedIdsForBulkAdd.length > 0 ? selectedIdsForBulkAdd : [row?.id];
+
+    setRows((prevRows) =>
+      prevRows.map((r) => {
+        if (idsToUpdate.includes(r.id)) {
+          return {
+            ...r,
+            is_sidelist: true,
+            sidelist_reason: reason,
+          };
+        }
+        return r;
+      }),
+    );
+
+    setSelectionModel(new Set());
+    setSelectedIdsForBulkAdd([]);
+    setSelectedRow(null);
+    setOpenSelectReasonModal(false);
+
+    showSnackbar(
+      `${idsToUpdate.length} patient(s) added to Sidelist`,
+      "success",
+    );
+    handleMenuClose();
+  };
+
+  const handleVoiceToText = (row) => {
+    if (!canUploadMedicalNotes && !canUseSpeechDetection) return;
+    setCurrentTranscribePatient(row);
+    setTranscribeModalOpen(true);
+  };
+
+  const filteredAssignProviders = providerOptions.filter((doc) => {
+    if (assignType === "resident") {
+      if (!doc.isResident) return false;
+    }
+
+    if (assignType === "doctor") {
+      if (!doc.isProvider && !doc.isPcpPhysician && !doc.isAdmittingPhysician) {
+        return false;
+      }
+    }
+
+    const search = assignSearch.trim().toLowerCase();
+    if (!search) return true;
+    const byName = String(doc.name || "")
+      .toLowerCase()
+      .includes(search);
+    const bySpecialty = String(doc.specialty || "")
+      .toLowerCase()
+      .includes(search);
+    return byName || bySpecialty;
+  });
+
+  const handleOpenNoteEditor = (row) => {
+    if (!canUseNotesEditor) return;
+    console.log("Opening note editor row:", row);
+
+    if (!row.encounterId) {
+      alert("Encounter ID missing for this patient.");
+      return;
+    }
+
+    navigate("/view_details?tab=Notes", {
+      state: {
+        encounterId: row.encounterId,
+        patientId: row.patientDbId,
+        patient: row,
+      },
+    });
+  };
+
+  const ATTESTATION_REGEX =
+    /(RESIDENT\s*\/?\s*APP\s*ATTESTATION|RESIDENT\s+ATTESTATION|APP\s+ATTESTATION)/i;
+
+  const getCopyHtmlByMode = (html = "", mode = "all") => {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    const children = Array.from(div.childNodes);
+    const attestationIndex = children.findIndex((node) =>
+      ATTESTATION_REGEX.test(node.textContent || ""),
+    );
+
+    if (attestationIndex === -1) return div.innerHTML;
+    div.innerHTML = "";
+
+    if (mode === "attestation") {
+      children
+        .slice(attestationIndex)
+        .forEach((node) => div.appendChild(node.cloneNode(true)));
+    } else {
+      children
+        .slice(0, attestationIndex)
+        .forEach((node) => div.appendChild(node.cloneNode(true)));
+    }
+
+    return div.innerHTML;
+  };
+
+  const copyHtmlLikeNoteEditor = (html, successMessage) => {
+    const copyDiv = document.createElement("div");
+    copyDiv.innerHTML = html;
+    copyDiv.style.position = "fixed";
+    copyDiv.style.left = "-9999px";
+    copyDiv.style.top = "0";
+    copyDiv.style.width = "800px";
+    copyDiv.style.background = "white";
+    copyDiv.style.fontFamily = "Arial, sans-serif";
+    copyDiv.style.fontSize = "14px";
+    copyDiv.style.lineHeight = "1.6";
+    document.body.appendChild(copyDiv);
+    const range = document.createRange();
+    range.selectNodeContents(copyDiv);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const successful = document.execCommand("copy");
+    selection.removeAllRanges();
+    document.body.removeChild(copyDiv);
+
+    if (!successful) {
+      throw new Error("Copy command failed");
+    }
+
+    showSnackbar(successMessage, "success");
+  };
+
+  const handleCopyNoteFromRL = async (row, mode = "all") => {
+    try {
+      const encounterId = row?.encounterId || row?.encounter_id || row?.id;
+
+      if (!encounterId) {
+        showSnackbar("Encounter ID missing", "warning");
+        return;
+      }
+
+      // Mock note data
+      const mockSummaryHtml = `<div><p>Patient presented with symptoms. Examination revealed normal findings.</p><p>RESIDENT ATTESTATION: This note has been reviewed and approved by the attending physician.</p><p>Plan: Follow up in 2 weeks.</p></div>`;
+
+      const copyHtml = getCopyHtmlByMode(mockSummaryHtml, mode);
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = copyHtml;
+
+      if (!(tempDiv.innerText || tempDiv.textContent || "").trim()) {
+        showSnackbar("No text found to copy", "warning");
+        return;
+      }
+
+      copyHtmlLikeNoteEditor(
+        copyHtml,
+        mode === "attestation"
+          ? "Attestation copied"
+          : "Summarized note copied",
+      );
+    } catch (error) {
+      console.error("Copy note failed:", error);
+      showSnackbar("Failed to copy summarized note", "error");
+    }
+  };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        bgcolor: "#F8F9FC",
-        overflow: "hidden",
-      }}
-    >
-      {/* ── Top Header Bar ── */}
+    <>
+      <style>{`
+          [contenteditable]:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          [contenteditable]:focus-visible {
+            outline: none !important;
+          }
+        `}</style>
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          gap: 2,
-          px: { xs: 2, md: 3 },
-          py: 1.5,
-          bgcolor: "#fff",
-          borderBottom: "1px solid #EEF2F7",
-          flexWrap: "wrap",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+          overflowX: "hidden",
+          overflowY: "visible",
+          px: { xs: 1, sm: 2 },
+          py: { xs: 1.5, sm: 2 },
         }}
       >
-        {/* Doctor info card */}
+        {/* Main content area – no scrollbars */}
         <Box
           sx={{
+            flex: 1,
             display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            bgcolor: "#015DFF",
-            borderRadius: 3,
-            px: 2,
-            py: 1.2,
-            minWidth: 210,
-            mr: 1,
+            flexDirection: "column",
+            minHeight: 0,
+            minWidth: 0,
+            width: "100%",
+            maxWidth: "100%",
+            overflow: "hidden",
           }}
         >
-          <Avatar
+          {/* Header Cards */}
+          {/* Row 1: Doctor card + 4 stat cards */}
+          <Box
             sx={{
-              bgcolor: "#F5A623",
-              width: 38,
-              height: 38,
-              fontSize: 14,
-              fontWeight: 700,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1.5,
+              width: "100%",
+              mb: 2,
             }}
           >
-            {initials}
-          </Avatar>
-          <Box>
-            <Typography
-              sx={{ fontSize: 11, color: "rgba(255,255,255,0.8)", lineHeight: 1 }}
-            >
-              Good morning 🌤
-            </Typography>
-            <Typography
-              sx={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}
-            >
-              {doctorName}
-            </Typography>
-            <Typography sx={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
-              {specialty}
-            </Typography>
-          </Box>
-        </Box>
+            {/* Doctor Card */}
+            <Box sx={{ flex: "1 1 180px", minWidth: 0 }}>
+              <Box
+                sx={{
+                  background: "rgba(40, 151, 255, 1)",
+                  color: "rgba(210, 214, 219, 1)",
+                  borderRadius: "16px",
+                  px: 2,
+                  py: 1,
+                  height: "80px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  overflow: "hidden",
+                }}
+              >
+                <Avatar
+                  sx={{
+                    bgcolor: "rgba(255, 255, 255, 0.302)",
+                    width: 36,
+                    height: 36,
+                    fontWeight: 600,
+                    fontSize: 10,
+                    flexShrink: 0,
+                  }}
+                >
+                  {providerInitials}
+                </Avatar>
+                <Box sx={{ lineHeight: 1.3, overflow: "hidden" }}>
+                  <Typography fontSize={10} noWrap sx={{ opacity: 0.9 }}>
+                    {greetingText}
+                  </Typography>
+                  <Typography fontWeight={700} fontSize={10} noWrap>
+                    {providerDisplayName}
+                  </Typography>
+                  <Typography fontSize={10} noWrap sx={{ opacity: 0.85 }}>
+                    {providerSubtitle}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
 
-        {/* Stats */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: { xs: 1, md: 2 },
-            flexWrap: "wrap",
-            flex: 1,
-          }}
-        >
-          {STATS.map((s) => (
+            {/* Stat Cards */}
+            {[
+              {
+                value: "XX",
+                label: "Events today",
+                icon: EventCardIcon,
+              },
+              {
+                value: "XX/XX",
+                label: "Patients to see",
+                icon: PatientCardIcon,
+              },
+              {
+                value: "XX",
+                label: "Patients to assign",
+                icon: PatientAssignCardIcon,
+              },
+              {
+                value: "XX",
+                label: "Critical Cases",
+                icon: CriticalCasesIcon,
+              },
+            ].map((item, i) => (
+              <Box key={i} sx={{ flex: "1 1 120px", minWidth: 0 }}>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(33, 50, 75, 1)",
+                    borderRadius: "12px",
+                    px: 1.5,
+                    py: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    height: "80px",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "rgba(210, 214, 219, 1)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      bgcolor: "rgba(1, 93, 255, 0.35)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <item.icon width={24} height={24} />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      fontWeight={700}
+                      fontSize={18}
+                      lineHeight={1.1}
+                      color="red"
+                    >
+                      {item.value}
+                    </Typography>
+                    <Typography
+                      fontSize={10}
+                      fontWeight={700}
+                      color="#b89994"
+                      sx={{
+                        lineHeight: 1.2,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Row 2: Date picker + Search + Filter + Export */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              mb: 2,
+              width: "100%",
+              flexWrap: "wrap",
+            }}
+          >
+            {/* Date Picker */}
             <Box
-              key={s.label}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "rgba(15, 38, 70, 1)",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.10)",
+                px: 1.5,
+                py: 0.8,
+                gap: 0.5,
+                flexShrink: 0,
+                cursor: "pointer",
+                height: "40px",
+                color: "rgba(210, 214, 219, 1)",
+              }}
+            >
+              <ChevronLeftIcon
+                sx={{
+                  fontSize: 18,
+                  color: "rgba(210, 214, 219, 1)",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const prev = new Date(selectedDate);
+                  prev.setDate(prev.getDate() - 1);
+                  setSelectedDate(prev);
+                }}
+              />
+
+              <CalendarTodayIcon
+                sx={{ fontSize: 16, color: "#94A3B8", cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCalendarAnchorEl(e.currentTarget);
+                }}
+              />
+
+              <Typography
+                fontSize={14}
+                fontWeight={500}
+                color="#94A3B8"
+                sx={{
+                  cursor: "pointer",
+                  userSelect: "none",
+                  color: "rgba(210, 214, 219, 1)",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCalendarAnchorEl(e.currentTarget);
+                }}
+              >
+                {selectedDate.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </Typography>
+
+              <ChevronRightIcon
+                sx={{
+                  fontSize: 18,
+                  color: "rgba(210, 214, 219, 1)",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = new Date(selectedDate);
+                  next.setDate(next.getDate() + 1);
+                  setSelectedDate(next);
+                }}
+              />
+            </Box>
+
+            {/* Calendar Popover */}
+            <Popover
+              open={Boolean(calendarAnchorEl)}
+              anchorEl={calendarAnchorEl}
+              onClose={() => setCalendarAnchorEl(null)}
+              anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+              transformOrigin={{ vertical: "top", horizontal: "center" }}
+              PaperProps={{
+                sx: {
+                  borderRadius: "12px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                },
+              }}
+            >
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DateCalendar
+                  value={dayjs(selectedDate)}
+                  onChange={(newVal) => {
+                    setSelectedDate(newVal.toDate());
+                    setCalendarAnchorEl(null);
+                  }}
+                  sx={{
+                    width: 260,
+                    "& .MuiPickersDay-root.Mui-selected": {
+                      backgroundcolor: "#4DA3FF",
+                    },
+                    "& .MuiPickersDay-root.Mui-selected:hover": {
+                      backgroundColor: "rgba(1, 93, 255, 0.85)",
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Popover>
+
+            {/* Search Bar */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "rgba(15, 38, 70, 1)",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.10)",
+                px: 1.5,
+                height: "40px",
+                gap: 1,
+                width: "350px",
+              }}
+            >
+              <SearchIcon sx={{ color: "#4DA3FF", fontSize: 20 }} />
+              <InputBase
+                placeholder="Search flight route, patients by name or MRN..."
+                value={patientSearch}
+                onChange={(e) => setPatientSearch(e.target.value)}
+                sx={{
+                  width: "100%",
+                  fontSize: "14px",
+                  "& input::placeholder": {
+                    color: "#94A3B8",
+                    opacity: 1,
+                  },
+                }}
+              />
+            </Box>
+
+            {/* Right Side Buttons */}
+            <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                bgcolor: "#F8F9FC",
-                borderRadius: 2,
-                px: 2,
-                py: 1,
-                minWidth: 110,
+                ml: "auto",
               }}
             >
-              {s.icon}
-              <Box>
-                <Typography sx={{ fontSize: 16, fontWeight: 800, color: "#111", lineHeight: 1 }}>
-                  {s.value}
-                </Typography>
-                <Typography sx={{ fontSize: 11, color: "#777", lineHeight: 1.3 }}>
-                  {s.label}
-                </Typography>
-              </Box>
+              <Button
+                onClick={() => setFilterModalOpen(true)}
+                startIcon={<FilterSortIcon />}
+                sx={{
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  border: "1.5px solid rgba(210, 214, 219, 1)",
+                  color: "rgba(210, 214, 219, 1)",
+                  backgroundColor: "rgba(15, 38, 70, 1)",
+                  px: 2,
+                  height: "40px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  flexShrink: 0,
+                  "&:hover": {
+                    backgroundColor: "rgba(1,93,255,0.05)",
+                  },
+                }}
+              >
+                Filter
+              </Button>
+
+              <Button
+                onClick={handleExportPatients}
+                startIcon={<ExportIcon />}
+                sx={{
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  border: "1.5px solid rgba(210, 214, 219, 1)",
+                  color: "rgba(210, 214, 219, 1)",
+                  backgroundColor: "rgba(15, 38, 70, 1)",
+                  px: 2,
+                  height: "40px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  flexShrink: 0,
+                  "&:hover": {
+                    backgroundColor: "rgba(1,93,255,0.05)",
+                  },
+                }}
+              >
+                Export
+              </Button>
             </Box>
-          ))}
-        </Box>
-      </Box>
+          </Box>
 
-      {/* ── Toolbar: Date picker + Search + Filter + Export ── */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          px: { xs: 2, md: 3 },
-          py: 1.5,
-          bgcolor: "#fff",
-          borderBottom: "1px solid #EEF2F7",
-          flexWrap: "wrap",
-        }}
-      >
-        {/* Date nav */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            border: "1px solid #E0E4EB",
-            borderRadius: 2,
-            px: 1,
-            py: 0.5,
-          }}
-        >
-          <IconButton size="small">
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-          <CalendarTodayOutlinedIcon sx={{ fontSize: 16, color: "#777" }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 600, px: 0.5 }}>
-            {dateLabel}
-          </Typography>
-          <IconButton size="small">
-            <ChevronRightIcon fontSize="small" />
-          </IconButton>
-        </Box>
+          {/* Table container – MUI Table with horizontal scroll */}
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              minWidth: 0,
+              bgcolor: "rgba(15, 38, 70, 1)",
+              borderRadius: "14px",
+              border: "1px solid rgba(77,163,255,0.2)",
+              width: "100%",
+              maxWidth: "100%",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {loadingPatients && (
+              <Typography sx={{ p: 2, color: "#94A3B8" }}>
+                Loading patients...
+              </Typography>
+            )}
 
-        {/* Search */}
-        <TextField
-          size="small"
-          placeholder="Search flight route, patients by name or MRN..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+            {patientError && (
+              <Typography sx={{ p: 2, color: "red" }}>
+                {patientError}
+              </Typography>
+            )}
+            <TableContainer
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                minWidth: 0,
+                maxWidth: "100%",
+                overflowX: "auto",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                "&::-webkit-scrollbar": {
+                  display: "none",
+                },
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+            >
+              <Table
+                stickyHeader
+                sx={{
+                  width: "100%",
+                  minWidth: { xs: 920, sm: 1000 },
+                  tableLayout: "auto",
+                  borderCollapse: "separate",
+                  borderSpacing: 0,
+                }}
+              >
+                <TableHead>
+                  <TableRow
+                    sx={{
+                      backgroundColor: "rgba(7, 20, 40, 0.9)",
+                      "& .MuiTableCell-head": {
+                        backgroundColor: "rgba(7, 20, 40, 0.9)",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        color: "rgba(210, 214, 219, 1)",
+                        padding: "6px 6px",
+                        borderBottom: "none",
+                        whiteSpace: "normal",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        textAlign: "center",
+                      },
+                      "& .MuiTableSortLabel-root": {
+                        color: "rgba(210, 214, 219, 1)",
+                        width: "100%",
+                        display: "flex",
+                        justifyContent: "center",
+                        textAlign: "center",
+                      },
+                      "& .MuiTableSortLabel-root:hover": {
+                        color: "rgba(210, 214, 219, 1)",
+                      },
+                      "& .MuiTableSortLabel-root.Mui-active": {
+                        color: "rgba(210, 214, 219, 1)",
+                      },
+                    }}
+                  >
+                    <TableCell
+                      padding="checkbox"
+                      sx={{
+                        width: activeTab === "Sidelist" ? "30px" : "40px",
+                        minWidth: activeTab === "Sidelist" ? "30px" : "40px",
+                      }}
+                    >
+                      <Checkbox
+                        indeterminate={
+                          selectionModel.size > 0 &&
+                          selectionModel.size < displayRows.length
+                        }
+                        checked={
+                          displayRows.length > 0 &&
+                          selectionModel.size === displayRows.length
+                        }
+                        onChange={handleSelectAllClick}
+                        sx={{
+                          color: "#94A3B8",
+                          "&.Mui-checked": {
+                            color: "#4DA3FF",
+                          },
+                          "&.MuiCheckbox-indeterminate": {
+                            color: "#4DA3FF",
+                          },
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "7%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "room"}
+                        direction={orderBy === "room" ? order : "asc"}
+                        onClick={() => handleRequestSort("room")}
+                        hideSortIcon
+                      >
+                        <Box sx={{ lineHeight: 1.3 }}>
+                          <div>Flight #</div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              color: "rgba(210, 214, 219, 1)",
+                              fontSize: "14px",
+                            }}
+                          >
+                            Seat
+                          </div>
+                        </Box>
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "12%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "name"}
+                        direction={orderBy === "name" ? order : "asc"}
+                        onClick={() => handleRequestSort("name")}
+                        hideSortIcon
+                      >
+                        <Box sx={{ lineHeight: 1.3 }}>
+                          <div>Name</div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              color: "rgba(210, 214, 219, 1)",
+                              fontSize: "14px",
+                            }}
+                          >
+                            Age (Gender)
+                          </div>
+                        </Box>
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "10%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "mrn"}
+                        direction={orderBy === "mrn" ? order : "asc"}
+                        onClick={() => handleRequestSort("mrn")}
+                        hideSortIcon
+                      >
+                        <Box sx={{ lineHeight: 1.3 }}>
+                          <div>MRN</div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              color: "rgba(210, 214, 219, 1)",
+                              fontSize: "14px",
+                            }}
+                          >
+                            (Patient ID)
+                          </div>
+                        </Box>
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "9%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "status"}
+                        direction={orderBy === "status" ? order : "asc"}
+                        onClick={() => handleRequestSort("status")}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "10%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <TableSortLabel
+                          active={orderBy === "location"}
+                          direction={orderBy === "location" ? order : "asc"}
+                          onClick={() => handleRequestSort("location")}
+                        >
+                          Flight Route
+                        </TableSortLabel>
+                      </Box>
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        width: "10%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "physician"}
+                        direction={orderBy === "physician" ? order : "asc"}
+                        onClick={() => handleRequestSort("physician")}
+                      >
+                        Physician
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        width: "11%",
+                        borderRight: "1px solid rgba(77,163,255,0.2)",
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "resident"}
+                        direction={orderBy === "resident" ? order : "asc"}
+                        onClick={() => handleRequestSort("resident")}
+                      >
+                        Crew
+                      </TableSortLabel>
+                    </TableCell>
+
+                    {activeTab === "Sidelist" ? (
+                      <TableCell sx={{ width: "25%", minWidth: "200px" }}>
+                        Reason
+                      </TableCell>
+                    ) : (
+                      <TableCell
+                        sx={{
+                          width: "auto",
+                          minWidth: 280,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {roundingStatusFilter === "Sidelist" ? (
+                          <>Reasons</>
+                        ) : (
+                          <> Actions</>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {displayRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={9}
+                        align="center"
+                        sx={{
+                          py: 4,
+                          fontSize: "14px",
+                          fontWeight: 500,
+                          color: "#94A3B8",
+                          backgroundColor: "rgba(15, 38, 70, 1)",
+                        }}
+                      >
+                        No Patient Found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedRows
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage,
+                      )
+                      .map((row) => {
+                        const isEditing = (field) =>
+                          editingCell?.rowId === row.id &&
+                          editingCell?.field === field;
+                        const eyeColors = getEyeColorsForRow(row);
+                        // const eyeTooltip = isRowSeen(row) ? "Seen" : "Unseen";
+
+                        const EditableCell = ({ field, children, sx }) => {
+                          const cellRef = React.useRef(null);
+
+                          React.useEffect(() => {
+                            if (isEditing(field) && cellRef.current) {
+                              cellRef.current.focus();
+                              const range = document.createRange();
+                              range.selectNodeContents(cellRef.current);
+                              const sel = window.getSelection();
+                              sel.removeAllRanges();
+                              sel.addRange(range);
+                            }
+                          }, [isEditing(field)]);
+
+                          return (
+                            <TableCell sx={sx}>
+                              <Box
+                                ref={cellRef}
+                                contentEditable={isEditing(field)}
+                                suppressContentEditableWarning
+                                onClick={() => {
+                                  if (!isEditing(field)) {
+                                    handleCellClick(row.id, field, row[field]);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  if (isEditing(field)) {
+                                    const newValue =
+                                      e.currentTarget.textContent || "";
+                                    setRows((prev) =>
+                                      prev.map((r) =>
+                                        r.id === row.id
+                                          ? { ...r, [field]: newValue }
+                                          : r,
+                                      ),
+                                    );
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    setEditingCell(null);
+                                    setEditValue("");
+                                  }
+                                }}
+                                sx={{
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                  cursor: isEditing(field) ? "text" : "pointer",
+                                  minHeight: 20,
+                                  outline: "none !important",
+                                  border: "none !important",
+                                  boxShadow: "none !important",
+                                  borderRadius: "4px",
+                                  bgcolor: isEditing(field)
+                                    ? "rgba(1, 93, 255, 0.18)"
+                                    : "transparent",
+                                  px: isEditing(field) ? 0.5 : 0,
+                                  "&:hover": {
+                                    bgcolor: "rgba(1, 93, 255, 0.12)",
+                                  },
+                                  "&:focus": {
+                                    outline: "none !important",
+                                    border: "none !important",
+                                    boxShadow: "none !important",
+                                    bgcolor: "rgba(1, 93, 255, 0.35)",
+                                  },
+                                  "&:focus-visible": {
+                                    outline: "none !important",
+                                  },
+                                }}
+                              >
+                                {isEditing(field) ? editValue : children}
+                              </Box>
+                            </TableCell>
+                          );
+                        };
+
+                        return (
+                          <TableRow
+                            key={row.id}
+                            hover
+                            sx={{
+                              "& .MuiTableCell-body": {
+                                padding: "6px 6px",
+                                borderBottom:
+                                  "1px solid rgba(234, 22, 22, 0.05)",
+                                fontSize: "13px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                textAlign: "center",
+                                verticalAlign: "middle",
+                                color: "rgba(210, 214, 219, 1)",
+                              },
+                              "& .MuiTableCell-body:last-child": {
+                                overflow: "visible",
+                              },
+                              "&:hover": {
+                                backgroundColor: "rgba(11, 29, 53, 0.6)",
+                              },
+                            }}
+                          >
+                            <TableCell
+                              padding="checkbox"
+                              sx={{
+                                width:
+                                  activeTab === "Sidelist" ? "30px" : "40px",
+                                minWidth:
+                                  activeTab === "Sidelist" ? "30px" : "40px",
+                              }}
+                            >
+                              <Checkbox
+                                checked={selectionModel.has(row.id)}
+                                onChange={() => handleRowCheckboxClick(row.id)}
+                                sx={{
+                                  color: "#94A3B8",
+                                  "&.Mui-checked": {
+                                    color: "#4DA3FF",
+                                  },
+                                }}
+                              />
+                            </TableCell>
+
+                            {/* Room + Bed */}
+                            <EditableCell field="room">
+                              <Box sx={{ display: "inline-block" }}>
+                                {row.room}
+                                <Typography fontSize={11}>{row.bed}</Typography>
+                              </Box>
+                            </EditableCell>
+
+                            {/* Name + Age/Gender */}
+                            <EditableCell field="name">
+                              <Box
+                                fontWeight={600}
+                                fontSize={12}
+                                sx={{ display: "inline-block" }}
+                              >
+                                {row.name}
+                                <Typography fontWeight={600} fontSize={12}>
+                                  {row.age} ({row.gender})
+                                </Typography>
+                              </Box>
+                            </EditableCell>
+
+                            <EditableCell field="mrn">
+                              <Box sx={{ display: "inline-block" }}>
+                                <Typography fontWeight={600} fontSize={12}>
+                                  {row.mrn}
+                                </Typography>
+                              </Box>
+                            </EditableCell>
+                            <EditableCell field="status">
+                              <Box sx={{ display: "inline-block" }}>
+                                {row.status}
+                              </Box>
+                            </EditableCell>
+                            {/* Location chip — editable */}
+                            <TableCell>
+                              <Box
+                                contentEditable={isEditing("location")}
+                                suppressContentEditableWarning
+                                onClick={() => {
+                                  if (!isEditing("location"))
+                                    handleCellClick(
+                                      row.id,
+                                      "location",
+                                      row.location,
+                                    );
+                                }}
+                                onBlur={(e) => {
+                                  if (isEditing("location")) {
+                                    const newValue =
+                                      e.currentTarget.textContent || "";
+                                    setRows((prev) =>
+                                      prev.map((r) =>
+                                        r.id === row.id
+                                          ? { ...r, location: newValue }
+                                          : r,
+                                      ),
+                                    );
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                sx={{
+                                  display: "inline-block",
+                                  cursor: "pointer",
+                                  outline: "none !important",
+                                  border: "none !important",
+                                  boxShadow: "none !important",
+                                  borderRadius: "4px",
+                                  bgcolor: isEditing("location")
+                                    ? "rgba(1, 93, 255, 0.18)"
+                                    : "transparent",
+                                  px: isEditing("location") ? 0.5 : 0,
+                                  "&:focus": {
+                                    outline: "none !important",
+                                    border: "none !important",
+                                    bgcolor: "rgba(1, 93, 255, 0.35)",
+                                  },
+                                  "&:focus-visible": {
+                                    outline: "none !important",
+                                  },
+                                }}
+                              >
+                                {isEditing("location")
+                                  ? editValue
+                                  : row.location}
+                              </Box>
+                            </TableCell>
+
+                            {/* Physician */}
+                            <TableCell>
+                              <Box
+                                contentEditable={isEditing("physician")}
+                                suppressContentEditableWarning
+                                onClick={() => {
+                                  if (!canAssignProvider) return;
+                                  if (!isEditing("physician")) {
+                                    setSelectedRow(row);
+                                    setOpenAssignModal(true);
+                                    setAssignType("doctor");
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  if (isEditing("physician")) {
+                                    const newValue =
+                                      e.currentTarget.textContent || "";
+                                    setRows((prev) =>
+                                      prev.map((r) =>
+                                        r.id === row.id
+                                          ? { ...r, physician: newValue }
+                                          : r,
+                                      ),
+                                    );
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                sx={{
+                                  cursor: "pointer",
+                                  color: "#4DA3FF",
+                                  fontWeight: 500,
+                                  display: "inline-block",
+                                  outline: "none !important",
+                                  border: "none !important",
+                                  boxShadow: "none !important",
+                                  borderRadius: "4px",
+                                  bgcolor: isEditing("physician")
+                                    ? "rgba(1, 93, 255, 0.18)"
+                                    : "transparent",
+                                  px: isEditing("physician") ? 0.5 : 0,
+                                  "&:focus": {
+                                    outline: "none !important",
+                                    border: "none !important",
+                                    bgcolor: "rgba(1, 93, 255, 0.35)",
+                                  },
+                                  "&:focus-visible": {
+                                    outline: "none !important",
+                                  },
+                                }}
+                              >
+                                {isEditing("physician") ? (
+                                  editValue
+                                ) : row.physician ? (
+                                  <Box
+                                    sx={{
+                                      display: "inline-block",
+                                      px: 1.6,
+                                      py: 0.8,
+                                      borderRadius: "8px",
+                                      backgroundColor:
+                                        "rgba(161, 120, 0, 0.85)",
+                                      color: "rgba(255, 241, 194, 1)",
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    {row.physician}
+                                  </Box>
+                                ) : (
+                                  <Box
+                                    sx={{
+                                      display: "inline-block",
+                                      px: 1.5,
+                                      py: 0.5,
+                                      borderRadius: "8px",
+                                      backgroundColor:
+                                        "rgba(161, 120, 0, 0.85)",
+                                      color: "rgba(255, 241, 194, 1)",
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                      minWidth: "90px",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    Assign
+                                  </Box>
+                                )}
+                              </Box>
+                            </TableCell>
+
+                            {/* Resident */}
+                            <TableCell>
+                              <Box
+                                contentEditable={isEditing("resident")}
+                                suppressContentEditableWarning
+                                onClick={() => {
+                                  if (!canAssignProvider) return;
+                                  if (!isEditing("resident")) {
+                                    setSelectedRow(row);
+                                    setSelectedDoctor("");
+                                    setSelectedDoctorId("");
+                                    setAssignSearch("");
+                                    setAssignType("resident");
+                                    setOpenAssignModal(true);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  if (isEditing("resident")) {
+                                    const newValue =
+                                      e.currentTarget.textContent || "";
+                                    setRows((prev) =>
+                                      prev.map((r) =>
+                                        r.id === row.id
+                                          ? { ...r, resident: newValue }
+                                          : r,
+                                      ),
+                                    );
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                sx={{
+                                  cursor: "pointer",
+                                  color: "#4DA3FF",
+                                  fontWeight: 400,
+                                  display: "inline-block",
+                                  outline: "none !important",
+                                  border: "none !important",
+                                  boxShadow: "none !important",
+                                  borderRadius: "4px",
+                                  bgcolor: isEditing("resident")
+                                    ? "rgba(1, 93, 255, 0.18)"
+                                    : "transparent",
+                                  px: isEditing("resident") ? 0.5 : 0,
+                                  "&:focus": {
+                                    outline: "none !important",
+                                    border: "none !important",
+                                    bgcolor: "rgba(1, 93, 255, 0.35)",
+                                  },
+                                  "&:focus-visible": {
+                                    outline: "none !important",
+                                  },
+                                }}
+                              >
+                                {isEditing("resident") ? (
+                                  editValue
+                                ) : row.resident ? (
+                                  <Box
+                                    sx={{
+                                      display: "inline-block",
+                                      px: 1.6,
+                                      py: 0.8,
+                                      borderRadius: "2px",
+                                      backgroundColor:
+                                        "rgba(16, 120, 100, 0.7)",
+                                      color: "rgba(210, 214, 219, 1)",
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    {row.resident}
+                                  </Box>
+                                ) : (
+                                  <Box
+                                    sx={{
+                                      display: "inline-block",
+                                      px: 1.5,
+                                      py: 0.5,
+                                      borderRadius: "8px",
+                                      backgroundColor:
+                                        "rgba(161, 120, 0, 0.85)",
+                                      color: "rgba(210, 214, 219, 1)",
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                      minWidth: "90px",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    Assign
+                                  </Box>
+                                )}
+                              </Box>
+                            </TableCell>
+
+                            {roundingStatusFilter === "Sidelist" ? (
+                              <TableCell
+                                sx={{ width: "25%", minWidth: "200px" }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      fontSize: "13px",
+                                      color: "rgba(210, 214, 219, 1)",
+                                      fontWeight: 500,
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
+                                    {row.sidelist_reason ||
+                                      "No reason provided"}
+                                  </Typography>
+                                  <Typography
+                                    sx={{ fontSize: "11px", color: "#94A3B8" }}
+                                  >
+                                    {console.log("Rwe", row)}
+                                    Added:{" "}
+                                    {row.updated_at || row.created_at
+                                      ? dayjs(row.sidelistTimestamp).format(
+                                          "MM/DD/YYYY hh:mm A",
+                                        )
+                                      : ""}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            ) : (
+                              <TableCell
+                                sx={{
+                                  overflow: "visible !important",
+                                  width: "100%",
+                                  minWidth: { xs: 280, sm: 320, md: 220 },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 0.5,
+                                    flexWrap: "nowrap",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    minWidth: "fit-content",
+                                  }}
+                                >
+                                  <Tooltip
+                                    // title={eyeTooltip}
+                                    arrow
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: "#000000",
+                                          color: "rgba(15, 38, 70, 1)",
+                                          fontSize: "0.75rem",
+                                          [`& .${tooltipClasses.arrow}`]: {
+                                            color: "#000000",
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleSeen(row);
+                                      }}
+                                      sx={{
+                                        p: "4px",
+                                        borderRadius: "50%",
+                                        marginRight: "15px",
+                                        // backgroundColor: eyeColors.bg,
+                                        "& svg": {
+                                          color: `${eyeColors.icon} !important`,
+                                        },
+                                        "&:hover": {
+                                          // backgroundColor: eyeColors.hoverBg,
+                                        },
+                                        position: "relative",
+                                      }}
+                                    >
+                                      <VisibilityIcon sx={{ fontSize: 16 }} />
+                                      {/* {!isRowSeen(row) && (
+                                        <Box
+                                          sx={{
+                                            position: "absolute",
+                                            top: "50%",
+                                            left: "50%",
+                                            transform: "translate(-50%, -50%)",
+                                            fontSize: "28px",
+                                            color: eyeColors.icon,
+                                            pointerEvents: "none",
+                                            lineHeight: 1,
+                                          }}
+                                        >
+                                          /
+                                        </Box>
+                                      )} */}
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip
+                                    // title="List of Encounter"
+                                    arrow
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: "#000000",
+                                          color: "rgba(15, 38, 70, 1)",
+                                          fontSize: "0.75rem",
+                                          [`& .${tooltipClasses.arrow}`]: {
+                                            color: "#000000",
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenEncounterModal(row);
+                                      }}
+                                    >
+                                      <ActionIcon2 />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  {canEditFacesheet && (
+                                    <Tooltip
+                                      // title="Facesheet"
+                                      arrow
+                                      componentsProps={{
+                                        tooltip: {
+                                          sx: {
+                                            bgcolor: "#000000",
+                                            color: "rgba(15, 38, 70, 1)",
+                                            fontSize: "0.75rem",
+                                            [`& .${tooltipClasses.arrow}`]: {
+                                              color: "#000000",
+                                            },
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        sx={{
+                                          p: "4px",
+                                          flex: "0 0 auto",
+                                          boxShadow: "none",
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setFacesheetPatient(row);
+                                          setFacesheetOpen(true);
+                                        }}
+                                      >
+                                        <ActionIcon3 />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+
+                                  <Tooltip
+                                    // title="Video"
+                                    arrow
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: "#000000",
+                                          color: "rgba(15, 38, 70, 1)",
+                                          fontSize: "0.75rem",
+                                          [`& .${tooltipClasses.arrow}`]: {
+                                            color: "#000000",
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                    >
+                                      <ActionIcon4 />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip
+                                    // title="More options"
+                                    arrow
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          bgcolor: "#000000",
+                                          color: "rgba(15, 38, 70, 1)",
+                                          fontSize: "0.75rem",
+                                          [`& .${tooltipClasses.arrow}`]: {
+                                            color: "#000000",
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMenuOpen(e, row.id);
+                                      }}
+                                    >
+                                      <MoreVertIcon
+                                        fontSize="small"
+                                        sx={{ color: "rgba(210, 214, 219, 1)" }}
+                                      />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={sortedRows.length}
+              page={page}
+              onPageChange={(e, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25]}
+              sx={{
+                borderTop: "1px solid rgba(255,255,255,0.10)",
+                fontSize: "13px",
+                flexShrink: 0,
+                color: "rgba(210, 214, 219, 1)",
+                "& .MuiTablePagination-toolbar": {
+                  minHeight: "44px",
+                  px: { xs: 1, sm: 2 },
+                  flexWrap: "wrap",
+                  gap: 1,
+                  justifyContent: { xs: "center", sm: "flex-end" },
+                },
+                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                  {
+                    fontSize: { xs: "12px", sm: "13px" },
+                    color: "#94A3B8",
+                  },
+                "& .MuiTablePagination-actions button": {
+                  color: "rgba(210, 214, 219, 1)",
+                },
+              }}
+            />
+          </Box>
+        </Box>
+        <Dialog
+          open={openAssignModal}
+          onClose={() => setOpenAssignModal(false)}
+          maxWidth="xs"
+          fullWidth
           sx={{
-            flex: 1,
-            minWidth: 200,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              fontSize: 13,
+            "& .MuiPaper-root": {
+              borderRadius: "24px !important",
+              overflow: "hidden",
             },
           }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 18, color: "#aaa" }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-
-        {/* Filter */}
-        <Button
-          variant="outlined"
-          startIcon={<FilterListIcon />}
-          sx={{
-            borderColor: "#E0E4EB",
-            color: "#333",
-            borderRadius: 2,
-            fontWeight: 500,
-            fontSize: 13,
-            textTransform: "none",
-            px: 2,
-            "&:hover": { borderColor: "#015DFF", color: "#015DFF" },
-          }}
         >
-          Filter
-        </Button>
+          <DialogContent
+            sx={{
+              p: 2,
+              bgcolor: "rgba(15, 38, 70, 1)",
+              display: "flex",
+              flexDirection: "column",
+              maxHeight: "72vh",
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 1,
+              }}
+            >
+              <Typography fontWeight={600} fontSize={16}>
+                {assignType === "doctor"
+                  ? "Assign to Provider / Doctor"
+                  : "Assign to Resident / APP"}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setOpenAssignModal(false)}
+                sx={{
+                  ml: "auto",
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
 
-        {/* Export */}
-        <Button
-          variant="outlined"
-          startIcon={<FileDownloadOutlinedIcon />}
-          sx={{
-            borderColor: "#E0E4EB",
-            color: "#333",
-            borderRadius: 2,
-            fontWeight: 500,
-            fontSize: 13,
-            textTransform: "none",
-            px: 2,
-            "&:hover": { borderColor: "#015DFF", color: "#015DFF" },
-          }}
-        >
-          Export
-        </Button>
-      </Box>
+            {/* Divider */}
+            <Box
+              sx={{
+                height: "1px",
+                bgcolor: "rgba(255,255,255,0.15)",
+                mb: 2,
+              }}
+            />
 
-      {/* ── Data Table ── */}
-      <Box sx={{ flex: 1, overflow: "auto", px: { xs: 0, md: 2 }, py: 1 }}>
-        <TableContainer
-          sx={{
-            bgcolor: "#fff",
-            borderRadius: { xs: 0, md: 2 },
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            overflow: "auto",
-          }}
-        >
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox" sx={{ ...columnSx, pl: 2 }}>
-                  <Checkbox
-                    size="small"
-                    indeterminate={
-                      selectedRows.length > 0 &&
-                      selectedRows.length < MOCK_ROWS.length
-                    }
-                    checked={selectedRows.length === MOCK_ROWS.length}
-                    onChange={handleSelectAll}
-                  />
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  Flight # <br /> Seat
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  Name <br /> Age (Gender)
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  MRN <br /> (Patient ID)
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  <SortableHeader
-                    label="Status"
-                    anchor={statusAnchor}
-                    setAnchor={setStatusAnchor}
-                    options={["All", "Critical", "Assign", "Stable"]}
-                  />
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  <SortableHeader
-                    label="Flight Route"
-                    anchor={routeAnchor}
-                    setAnchor={setRouteAnchor}
-                    options={["All", "SYD → LAX", "LAX → JFK", "JFK → LHR"]}
-                  />
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  <SortableHeader
-                    label="Physician"
-                    anchor={physicianAnchor}
-                    setAnchor={setPhysicianAnchor}
-                    options={["All", "Alex Tobar", "Dr. Smith"]}
-                  />
-                </TableCell>
-                <TableCell sx={columnSx}>
-                  <SortableHeader
-                    label="Crew"
-                    anchor={crewAnchor}
-                    setAnchor={setCrewAnchor}
-                    options={["All", "Julia R", "Mark T"]}
-                  />
-                </TableCell>
-                <TableCell sx={columnSx}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
+            {/* Search */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                bgcolor: "rgba(11,29,53,0.8)",
+                borderRadius: "30px",
+                px: 2,
+                py: 1.2,
+                mb: 2,
+              }}
+            >
+              <SearchIcon sx={{ color: "#94A3B8", fontSize: 18 }} />
 
-            <TableBody>
-              {filtered.map((row) => (
-                <TableRow
-                  key={row.id}
-                  hover
-                  selected={selectedRows.includes(row.id)}
+              <InputBase
+                placeholder="Search by name or specialty"
+                value={assignSearch}
+                onChange={(e) => setAssignSearch(e.target.value)}
+                sx={{
+                  ml: 1,
+                  fontSize: "14px",
+                  width: "100%",
+                }}
+              />
+            </Box>
+
+            {/* List */}
+            <Box
+              sx={{
+                maxHeight: "auto",
+                overflowY: "auto",
+                pr: 1,
+                p: 1,
+                borderRadius: "24px",
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              {filteredAssignProviders.map((doc) => (
+                <Box
+                  key={doc.id}
+                  onClick={() => {
+                    setSelectedDoctor(doc.name);
+                    setSelectedDoctorId(doc.id);
+                  }}
                   sx={{
-                    "&.Mui-selected": { bgcolor: "#F0F5FF" },
-                    "&.Mui-selected:hover": { bgcolor: "#E8EFFF" },
+                    p: 0.8,
+                    borderRadius: "16px",
+                    mb: 1,
                     cursor: "pointer",
+                    border:
+                      selectedDoctorId === doc.id
+                        ? "2px solid #1a73e8"
+                        : "1px solid #e5e7eb",
+                    bgcolor:
+                      selectedDoctorId === doc.id
+                        ? "#e8f0fe"
+                        : "rgba(15, 38, 70, 1)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                    <Checkbox
-                      size="small"
-                      checked={selectedRows.includes(row.id)}
-                      onChange={() => handleSelectRow(row.id)}
-                    />
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <Typography sx={{ fontWeight: 600, fontSize: 13 }}>
-                      {row.flightNum}
+                  <Box>
+                    <Typography fontSize={14} fontWeight={500}>
+                      {doc.name}
                     </Typography>
-                    <Typography sx={{ fontSize: 11, color: "#888" }}>
-                      {row.seat}
+                    <Typography
+                      fontSize={12}
+                      sx={{
+                        color: "#4ADE80",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {[doc.status, doc.specialty]
+                        .filter(Boolean)
+                        .join(" • ") || "Available"}
                     </Typography>
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <Typography sx={{ fontWeight: 600, fontSize: 13 }}>
-                      {row.name}
-                    </Typography>
-                    <Typography sx={{ fontSize: 11, color: "#888" }}>
-                      {row.age}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <Typography sx={{ fontSize: 13 }}>{row.mrn}</Typography>
-                    <Typography sx={{ fontSize: 11, color: "#888" }}>
-                      ID: {row.patientId}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <StatusChip status={row.status} />
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
-                      {row.route}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    {row.physician ? (
-                      <PhysicianChip name={row.physician} />
-                    ) : (
-                      <Typography sx={{ fontSize: 12, color: "#aaa" }}>
-                        —
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <CrewChip name={row.crew} />
-                  </TableCell>
-                  <TableCell sx={cellSx}>
-                    <ActionButtons />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-    </Box>
-  );
-};
+                  </Box>
 
-export default AllEvents;
+                  {/* Check Icon */}
+                  {selectedDoctorId === doc.id && (
+                    <Typography color="#1a73e8" fontSize={18}>
+                      ✓
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+              {filteredAssignProviders.length === 0 && (
+                <Typography
+                  sx={{ px: 1, py: 2, color: "#94A3B8", fontSize: 13 }}
+                >
+                  {assignType === "resident"
+                    ? "No residents found."
+                    : "No providers found."}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Assign Button */}
+            <Button
+              fullWidth
+              variant="contained"
+              sx={{
+                mt: 2,
+                borderRadius: "14px",
+                py: 1.2,
+                textTransform: "none",
+                fontWeight: 500,
+              }}
+              onClick={async () => {
+                if (!selectedDoctor || !selectedDoctorId) return;
+
+                console.log("Assign Type:", assignType);
+
+                const selectedIds =
+                  selectionModel.size > 0
+                    ? Array.from(selectionModel)
+                    : selectedRow
+                      ? [selectedRow.id]
+                      : [];
+
+                if (selectedIds.length === 0) return;
+
+                setRows((prev) =>
+                  prev.map((row) => {
+                    if (!selectedIds.includes(row.id)) return row;
+
+                    if (assignType === "resident") {
+                      return {
+                        ...row,
+                        resident: selectedDoctor,
+                        residentId: selectedDoctorId,
+                      };
+                    }
+
+                    return {
+                      ...row,
+                      physician: selectedDoctor,
+                      providerId: selectedDoctorId,
+                    };
+                  }),
+                );
+
+                setOpenAssignModal(false);
+                setSelectedDoctor("");
+                setSelectedDoctorId("");
+                setAssignSearch("");
+              }}
+            >
+              {selectionModel.size > 1
+                ? "Assign to all Selected Patients"
+                : "Assign"}
+            </Button>
+          </DialogContent>
+        </Dialog>
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </>
+  );
+}
