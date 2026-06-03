@@ -3,7 +3,7 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import { Box } from "@mui/material";
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-
+import SearchKit from "../pages/SearchKit/SearchKit"
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
 const SignIn = lazy(() => import("../componants/SignIn"));
@@ -51,6 +51,13 @@ const CustomRoutes = () => {
             <AllEvents />
           </MainLayout>
         }
+      />
+      <Route path="/alerts"
+      element={
+         <MainLayout>
+          <SearchKit/>
+         </MainLayout>
+      }
       />
     </Routes>
   );

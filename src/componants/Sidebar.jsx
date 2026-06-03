@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Tooltip, tooltipClasses, Typography } from "@mui/material";
 import * as AppAssets from "../assets/Assets";
 import logo from "../assets/logo2.png";
-
+import HelpIcon from '@mui/icons-material/Help';
 // Dark theme constants
 const SIDEBAR_BG        = "rgba(11, 29, 53, 1)";
 const SIDEBAR_BORDER    = "rgba(255, 255, 255, 0.08)";
@@ -18,17 +18,17 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
   // Main nav items (icon + label)
   const mainItems = [
     { label: "All Events",  Icon: AppAssets.AllEventsIcon,  path: "/all-events" },
-    { label: "New Event",   Icon: AppAssets.NewEventIcon,   path: "/new-event" },
+    // { label: "New Event",   Icon: AppAssets.NewEventIcon,   path: "/new-event" },
     { label: "Search Kit",  Icon: AppAssets.SearchKitIcon,  path: "/search-kit" },
-    { label: "FAQs",        Icon: AppAssets.FAQsIcon,       path: "/faqs" },
+    // { label: "FAQs",        Icon: AppAssets.FAQsIcon,       path: "/faqs" },
     { label: "Tia AI",      Icon: AppAssets.TiaAiIcon,      path: "/Ai", isAi: true },
-    { label: "Devices",     Icon: AppAssets.DevisecIcon,    path: "/devices" },
-    { label: "Alerts",      Icon: AppAssets.AlertsIcon,     path: "/alerts" },
+    // { label: "Devices",     Icon: AppAssets.DevisecIcon,    path: "/devices" },
+    // { label: "Alerts",      Icon: AppAssets.AlertsIcon,     path: "/alerts" },
   ];
 
   // Bottom items
   const logoutItem   = { label: "Logout",   Icon: AppAssets.LogoutIcon,   path: "/logout",   showLabel: true  };
-  const helpItem     = { label: "Help",      Icon: AppAssets.HelpIcon,     path: "/help",     showLabel: false };
+  const helpItem     = { label: "Help",      Icon: HelpIcon,     path: "/help",     showLabel: false };
   const settingsItem = { label: "Settings",  Icon: AppAssets.SettingsIcon, path: "/settings", showLabel: false };
 
   const handleNavigate = (path, isAi) => {
@@ -171,17 +171,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
           alt="TiaTELE"
           style={{ width: 44, height: 44, objectFit: "contain" }}
         />
-        <Typography
-          sx={{
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            color: "#FFFFFF",
-            letterSpacing: "0.02em",
-            userSelect: "none",
-          }}
-        >
-          Tia<span style={{ color: "#4DA3FF" }}>TELE</span>
-        </Typography>
+     
       </Box>
 
       {/* Main nav */}
