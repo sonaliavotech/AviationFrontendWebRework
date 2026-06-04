@@ -6,6 +6,8 @@ import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
 import SearchKit from "../pages/SearchKit/SearchKit"
 import PatientVitalsSidebar from "../pages/AllEvents/Event";
+import ChatWidget from "../pages/ChatWidget/ChatWidget";
+
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
 const SignIn = lazy(() => import("../componants/SignIn"));
@@ -85,7 +87,7 @@ const CustomRoutes = () => {
           </MainLayout>
         }
       />
-      <Route path="/alerts"
+      <Route path="/search-kit"
       element={
          <MainLayout>
           <SearchKit/>
