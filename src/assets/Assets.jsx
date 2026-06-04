@@ -1,4 +1,5 @@
 import React from "react";
+import { Box } from "@mui/material";
 
 export function TitleRoundIcon({ color = "currentColor", ...props }) {
   return (
@@ -527,6 +528,36 @@ export const BloodPressureIcon = () => (
     />
   </svg>
 );
+
+export const ECGIcon = () => (
+  <Box sx={{ width: 74, height: 44, borderRadius: "5px", overflow: "hidden", position: "relative", flexShrink: 0, background: "#ffffff" }}>
+    <svg width="100%" height="100%" viewBox="0 0 82 50" fill="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}>
+      <g opacity="0.4">
+        {[0,20.56,41.13,61.69].flatMap((x) =>
+          [0,20.56,41.13].map((y) => (
+            <rect key={`b${x}-${y}`} x={x} y={y} width="20.5654" height="20.5654" stroke="#CFD1D4" strokeWidth="1.02827"/>
+          ))
+        )}
+        {[0,20.56,41.13,61.69].flatMap((bx) =>
+          [0,20.56,41.13].flatMap((by) =>
+            Array.from({ length: 5 }, (_, r) =>
+              Array.from({ length: 5 }, (_, c) => (
+                <rect key={`s${bx}-${by}-${r}-${c}`} x={bx + c * 4.113} y={by + r * 4.113} width="4.11308" height="4.11308" stroke="#EBEDF0" strokeWidth="0.549222"/>
+              ))
+            )
+          )
+        )}
+      </g>
+    </svg>
+    <svg width="100%" height="100%" viewBox="0 0 74 44" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0 }}>
+      <polyline
+        points="0,30 5,30 7,32 9,14 11,36 13,30 19,30 23,20 25,5 27,32 29,30 39,20 41,5 43,32 45,30 56,22 58,7 60,34 62,30 74,30"
+        fill="none" stroke="#d43535" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"
+      />
+    </svg>
+  </Box>
+);
+
 export const OxygenIcon = () => (
   <svg
     width="24"

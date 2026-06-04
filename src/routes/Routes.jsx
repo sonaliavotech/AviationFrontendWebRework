@@ -4,16 +4,11 @@ import { Box } from "@mui/material";
 
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-import SearchKit from "../pages/SearchKit/SearchKit";
-import ChatWidget from "../pages/ChatWidget/ChatWidget";
-
-const AllEvents = lazy(() =>
-  import("../pages/AllEvents/AllEvents")
-);
-
-const SignIn = lazy(() =>
-  import("../componants/SignIn")
-);
+import SearchKit from "../pages/SearchKit/SearchKit"
+import PatientVitalsSidebar from "../pages/AllEvents/Event";
+// Lazy loaded pages
+const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
+const SignIn = lazy(() => import("../componants/SignIn"));
 
 const MainLayout = ({ children }) => {
   const isAuthenticated =
@@ -90,16 +85,14 @@ const CustomRoutes = () => {
           </MainLayout>
         }
       />
-
-      <Route
-        path="/search-kit"
-        element={
-          <MainLayout>
-            <SearchKit />
-          </MainLayout>
-        }
-
+      <Route path="/alerts"
+      element={
+         <MainLayout>
+          <SearchKit/>
+         </MainLayout>
+      }
       />
+      <Route path="/Event" element={<PatientVitalsSidebar/>} />
     </Routes>
   );
 };
