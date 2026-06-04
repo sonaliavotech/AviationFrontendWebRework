@@ -7,6 +7,7 @@ import ProtectedRoute from "./ProtectedRoutes";
 import SearchKit from "../pages/SearchKit/SearchKit"
 import PatientVitalsSidebar from "../pages/AllEvents/Event";
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
+import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
 
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
@@ -95,6 +96,7 @@ const CustomRoutes = () => {
       }
       />
       <Route path="/Event" element={<PatientVitalsSidebar/>} />
+      <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
     </Routes>
   );
 };
