@@ -21,7 +21,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
     // { label: "New Event",   Icon: AppAssets.NewEventIcon,   path: "/new-event" },
     { label: "Search Kit",  Icon: AppAssets.SearchKitIcon,  path: "/search-kit" },
     // { label: "FAQs",        Icon: AppAssets.FAQsIcon,       path: "/faqs" },
-    { label: "Tia AI",      Icon: AppAssets.TiaAiIcon,      path: "/Ai", isAi: true },
+    { label: "Tia AI",      Icon: AppAssets.TiaAiIcon, isAi: true,  },
     // { label: "Devices",     Icon: AppAssets.DevisecIcon,    path: "/devices" },
     // { label: "Alerts",      Icon: AppAssets.AlertsIcon,     path: "/alerts" },
   ];
@@ -32,14 +32,15 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
   const settingsItem = { label: "Settings",  Icon: AppAssets.SettingsIcon, path: "/settings", showLabel: false };
 
   const handleNavigate = (path, isAi) => {
-    if (isAi) {
-      onAiClick?.();
-      onRequestClose?.();
-      return;
-    }
-    navigate(path);
-    onRequestClose?.();
-  };
+  // Open popup for Tia AI
+  if (isAi) {
+    onAiClick?.();
+    return;
+  }
+
+  // Normal navigation
+  navigate(path);
+};
 
   const isActive = (path) =>
     currentPath === path ||

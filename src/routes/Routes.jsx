@@ -1,15 +1,43 @@
-import { lazy, Suspense } from "react";
-import { Route, Routes, Navigate } from "react-router-dom";
+import React, { lazy, useState } from "react";
+import { Route, Routes } from "react-router-dom";
 import { Box } from "@mui/material";
+
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-import SearchKit from "../pages/SearchKit/SearchKit"
-// Lazy loaded pages
-const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
-const SignIn = lazy(() => import("../componants/SignIn"));
+import SearchKit from "../pages/SearchKit/SearchKit";
+import ChatWidget from "../pages/ChatWidget/ChatWidget";
+
+const AllEvents = lazy(() =>
+  import("../pages/AllEvents/AllEvents")
+);
+
+const SignIn = lazy(() =>
+  import("../componants/SignIn")
+);
 
 const MainLayout = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem("token");
+  const isAuthenticated =
+    !!localStorage.getItem("token");
+
+  // CHAT STATE
+  const [openChat, setOpenChat] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  // OPEN CHAT
+  const handleOpenChat = () => {
+    setOpenChat(true);
+    setTimeout(() => setVisible(true), 10); // allow render first
+  };
+
+  // CLOSE CHAT
+  const handleCloseChat = () => {
+    setVisible(false); // trigger animation first
+
+    setTimeout(() => {
+      setOpenChat(false); // then remove
+    }, 200);
+  };
+
   return (
     <ProtectedRoute isAuthenticated={isAuthenticated}>
       <Box
@@ -18,9 +46,13 @@ const MainLayout = ({ children }) => {
           height: "100vh",
           overflow: "hidden",
           bgcolor: "rgba(11, 29, 53, 1)",
+          position: "relative",
         }}
       >
-        <Sidebar />
+        {/* Sidebar */}
+        <Sidebar onAiClick={handleOpenChat} />
+
+        {/* Main Content */}
         <Box
           component="main"
           sx={{
@@ -32,6 +64,14 @@ const MainLayout = ({ children }) => {
         >
           {children}
         </Box>
+
+        {/* CHAT (NO BUG NOW) */}
+        {openChat && (
+          <ChatWidget
+            onClose={handleCloseChat}
+            visible={visible}
+          />
+        )}
       </Box>
     </ProtectedRoute>
   );
@@ -40,10 +80,8 @@ const MainLayout = ({ children }) => {
 const CustomRoutes = () => {
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/sign-in" element={<SignIn />} />
 
-      {/* Protected routes with sidebar */}
       <Route
         path="/all-events"
         element={
@@ -52,12 +90,15 @@ const CustomRoutes = () => {
           </MainLayout>
         }
       />
-      <Route path="/search-kit"
-      element={
-         <MainLayout>
-          <SearchKit/>
-         </MainLayout>
-      }
+
+      <Route
+        path="/search-kit"
+        element={
+          <MainLayout>
+            <SearchKit />
+          </MainLayout>
+        }
+
       />
     </Routes>
   );
