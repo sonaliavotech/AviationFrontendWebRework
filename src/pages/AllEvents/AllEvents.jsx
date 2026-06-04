@@ -8,7 +8,6 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Drawer } from "@mui/material";
 
-
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -517,11 +516,15 @@ export default function AllEvents() {
   };
 
   //States for the Popupthree dots
+  const [openMainPopup, setOpenMainPopup] = useState(false);
+
   const [openVitalTrend, setOpenVitalTrend] = useState(false);
 
   const [openViewReport, setOpenViewReport] = useState(false);
 
   const [openShareReport, setOpenShareReport] = useState(false);
+
+
 
   const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
   const [currentTranscribePatient, setCurrentTranscribePatient] =
@@ -2659,7 +2662,7 @@ export default function AllEvents() {
                                       sx={{ p: "4px", flex: "0 0 auto" }}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleMenuOpen(e, row.id);
+                                        setOpenMainPopup(true);
                                       }}
                                     >
                                       <MoreVertIcon
@@ -2944,184 +2947,154 @@ export default function AllEvents() {
 
 
       //Popup Logic
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            mt: 1,
-            minWidth: 250,
-            borderRadius: "20px",
+      {openMainPopup && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: "100px",
+            right: "15px",
+            zIndex: 9999,
+            width: 220,
+      
+            borderRadius: "24px",
             overflow: "hidden",
-            background: "linear-gradient(180deg, #031B3A 0%, #06264D 100%)",
-            border: "1px solid rgba(83,130,255,0.2)",
+            bgcolor: "#0B1D35",
+            border: "1px solid #102543",
             boxShadow: "0px 8px 25px rgba(0,0,0,0.35)",
-            p: 0,
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/vital-trend");
-          }}
-          sx={{
-            color: "#D2D6DB",
-            bgcolor: "#0B1D35",
-            py: 2,
-            px: 3,
-            gap: 2,
-            fontSize: "16px",
-
-            "&:hover": {
-              bgcolor: "#2B4570",
-            },
           }}
         >
+          {/* Vital Trends */}
           <Box
-            component="img"
-            src="https://cdn-icons-png.flaticon.com/512/2965/2965278.png"
-            sx={{ width: 24, height: 24 }}
-          />
-          View Vital Trends
-        </MenuItem>
+            onClick={() => {
+              setOpenMainPopup(false);
+              setOpenVitalTrend(true);
+            }}
+            sx={{
+              height: 65,
+              px: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              cursor: "pointer",
+              color: "#DCE3EE",
 
-        <MenuItem
-          onClick={handleMenuClose}
-          sx={{
-            bgcolor: "#0B1D35",
-            color: "#DCE3EE",
-            py: 2,
-            px: 3,
-            fontSize: "15px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
+              "&:hover": {
+                bgcolor: "#2B4570",
+              },
+            }}
+          >
+            📈 View Vital Trends
+          </Box>
 
-            "&:hover": {
-              bgcolor: "#2B4570",
-            },
-          }}
-        >
-          📄 View Report
-        </MenuItem>
+          {/* View Report */}
+          <Box
+            onClick={() => {
+              setOpenMainPopup(false);
+              setOpenViewReport(true);
+            }}
+            sx={{
+              height: 65,
+              px: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              cursor: "pointer",
+              color: "#DCE3EE",
+              bgcolor: "#0B1D35",
 
-        <MenuItem
-          onClick={handleMenuClose}
-          sx={{
-            color: "#DCE3EE",
-            bgcolor: "#0B1D35",
-            py: 2,
-            px: 3,
-            fontSize: "15px",
+              "&:hover": {
+                bgcolor: "#2B4570",
+              },
+            }}
+          >
+            📄 View report
+          </Box>
 
-            "&:hover": {
-              bgcolor: "#2B4570",
-            },
-          }}
-        >
-          🔗 Share Report
-        </MenuItem>
-      </Menu>
+          {/* Share Report */}
+          <Box
+            onClick={() => {
+              setOpenMainPopup(false);
+              setOpenShareReport(true);
+            }}
+            sx={{
+              height: 65,
+              px: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              cursor: "pointer",
+              color: "#DCE3EE",
+              bgcolor: "#0B1D35",
 
-
+              "&:hover": {
+                bgcolor: "#2B4570",
+              },
+            }}
+          >
+            🔗 Share report
+          </Box>
+        </Box>
+      )}
       {/* Vital Trend Popup */}
-    {/* RIGHT SIDE POPUP */}
-{openVitalTrend && (
-  <Box
-    sx={{
-      position: "fixed",
-      top: "90px",
-      right: "20px",
-      zIndex: 9999,
-
-      width: 320,
-      borderRadius: "24px",
-      overflow: "hidden",
-
-      bgcolor: "#0B1D35",
-      border: "1px solid #102543",
-
-      boxShadow:
-        "0px 8px 25px rgba(0,0,0,0.35)",
-    }}
-  >
-    {/* Button 1 */}
-    <Box
-      onClick={() => {
-        setOpenVitalTrend(false);
-      }}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        px: 3,
-        py: 2.3,
-        color: "#DCE3EE",
-        cursor: "pointer",
-        transition: "0.2s",
-
-        "&:hover": {
-          bgcolor: "#102543",
-        },
-      }}
-    >
-      <Box
-        component="img"
-        src="https://cdn-icons-png.flaticon.com/512/2965/2965278.png"
-        sx={{ width: 24, height: 24 }}
-      />
-      View Vital Trends
-    </Box>
-
-    {/* Button 2 */}
-    <Box
-      onClick={() => {
-        setOpenViewReport(true);
-      }}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        px: 3,
-        py: 2.3,
-        color: "#DCE3EE",
-        cursor: "pointer",
-        borderTop:
-          "1px solid rgba(255,255,255,0.08)",
-
-        "&:hover": {
-          bgcolor: "#102543",
-        },
-      }}
-    >
-      📄 View Report
-    </Box>
-
-    {/* Button 3 */}
-    <Box
-      onClick={() => {
-        setOpenShareReport(true);
-      }}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        px: 3,
-        py: 2.3,
-        color: "#DCE3EE",
-        cursor: "pointer",
-        borderTop:
-          "1px solid rgba(255,255,255,0.08)",
-
-        "&:hover": {
-          bgcolor: "#102543",
-        },
-      }}
-    >
-      🔗 Share Report
-    </Box>
-  </Box>
-)}
+      {openVitalTrend && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: "80px",
+            right: "20px",
+            width: 420,
+            height: "80vh",
+            bgcolor: "#0B1D35",
+            borderRadius: "24px",
+            border: "1px solid #102543",
+            zIndex: 9999,
+            p: 3,
+            color: "#fff",
+          }}
+        >
+          <Typography variant="h5">Vital Trends Popup</Typography>
+        </Box>
+      )}
+      {/* View Report popup 2 */}
+      {openViewReport && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: "80px",
+            right: "20px",
+            width: 420,
+            height: "80vh",
+            bgcolor: "#0B1D35",
+            borderRadius: "24px",
+            border: "1px solid #102543",
+            zIndex: 9999,
+            p: 3,
+            color: "#fff",
+          }}
+        >
+          <Typography variant="h5">View Report Popup</Typography>
+        </Box>
+      )}
+      {/* Share Report popup 3 */}
+      {openShareReport && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: "80px",
+            right: "20px",
+            width: 420,
+            height: "80vh",
+            bgcolor: "#0B1D35",
+            borderRadius: "24px",
+            border: "1px solid #102543",
+            zIndex: 9999,
+            p: 3,
+            color: "#fff",
+          }}
+        >
+          <Typography variant="h5">Share Report Popup</Typography>
+        </Box>
+      )}
     </>
   );
 }
