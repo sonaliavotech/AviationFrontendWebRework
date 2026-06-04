@@ -95,7 +95,6 @@ const CustomRoutes = () => {
          </MainLayout>
       }
       />
-      <Route path="/Event" element={<PatientVitalsSidebar/>} />
       {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
       <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
     </Routes>
