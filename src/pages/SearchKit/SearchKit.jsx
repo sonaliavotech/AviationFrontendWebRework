@@ -6,6 +6,7 @@ import {
   Paper,
   Typography,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SyncIcon from "@mui/icons-material/Sync";
@@ -81,39 +82,43 @@ const SearchKit = () => {
             gap: 1.5,
           }}
         >
-          <Button
-            variant="contained"
-            startIcon={<VideocamIcon />}
-            sx={{
-              background: PRIMARY_BLUE,
-              borderRadius: "14px",
-              textTransform: "none",
-              px: 3,
-              height: 44,
-              fontWeight: 600,
-              boxShadow: "0px 4px 15px rgba(1,93,255,0.35)",
-              "&:hover": {
-                background: "#0048CC",
-              },
-            }}
-          >
-            Join Now
-          </Button>
+          <Tooltip title="Join Video Call" arrow>
+            <Button
+              variant="contained"
+              startIcon={<VideocamIcon />}
+              sx={{
+                background: PRIMARY_BLUE,
+                borderRadius: "14px",
+                textTransform: "none",
+                px: 3,
+                height: 44,
+                fontWeight: 600,
+                boxShadow: "0px 4px 15px rgba(1,93,255,0.35)",
+                "&:hover": {
+                  background: "#0048CC",
+                },
+              }}
+            >
+              Join Now
+            </Button>
+          </Tooltip>
 
-          <IconButton
-            sx={{
-              width: 46,
-              height: 46,
-              background: PRIMARY_BLUE,
-              borderRadius: "12px",
-              boxShadow: "0px 4px 15px rgba(1,93,255,0.35)",
-              "&:hover": {
-                background: "#0048CC",
-              },
-            }}
-          >
-            <AlertsIcon />
-          </IconButton>
+          <Tooltip title="Alerts" arrow>
+            <IconButton
+              sx={{
+                width: 46,
+                height: 46,
+                background: PRIMARY_BLUE,
+                borderRadius: "12px",
+                boxShadow: "0px 4px 15px rgba(1,93,255,0.35)",
+                "&:hover": {
+                  background: "#0048CC",
+                },
+              }}
+            >
+              <AlertsIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 

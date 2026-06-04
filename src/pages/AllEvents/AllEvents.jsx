@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Drawer } from "@mui/material";
+import ShareReportDialog from "./ShareReportDialog";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -3010,31 +3011,30 @@ export default function AllEvents() {
             📄 View report
           </Box>
 
-          {/* Share Report */}
           <Box
-            onClick={() => {
-              setOpenMainPopup(false);
-              setOpenShareReport(true);
-            }}
-            sx={{
-              height: 65,
-              px: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              cursor: "pointer",
-              color: "#DCE3EE",
-              bgcolor: "#0B1D35",
-
-              "&:hover": {
-                bgcolor: "#2B4570",
-              },
-            }}
-          >
-            🔗 Share report
-          </Box>
+  onClick={() => {
+    setOpenShareReport(true);
+  }}
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    px: 3,
+    py: 2.3,
+    color: "#DCE3EE",
+    cursor: "pointer",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    "&:hover": {
+      bgcolor: "#102543",
+    },
+  }}
+>
+  🔗 Share Report
+</Box>
         </Box>
       )}
+
+
       {/* Vital Trend Popup */}
       {openVitalTrend && (
         <Box
@@ -3055,6 +3055,8 @@ export default function AllEvents() {
           <Typography variant="h5">Vital Trends Popup</Typography>
         </Box>
       )}
+
+
       {/* View Report popup 2 */}
       {openViewReport && (
         <Box
@@ -3075,26 +3077,12 @@ export default function AllEvents() {
           <Typography variant="h5">View Report Popup</Typography>
         </Box>
       )}
-      {/* Share Report popup 3 */}
-      {openShareReport && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: "80px",
-            right: "20px",
-            width: 420,
-            height: "80vh",
-            bgcolor: "#0B1D35",
-            borderRadius: "24px",
-            border: "1px solid #102543",
-            zIndex: 9999,
-            p: 3,
-            color: "#fff",
-          }}
-        >
-          <Typography variant="h5">Share Report Popup</Typography>
-        </Box>
-      )}
+
+
+     <ShareReportDialog
+  open={openShareReport}
+  handleClose={() => setOpenShareReport(false)}
+/>
     </>
   );
 }
