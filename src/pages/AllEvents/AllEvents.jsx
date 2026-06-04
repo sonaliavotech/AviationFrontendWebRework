@@ -2942,7 +2942,7 @@ export default function AllEvents() {
         </Snackbar>
       </Box>
 
-      
+
       //Popup Logic
       <Menu
         anchorEl={anchorEl}
@@ -3022,60 +3022,106 @@ export default function AllEvents() {
           🔗 Share Report
         </MenuItem>
       </Menu>
+
+
       {/* Vital Trend Popup */}
-      <Drawer
-        anchor="right"
-        open={openVitalTrend}
-        onClose={() => setOpenVitalTrend(false)}
-      >
-        <Box
-          sx={{
-            width: 380,
-            p: 3,
-            bgcolor: "#0B1D35",
-            color: "#fff",
-            height: "100%",
-          }}
-        >
-          <Typography variant="h6">View Vital Trend</Typography>
-        </Box>
-      </Drawer>
-      {/* View Report Popup */}
-      <Drawer
-        anchor="right"
-        open={openViewReport}
-        onClose={() => setOpenViewReport(false)}
-      >
-        <Box
-          sx={{
-            width: 380,
-            p: 3,
-            bgcolor: "#0B1D35",
-            color: "#fff",
-            height: "100%",
-          }}
-        >
-          <Typography variant="h6">View Report</Typography>
-        </Box>
-      </Drawer>
-      {/* Share Report Popup */}
-      <Drawer
-        anchor="right"
-        open={openShareReport}
-        onClose={() => setOpenShareReport(false)}
-      >
-        <Box
-          sx={{
-            width: 380,
-            p: 3,
-            bgcolor: "#0B1D35",
-            color: "#fff",
-            height: "100%",
-          }}
-        >
-          <Typography variant="h6">Share Report</Typography>
-        </Box>
-      </Drawer>
+    {/* RIGHT SIDE POPUP */}
+{openVitalTrend && (
+  <Box
+    sx={{
+      position: "fixed",
+      top: "90px",
+      right: "20px",
+      zIndex: 9999,
+
+      width: 320,
+      borderRadius: "24px",
+      overflow: "hidden",
+
+      bgcolor: "#0B1D35",
+      border: "1px solid #102543",
+
+      boxShadow:
+        "0px 8px 25px rgba(0,0,0,0.35)",
+    }}
+  >
+    {/* Button 1 */}
+    <Box
+      onClick={() => {
+        setOpenVitalTrend(false);
+      }}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        px: 3,
+        py: 2.3,
+        color: "#DCE3EE",
+        cursor: "pointer",
+        transition: "0.2s",
+
+        "&:hover": {
+          bgcolor: "#102543",
+        },
+      }}
+    >
+      <Box
+        component="img"
+        src="https://cdn-icons-png.flaticon.com/512/2965/2965278.png"
+        sx={{ width: 24, height: 24 }}
+      />
+      View Vital Trends
+    </Box>
+
+    {/* Button 2 */}
+    <Box
+      onClick={() => {
+        setOpenViewReport(true);
+      }}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        px: 3,
+        py: 2.3,
+        color: "#DCE3EE",
+        cursor: "pointer",
+        borderTop:
+          "1px solid rgba(255,255,255,0.08)",
+
+        "&:hover": {
+          bgcolor: "#102543",
+        },
+      }}
+    >
+      📄 View Report
+    </Box>
+
+    {/* Button 3 */}
+    <Box
+      onClick={() => {
+        setOpenShareReport(true);
+      }}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        px: 3,
+        py: 2.3,
+        color: "#DCE3EE",
+        cursor: "pointer",
+        borderTop:
+          "1px solid rgba(255,255,255,0.08)",
+
+        "&:hover": {
+          bgcolor: "#102543",
+        },
+      }}
+    >
+      🔗 Share Report
+    </Box>
+  </Box>
+)}
     </>
   );
 }
