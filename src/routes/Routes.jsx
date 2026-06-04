@@ -52,7 +52,7 @@ const CustomRoutes = () => {
           </MainLayout>
         }
       />
-      <Route path="/alerts"
+      <Route path="/search-kit"
       element={
          <MainLayout>
           <SearchKit/>

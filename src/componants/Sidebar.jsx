@@ -48,7 +48,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
 
   /* ── styles ── */
   const itemSx = (active) => ({
-    width: 64,
+    width: 94,
     borderRadius: "10px",
     display: "flex",
     flexDirection: "column",
@@ -144,7 +144,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
     <Box
       component="aside"
       sx={{
-        width: 80,
+        width: 100,
         flexShrink: 0,
         background: SIDEBAR_BG,
         display: "flex",
@@ -169,7 +169,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
         <img
           src={logo}
           alt="TiaTELE"
-          style={{ width: 44, height: 44, objectFit: "contain" }}
+          style={{ width: 55, height: 55, objectFit: "contain" }}
         />
      
       </Box>
