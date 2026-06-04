@@ -3087,7 +3087,7 @@ export default function AllEvents() {
       {/* View Report popup 2 */}
       <Event
         open={openViewReport}
-        handleClose={() => setOpenViewReport(false)}
+        onClose={() => setOpenViewReport(false)}
       />
 
       <ShareReportDialog

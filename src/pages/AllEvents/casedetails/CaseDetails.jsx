@@ -16,7 +16,6 @@ import ChatIcon from "@mui/icons-material/Chat";
 
 import { InstructionGrid } from "./InstructionGrid";
 import { KitSection } from "./KitSection";
-import { VitalsCard } from "./VitalsCrad";
 import {
   HeartRateIcon, BloodPressureIcon, OxygenIcon,
   RespiratoryRateIcon, TemperatureIcon, SkinColorIcon,
@@ -48,18 +47,101 @@ const C = {
   accent:       "#4a8adc",
 };
 
-const vitals = [
-  { title: "Heart Rate",       value: "88 bpm",     icon: HeartRateIcon,       borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "Blood Pressure",   value: "135/85 mmHg",icon: BloodPressureIcon,   borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "Oxygen",           value: "80%",        icon: OxygenIcon,          borderColor: "#c13a3a",               bgColor: "#2d1414", valueColor: "#f05050" },
-  { title: "Respiratory rate", value: "24 mins.",   icon: RespiratoryRateIcon, borderColor: "#c07820",               bgColor: "#251e0a", valueColor: "#e09030" },
-  { title: "Temperature",      value: "34.5 C",     icon: TemperatureIcon,     borderColor: "#c07820",               bgColor: "#251e0a", valueColor: "#e09030" },
-  { title: "Skin Colour",      value: "Normal",     icon: SkinColorIcon,       borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "Sweating",         value: "Mild",       icon: SweatingIcon,        borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "ECG",              value: "Sinus",      icon: ECGIcon,             borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "Pain Score",       value: "6/10",       icon: PainScoreIcon,       borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "Blood Glucose",    value: "100 mg/dl",  icon: BloodGlucoseIcon,    borderColor: "rgba(255,255,255,0.08)", bgColor: "#112240", valueColor: "#e8f0fe" },
-  { title: "AVPU Score",       value: "15",         icon: AVPUIcon,            borderColor: "#2060cc",               bgColor: "#112240", valueColor: "#e8f0fe" },
+// ── Threshold system (mirrors PatientVitalsSidebar) ───────────────────────────
+const THRESHOLDS = {
+  heartRate:       { dangerLow: 40,  dangerHigh: 130, warningLow: 50,  warningHigh: 110 },
+  oxygen:          { dangerLow: 85,  dangerHigh: null, warningLow: 90, warningHigh: null },
+  respiratoryRate: { dangerLow: null, dangerHigh: 30,  warningLow: null, warningHigh: 25 },
+  temperature:     { dangerLow: 32,  dangerHigh: 39,  warningLow: 34,  warningHigh: 38 },
+  painScore:       { dangerLow: null, dangerHigh: 8,   warningLow: null, warningHigh: 6 },
+  bloodGlucose:    { dangerLow: 50,  dangerHigh: 200,  warningLow: 60,  warningHigh: 180 },
+  avpu:            { dangerLow: 8,   dangerHigh: null, warningLow: 12,  warningHigh: null },
+};
+
+const getVariant = (key, val) => {
+  const t = THRESHOLDS[key];
+  if (!t || val === null || val === undefined) return "normal";
+  const { dangerLow, dangerHigh, warningLow, warningHigh } = t;
+  if ((dangerLow  !== null && val < dangerLow)  || (dangerHigh !== null && val > dangerHigh))  return "danger";
+  if ((warningLow !== null && val < warningLow) || (warningHigh !== null && val > warningHigh)) return "warning";
+  return "normal";
+};
+
+// ── Card style tokens ─────────────────────────────────────────────────────────
+const CARD_NML = "#112240";
+const CARD_DNG = "#1f1018";
+const CARD_WRN = "#1c1a08";
+
+const BORDER_DNG   = "#c13a3a";
+const BORDER_DNG_R = "#2e1a1a";
+const BORDER_WRN   = "#c07820";
+const BORDER_WRN_R = "#2a2510";
+const BORDER_BLU   = "#2060cc";
+const BORDER_BLU_R = "#1c3455";
+const BORDER_NML_L = "#ffffff33";
+const BORDER_NML_R = "#ffffff18";
+
+const TEXT_WHITE = "#ffffff";
+const TEXT_DNG   = "#f05050";
+const TEXT_WRN   = "#e09030";
+const LABEL_NML  = "#5a7da0";
+const LABEL_DNG  = "#9a6060";
+const LABEL_WRN  = "#9a7830";
+const ICON_NML   = "#2a4a6a";
+const ICON_DNG   = "#9a3030";
+const ICON_WRN   = "#9a6010";
+const ICON_BLU   = "#2a6acc";
+
+const bgOf    = v => v === "danger" ? CARD_DNG  : v === "warning" ? CARD_WRN  : CARD_NML;
+const labelOf = v => v === "danger" ? LABEL_DNG : v === "warning" ? LABEL_WRN : LABEL_NML;
+const valueOf = v => v === "danger" ? TEXT_DNG  : v === "warning" ? TEXT_WRN  : TEXT_WHITE;
+const iconOf  = v => v === "danger" ? ICON_DNG  : v === "warning" ? ICON_WRN  : v === "blue" ? ICON_BLU : ICON_NML;
+
+const borderOf = (v) => {
+  if (v === "danger")  return { borderLeft: `3px solid ${BORDER_DNG}`, borderTop: `1px solid ${BORDER_DNG_R}`, borderRight: `1px solid ${BORDER_DNG_R}`, borderBottom: `1px solid ${BORDER_DNG_R}` };
+  if (v === "warning") return { borderLeft: `3px solid ${BORDER_WRN}`, borderTop: `1px solid ${BORDER_WRN_R}`, borderRight: `1px solid ${BORDER_WRN_R}`, borderBottom: `1px solid ${BORDER_WRN_R}` };
+  if (v === "blue")    return { borderLeft: `3px solid ${BORDER_BLU}`, borderTop: `1px solid ${BORDER_BLU_R}`, borderRight: `1px solid ${BORDER_BLU_R}`, borderBottom: `1px solid ${BORDER_BLU_R}` };
+  return { borderLeft: `3px solid ${BORDER_NML_L}`, borderTop: `1px solid ${BORDER_NML_R}`, borderRight: `1px solid ${BORDER_NML_R}`, borderBottom: `1px solid ${BORDER_NML_R}` };
+};
+
+// ── VitalCard (matches PatientVitalsSidebar exactly) ─────────────────────────
+const VitalCard = ({ label, display, numericValue, thresholdKey, forceVariant, icon: Icon, children }) => {
+  const v = forceVariant ?? getVariant(thresholdKey, numericValue);
+  return (
+    <Box sx={{
+      height: 70, borderRadius: "8px", padding: "10px 13px",
+      boxSizing: "border-box", display: "flex", flexDirection: "column",
+      justifyContent: "space-between",
+      background: bgOf(v), ...borderOf(v),
+    }}>
+      <Typography sx={{ fontSize: "11px", color: labelOf(v), lineHeight: 1, letterSpacing: "0.02em" }}>
+        {label}
+      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography sx={{ fontSize: "15px", fontWeight: 700, color: valueOf(v), lineHeight: 1 }}>
+          {display}
+        </Typography>
+        <Box sx={{ color: iconOf(v), display: "flex", alignItems: "center", flexShrink: 0 }}>
+          {children ?? (Icon && <Icon sx={{ fontSize: "22px", color: iconOf(v) }} />)}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+// ── Vitals data ───────────────────────────────────────────────────────────────
+const VITALS = [
+  { label: "Heart Rate",       display: "88 bpm",      numericValue: 88,   thresholdKey: "heartRate",       icon: HeartRateIcon },
+  { label: "Blood Pressure",   display: "135/85 mmHg", numericValue: null, thresholdKey: null,              icon: BloodPressureIcon },
+  { label: "Oxygen",           display: "80%",         numericValue: 80,   thresholdKey: "oxygen",          icon: OxygenIcon },
+  { label: "Respiratory rate", display: "24 mins.",    numericValue: 24,   thresholdKey: "respiratoryRate", icon: RespiratoryRateIcon },
+  { label: "Temperature",      display: "34.5 C",      numericValue: 34.5, thresholdKey: "temperature",     icon: TemperatureIcon },
+  { label: "Skin Colour",      display: "Normal",      numericValue: null, thresholdKey: null,              icon: SkinColorIcon },
+  { label: "Sweating",         display: "Mild",        numericValue: null, thresholdKey: null,              icon: SweatingIcon },
+  { label: "ECG",              display: "Sinus",       numericValue: null, thresholdKey: null,              icon: ECGIcon },
+  { label: "Pain Score",       display: "6/10",        numericValue: 6,    thresholdKey: "painScore",       icon: PainScoreIcon },
+  { label: "Blood Glucose",    display: "100 mg/dl",   numericValue: 100,  thresholdKey: "bloodGlucose",    icon: BloodGlucoseIcon },
+  { label: "AVPU Score",       display: "15",          numericValue: 15,   thresholdKey: "avpu",            forceVariant: "blue", icon: AVPUIcon },
 ];
 
 const essentials    = [{ name: "Pen Torch", icon: "🔦" }, { name: "Pulse Ox", icon: "📊" }];
@@ -229,7 +311,7 @@ export const CaseDetails = () => {
         </Box>
       </Box>
 
-      {/* ── TIA SUGGESTS — hidden on mobile ── */}
+      {/* ── TIA SUGGESTS ── */}
       {!isTablet && showTia && (
         <Box sx={{ width: "260px", height: "100vh", py: "20px", px: "16px", background: C.surfaceSoft, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: "14px", flexShrink: 0, overflowY: "auto",
           "&::-webkit-scrollbar": { width: "3px" },
@@ -263,16 +345,36 @@ export const CaseDetails = () => {
 
       {/* ── VITALS SIDEBAR ── */}
       {!isMobile && (
-        <Box sx={{ width: { md: "180px", lg: "215px" }, background: C.bg, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: "6px", p: "12px", flexShrink: 0, overflowY: "auto",
+        <Box sx={{
+          width: { md: "180px", lg: "215px" },
+          background: C.bg,
+          borderLeft: `1px solid ${C.border}`,
+          display: "flex", flexDirection: "column", gap: "6px",
+          p: "12px", flexShrink: 0, overflowY: "auto",
           "&::-webkit-scrollbar": { width: "3px" },
           "&::-webkit-scrollbar-thumb": { background: C.border, borderRadius: "2px" },
         }}>
-          <Button onClick={() => setShowTrends(!showTrends)} fullWidth sx={{ background: C.surface, color: "#D2D6DB", border: `1px solid ${C.borderLight}`, borderRadius: "8px", py: "10px", fontSize: "11px", fontWeight: 600, textTransform: "none", gap: "6px", mb: "4px", "&:hover": { background: C.card } }}>
+          {/* Show Trends Button */}
+          <Button
+            onClick={() => setShowTrends(!showTrends)}
+            fullWidth
+            sx={{ background: C.surface, color: "#D2D6DB", border: `1px solid ${C.borderLight}`, borderRadius: "8px", py: "10px", fontSize: "11px", fontWeight: 600, textTransform: "none", gap: "6px", mb: "4px", "&:hover": { background: C.card } }}
+          >
             <BarChartIcon sx={{ fontSize: "16px" }} />
             {showTrends ? "Hide Trends" : "Show Vital trends"}
           </Button>
-          {vitals.map(({ title, value, icon, borderColor, bgColor, valueColor }) => (
-            <VitalsCard key={title} title={title} value={value} unit="" icon={icon} borderColor={borderColor} bgColor={bgColor} valueColor={valueColor} />
+
+          {/* Vital Cards — same design as PatientVitalsSidebar */}
+          {VITALS.map(({ label, display, numericValue, thresholdKey, forceVariant, icon }) => (
+            <VitalCard
+              key={label}
+              label={label}
+              display={display}
+              numericValue={numericValue}
+              thresholdKey={thresholdKey}
+              forceVariant={forceVariant}
+              icon={icon}
+            />
           ))}
         </Box>
       )}

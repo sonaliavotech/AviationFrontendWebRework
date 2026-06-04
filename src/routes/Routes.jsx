@@ -5,7 +5,7 @@ import { Box } from "@mui/material";
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
 import SearchKit from "../pages/SearchKit/SearchKit"
-import PatientVitalsSidebar from "../pages/AllEvents/Event";
+// import PatientVitalsSidebar from "../pages/AllEvents/Event";
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
 
@@ -96,6 +96,7 @@ const CustomRoutes = () => {
       }
       />
       <Route path="/Event" element={<PatientVitalsSidebar/>} />
+      {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
       <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
     </Routes>
   );
