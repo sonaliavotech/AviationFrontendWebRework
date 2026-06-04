@@ -2952,7 +2952,7 @@ export default function AllEvents() {
         <Box
           sx={{
             position: "fixed",
-            top: "100px",
+            top: "400px",
             right: "15px",
             zIndex: 9999,
             width: 220,
@@ -2960,7 +2960,7 @@ export default function AllEvents() {
             borderRadius: "24px",
             overflow: "hidden",
             bgcolor: "#0B1D35",
-            border: "1px solid #102543",
+            border: "1px solid #2B4570",
             boxShadow: "0px 8px 25px rgba(0,0,0,0.35)",
           }}
         >
@@ -3033,7 +3033,6 @@ export default function AllEvents() {
 </Box>
         </Box>
       )}
-
 
       {/* Vital Trend Popup */}
       {openVitalTrend && (
