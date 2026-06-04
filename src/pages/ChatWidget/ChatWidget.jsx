@@ -148,7 +148,7 @@ export default function ChatWidget({ onClose, visible }) {
               },
             }}
           >
-            Tia AI
+           Hello I'm Tia AI
           </Typography>
 
           <Typography
@@ -162,7 +162,7 @@ export default function ChatWidget({ onClose, visible }) {
               opacity: 0.9,
             }}
           >
-            How can I help you today?
+            How may I help you today?
           </Typography>
         </Box>
       </Box>
@@ -172,7 +172,7 @@ export default function ChatWidget({ onClose, visible }) {
         sx={{
           flex: 1,
           p: 2,
-          backgroundColor: "#F4F7FB",
+          backgroundColor: "#0B1D35",
           backgroundImage:
             "radial-gradient(rgba(2,88,159,0.08) 1px, transparent 1px)",
           backgroundSize: "18px 18px",
@@ -182,8 +182,8 @@ export default function ChatWidget({ onClose, visible }) {
         <Box
           sx={{
             display: "inline-block",
-            bgcolor: "#E8EDF8",
-            color: "#4B5563",
+            bgcolor: "#102543",
+            color: "#fff",
             px: 2,
             py: 1.2,
             borderRadius: "18px",
@@ -208,8 +208,8 @@ export default function ChatWidget({ onClose, visible }) {
             xs: 1.2,
             sm: 2,
           },
-          borderTop: "1px solid #E5E7EB",
-          bgcolor: "#E8EDF8",
+          borderTop: "1px solid #102543",
+          bgcolor: "#0B1D35",
         }}
       >
         {/* MENU */}
@@ -237,7 +237,8 @@ export default function ChatWidget({ onClose, visible }) {
             "& .MuiOutlinedInput-root": {
               borderRadius: "999px",
               height: 42,
-              backgroundColor: "#F5F7FB",
+              backgroundColor: "#102543",
+              color:"White",
 
               "& fieldset": {
                 border: "1px solid transparent",
