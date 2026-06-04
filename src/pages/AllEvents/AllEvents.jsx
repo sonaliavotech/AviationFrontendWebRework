@@ -6,6 +6,8 @@ import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { Drawer } from "@mui/material";
+
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -513,6 +515,13 @@ export default function AllEvents() {
     );
     handleActionsMenuClose();
   };
+
+  //States for the Popupthree dots
+  const [openVitalTrend, setOpenVitalTrend] = useState(false);
+
+  const [openViewReport, setOpenViewReport] = useState(false);
+
+  const [openShareReport, setOpenShareReport] = useState(false);
 
   const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
   const [currentTranscribePatient, setCurrentTranscribePatient] =
@@ -2932,6 +2941,141 @@ export default function AllEvents() {
           </Alert>
         </Snackbar>
       </Box>
+
+      
+      //Popup Logic
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 250,
+            borderRadius: "20px",
+            overflow: "hidden",
+            background: "linear-gradient(180deg, #031B3A 0%, #06264D 100%)",
+            border: "1px solid rgba(83,130,255,0.2)",
+            boxShadow: "0px 8px 25px rgba(0,0,0,0.35)",
+            p: 0,
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            navigate("/vital-trend");
+          }}
+          sx={{
+            color: "#D2D6DB",
+            bgcolor: "#0B1D35",
+            py: 2,
+            px: 3,
+            gap: 2,
+            fontSize: "16px",
+
+            "&:hover": {
+              bgcolor: "#2B4570",
+            },
+          }}
+        >
+          <Box
+            component="img"
+            src="https://cdn-icons-png.flaticon.com/512/2965/2965278.png"
+            sx={{ width: 24, height: 24 }}
+          />
+          View Vital Trends
+        </MenuItem>
+
+        <MenuItem
+          onClick={handleMenuClose}
+          sx={{
+            bgcolor: "#0B1D35",
+            color: "#DCE3EE",
+            py: 2,
+            px: 3,
+            fontSize: "15px",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+
+            "&:hover": {
+              bgcolor: "#2B4570",
+            },
+          }}
+        >
+          📄 View Report
+        </MenuItem>
+
+        <MenuItem
+          onClick={handleMenuClose}
+          sx={{
+            color: "#DCE3EE",
+            bgcolor: "#0B1D35",
+            py: 2,
+            px: 3,
+            fontSize: "15px",
+
+            "&:hover": {
+              bgcolor: "#2B4570",
+            },
+          }}
+        >
+          🔗 Share Report
+        </MenuItem>
+      </Menu>
+      {/* Vital Trend Popup */}
+      <Drawer
+        anchor="right"
+        open={openVitalTrend}
+        onClose={() => setOpenVitalTrend(false)}
+      >
+        <Box
+          sx={{
+            width: 380,
+            p: 3,
+            bgcolor: "#0B1D35",
+            color: "#fff",
+            height: "100%",
+          }}
+        >
+          <Typography variant="h6">View Vital Trend</Typography>
+        </Box>
+      </Drawer>
+      {/* View Report Popup */}
+      <Drawer
+        anchor="right"
+        open={openViewReport}
+        onClose={() => setOpenViewReport(false)}
+      >
+        <Box
+          sx={{
+            width: 380,
+            p: 3,
+            bgcolor: "#0B1D35",
+            color: "#fff",
+            height: "100%",
+          }}
+        >
+          <Typography variant="h6">View Report</Typography>
+        </Box>
+      </Drawer>
+      {/* Share Report Popup */}
+      <Drawer
+        anchor="right"
+        open={openShareReport}
+        onClose={() => setOpenShareReport(false)}
+      >
+        <Box
+          sx={{
+            width: 380,
+            p: 3,
+            bgcolor: "#0B1D35",
+            color: "#fff",
+            height: "100%",
+          }}
+        >
+          <Typography variant="h6">Share Report</Typography>
+        </Box>
+      </Drawer>
     </>
   );
 }
