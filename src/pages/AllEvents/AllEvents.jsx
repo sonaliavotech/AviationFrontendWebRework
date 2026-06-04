@@ -8,6 +8,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Drawer } from "@mui/material";
 import ShareReportDialog from "./ShareReportDialog";
+import Event from "./Event";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -60,6 +61,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import CallIcon from "@mui/icons-material/Call";
 import CloseIcon from "@mui/icons-material/Close";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import EqualizerIcon from "@mui/icons-material/Equalizer";
+import ShareIcon from "@mui/icons-material/Share";
 
 // SVG assets
 import {
@@ -525,7 +528,16 @@ export default function AllEvents() {
 
   const [openShareReport, setOpenShareReport] = useState(false);
 
+  // ✅ ADD useEffect HERE
+  useEffect(() => {
+    if (openMainPopup) {
+      const timer = setTimeout(() => {
+        setOpenMainPopup(false);
+      }, 4000);
 
+      return () => clearTimeout(timer);
+    }
+  }, [openMainPopup]);
 
   const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
   const [currentTranscribePatient, setCurrentTranscribePatient] =
@@ -2946,8 +2958,7 @@ export default function AllEvents() {
         </Snackbar>
       </Box>
 
-
-      //Popup Logic
+      {/* //Popup Logic */}
       {openMainPopup && (
         <Box
           sx={{
@@ -2955,27 +2966,26 @@ export default function AllEvents() {
             top: "400px",
             right: "15px",
             zIndex: 9999,
-            width: 220,
-      
+            width: 230,
             borderRadius: "24px",
             overflow: "hidden",
             bgcolor: "#0B1D35",
-            border: "1px solid #2B4570",
+            border: "2px solid #2B4570",
             boxShadow: "0px 8px 25px rgba(0,0,0,0.35)",
           }}
         >
           {/* Vital Trends */}
           <Box
             onClick={() => {
-              setOpenMainPopup(false);
-              setOpenVitalTrend(true);
+              setOpenMainPopup(false); // close main popup
+              setOpenVitalTrend(true); // open new popup
             }}
             sx={{
               height: 65,
               px: 4,
               display: "flex",
               alignItems: "center",
-              gap: 3,
+              gap: 2,
               cursor: "pointer",
               color: "#DCE3EE",
 
@@ -2984,13 +2994,19 @@ export default function AllEvents() {
               },
             }}
           >
-            📈 View Vital Trends
+            <EqualizerIcon
+              sx={{
+                color: "#00C2FF",
+                fontSize: 25,
+              }}
+            />
+            View Vital Trends
           </Box>
 
           {/* View Report */}
           <Box
             onClick={() => {
-              setOpenMainPopup(false);
+              setOpenMainPopup(false); // close main popup
               setOpenViewReport(true);
             }}
             sx={{
@@ -2998,39 +3014,52 @@ export default function AllEvents() {
               px: 4,
               display: "flex",
               alignItems: "center",
-              gap: 3,
+              gap: 2,
               cursor: "pointer",
               color: "#DCE3EE",
-              bgcolor: "#0B1D35",
 
               "&:hover": {
                 bgcolor: "#2B4570",
               },
             }}
           >
-            📄 View report
+            <AssignmentIcon
+              sx={{
+                color: "#00C2FF",
+                fontSize: 25,
+              }}
+            />
+            View report
           </Box>
 
+          {/* Share Report */}
           <Box
-  onClick={() => {
-    setOpenShareReport(true);
-  }}
-  sx={{
-    display: "flex",
-    alignItems: "center",
-    gap: 2,
-    px: 3,
-    py: 2.3,
-    color: "#DCE3EE",
-    cursor: "pointer",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    "&:hover": {
-      bgcolor: "#102543",
-    },
-  }}
->
-  🔗 Share Report
-</Box>
+            onClick={() => {
+              setOpenMainPopup(false); // close main popup
+              setOpenShareReport(true);
+            }}
+            sx={{
+              height: 65,
+              px: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer",
+              color: "#DCE3EE",
+
+              "&:hover": {
+                bgcolor: "#2B4570",
+              },
+            }}
+          >
+            <ShareIcon
+              sx={{
+                color: "#00C2FF",
+                fontSize: 25,
+              }}
+            />
+            Share Report
+          </Box>
         </Box>
       )}
 
@@ -3055,33 +3084,16 @@ export default function AllEvents() {
         </Box>
       )}
 
-
       {/* View Report popup 2 */}
-      {openViewReport && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: "80px",
-            right: "20px",
-            width: 420,
-            height: "80vh",
-            bgcolor: "#0B1D35",
-            borderRadius: "24px",
-            border: "1px solid #102543",
-            zIndex: 9999,
-            p: 3,
-            color: "#fff",
-          }}
-        >
-          <Typography variant="h5">View Report Popup</Typography>
-        </Box>
-      )}
+      <Event
+        open={openViewReport}
+        handleClose={() => setOpenViewReport(false)}
+      />
 
-
-     <ShareReportDialog
-  open={openShareReport}
-  handleClose={() => setOpenShareReport(false)}
-/>
+      <ShareReportDialog
+        open={openShareReport}
+        handleClose={() => setOpenShareReport(false)}
+      />
     </>
   );
 }
