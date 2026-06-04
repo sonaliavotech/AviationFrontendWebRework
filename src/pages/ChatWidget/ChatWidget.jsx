@@ -1,8 +1,6 @@
 import React from "react";
 import { Box, IconButton, Typography, Avatar, TextField } from "@mui/material";
 import tia from "../../assets/tia.png"; // ✅ correct import
-import Draggable from "react-draggable";
-
 export default function ChatWidget({ onClose, visible }) {
   return (
     <Box
