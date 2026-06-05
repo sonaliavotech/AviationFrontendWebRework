@@ -823,3 +823,37 @@ export const LinkIcon = () => (
     />
   </svg>
 );
+
+export const AccessTimeIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1782FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+export const CloseIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+export const ErrorIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="#F24D61">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+  </svg>
+);
+
+export const TimerIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+export const TrendingDownIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F24D61" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+    <polyline points="17 18 23 18 23 12"/>
+  </svg>
+);
