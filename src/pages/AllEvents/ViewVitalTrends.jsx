@@ -212,7 +212,7 @@ export default function ViewVitalTrends({ open, onClose }) {
           gap: "10px",
         }}
       >
-        <ErrorIcon style={{ width: "40px", height: "40px" }} />
+        <ErrorIcon />
 
         <div>
           <div style={{ fontWeight: 700, fontSize: "14px" }}>
