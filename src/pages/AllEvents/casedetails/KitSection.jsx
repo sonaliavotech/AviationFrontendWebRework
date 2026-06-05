@@ -1,62 +1,91 @@
+// src/pages/AllEvents/KitSection.jsx
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
+const C = {
+  card:        "#112240",
+  cardInner:   "#0f1e38",
+  border:      "rgba(255,255,255,0.08)",
+  borderLight: "rgba(255,255,255,0.12)",
+  text:        "#e8f0fe",
+  textMuted:   "#5a7da0",
+  iconBg:      "#0a1a30",
+};
+
 export const KitSection = ({ title, subtitle, items, onClose }) => {
   return (
-    <Box sx={{
-      background: "#ffffff",
-      borderRadius: "12px",
-      border: "1px solid #e2e8f0",
-      overflow: "hidden",
-    }}>
-      {/* Header */}
-      <Box sx={{
+    <Box
+      sx={{
+        background: C.card,
+        border: `1px solid ${C.borderLight}`,
+        borderRadius: "14px",
+        p: "14px",
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        px: "12px",
-        py: "10px",
-        borderBottom: "1px solid #e2e8f0",
-      }}>
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      {/* Header */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <Box>
-          <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+          <Typography sx={{ fontSize: "13px", fontWeight: 700, color: C.text }}>
             {title}
           </Typography>
-          <Typography sx={{ fontSize: "11px", color: "#64748b", mt: "1px" }}>
+          <Typography sx={{ fontSize: "11px", color: C.textMuted, mt: "2px" }}>
             {subtitle}
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: "#94a3b8" }}>
-          <CloseIcon sx={{ fontSize: "16px" }} />
+        <IconButton
+          size="small"
+          onClick={onClose}
+          sx={{ color: C.textMuted, p: "2px", "&:hover": { color: C.text } }}
+        >
+          <CloseIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Box>
 
       {/* Items */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: "2px", p: "8px" }}>
-        {items.map((item, index) => (
-          <Box key={index} sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            px: "8px",
-            py: "8px",
-            borderRadius: "8px",
-            "&:hover": { background: "#f8fafc" },
-          }}>
-            <Box sx={{
-              width: 32,
-              height: 32,
-              borderRadius: "8px",
-              background: "#EBF1FE",
+      <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {items.map((item, i) => (
+          <Box
+            key={i}
+            sx={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: "16px",
-              flexShrink: 0,
-            }}>
+              gap: "12px",
+              background: C.cardInner,
+              border: `1px solid ${C.border}`,
+              borderRadius: "10px",
+              p: "10px 12px",
+            }}
+          >
+            {/* Icon bubble */}
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                background: C.iconBg,
+                border: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "18px",
+                flexShrink: 0,
+              }}
+            >
               {item.icon}
             </Box>
-            <Typography sx={{ fontSize: "12px", color: "#0f172a", fontWeight: 500 }}>
+
+            {/* Name */}
+            <Typography
+              sx={{
+                fontSize: "12px",
+                fontWeight: 500,
+                color: C.text,
+                lineHeight: 1.4,
+              }}
+            >
               {item.name}
             </Typography>
           </Box>
@@ -65,3 +94,5 @@ export const KitSection = ({ title, subtitle, items, onClose }) => {
     </Box>
   );
 };
+
+export default KitSection;
