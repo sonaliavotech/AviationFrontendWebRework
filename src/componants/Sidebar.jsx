@@ -2,82 +2,74 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Tooltip, tooltipClasses, Typography } from "@mui/material";
 import * as AppAssets from "../assets/Assets";
 import logo from "../assets/logo2.png";
-import HelpIcon from '@mui/icons-material/Help';
-// Dark theme constants
-const SIDEBAR_BG        = "rgba(11, 29, 53, 1)";
-const SIDEBAR_BORDER    = "rgba(255, 255, 255, 0.08)";
-const ACTIVE_BG         = "rgba(1, 93, 255, 0.22)";
-const ACTIVE_COLOR      = "#4DA3FF";
-const INACTIVE_COLOR    = "#FFFFFF";
+import HelpIcon from "@mui/icons-material/Help";
+
+const SIDEBAR_BG     = "rgba(11, 29, 53, 1)";
+const SIDEBAR_BORDER = "rgba(255, 255, 255, 0.08)";
+const ACTIVE_BG      = "rgba(1, 93, 255, 0.22)";
+const ACTIVE_COLOR   = "#4DA3FF";
+const INACTIVE_COLOR = "#FFFFFF";
+
+const ITEM_SIZE = 64;
+const ITEM_GAP  = "12px";
 
 const Sidebar = ({ onAiClick, onRequestClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname || "/";
 
-  // Main nav items (icon + label)
   const mainItems = [
-    { label: "All Events",  Icon: AppAssets.AllEventsIcon,  path: "/all-events" },
-    // { label: "New Event",   Icon: AppAssets.NewEventIcon,   path: "/new-event" },
-    { label: "Search Kit",  Icon: AppAssets.SearchKitIcon,  path: "/search-kit" },
-    // { label: "FAQs",        Icon: AppAssets.FAQsIcon,       path: "/faqs" },
-    { label: "Tia AI",      Icon: AppAssets.TiaAiIcon, isAi: true,  },
-    // { label: "Devices",     Icon: AppAssets.DevisecIcon,    path: "/devices" },
-    // { label: "Alerts",      Icon: AppAssets.AlertsIcon,     path: "/alerts" },
+    { label: "All Events", Icon: AppAssets.AllEventsIcon, path: "/all-events", hoverable: true },
+    { label: "Search Kit", Icon: AppAssets.SearchKitIcon, path: "/search-kit", hoverable: true },
+    {                      Icon: AppAssets.TiaAiIcon,     isAi: true,          hoverable: false },
   ];
 
-  // Bottom items
-  const logoutItem   = { label: "Logout",   Icon: AppAssets.LogoutIcon,   path: "/logout",   showLabel: true  };
-  const helpItem     = { label: "Help",      Icon: HelpIcon,     path: "/help",     showLabel: false };
-  const settingsItem = { label: "Settings",  Icon: AppAssets.SettingsIcon, path: "/settings", showLabel: false };
+  const logoutItem   = { label: "Logout",   Icon: AppAssets.LogoutIcon,   path: "/sign-in",  showLabel: true,  hoverable: false };
+  const helpItem     = { label: "Help",     Icon: HelpIcon,               path: "/help",     showLabel: false, hoverable: false };
+  const settingsItem = { label: "Settings", Icon: AppAssets.SettingsIcon, path: "/settings", showLabel: false, hoverable: false };
 
   const handleNavigate = (path, isAi) => {
-  // Open popup for Tia AI
-  if (isAi) {
-    onAiClick?.();
-    return;
-  }
-
-  // Normal navigation
-  navigate(path);
-};
+    if (isAi) { onAiClick?.(); return; }
+    navigate(path);
+  };
 
   const isActive = (path) =>
     currentPath === path ||
     (path === "/rounding-list" && currentPath === "/view_details") ||
     (path === "/Dashboard"     && currentPath === "/encounters");
 
-  /* ── styles ── */
-  const itemSx = (active) => ({
-    width: 94,
+  const itemSx = (active, hoverable) => ({
+    width:  ITEM_SIZE,
+    height: ITEM_SIZE,
     borderRadius: "10px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    py: "6px",
-    px: "4px",
-    gap: "2px",
+    gap: "4px",
+    flexShrink: 0,
     background: active ? ACTIVE_BG : "transparent",
-    "& svg path":         { fill:   active ? ACTIVE_COLOR : INACTIVE_COLOR },
-    "& svg path[stroke]": { stroke: active ? ACTIVE_COLOR : INACTIVE_COLOR },
-    "&:hover":                        { background: ACTIVE_BG },
-    "&:hover svg path":               { fill:   ACTIVE_COLOR },
-    "&:hover svg path[stroke]":       { stroke: ACTIVE_COLOR },
+    transition: "background 0.2s",
+    "& svg": { fontSize: "1.4rem" },
+    "& svg path":               { fill:   active ? ACTIVE_COLOR : INACTIVE_COLOR },
+    "& svg path[stroke]":       { stroke: active ? ACTIVE_COLOR : INACTIVE_COLOR },
+    ...(hoverable && {
+      "&:hover":                  { background: ACTIVE_BG },
+      "&:hover svg path":         { fill:   ACTIVE_COLOR },
+      "&:hover svg path[stroke]": { stroke: ACTIVE_COLOR },
+    }),
   });
 
   const aiItemSx = {
-    width: 64,
-    borderRadius: "10px",
+    width:  ITEM_SIZE,
+    height: ITEM_SIZE,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    py: "6px",
-    px: "4px",
-    gap: "2px",
+    flexShrink: 0,
   };
 
   const labelSx = (active) => ({
@@ -113,11 +105,22 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
   const NavItem = ({ item }) => {
     const active = !item.isAi && isActive(item.path);
     const { Icon } = item;
+
+    if (item.isAi) {
+      return (
+        <TooltipWrap title={item.label}>
+          <Box sx={aiItemSx} onClick={() => handleNavigate(item.path, true)}>
+            <Icon />
+          </Box>
+        </TooltipWrap>
+      );
+    }
+
     return (
       <TooltipWrap title={item.label}>
         <Box
-          sx={item.isAi ? aiItemSx : itemSx(active)}
-          onClick={() => handleNavigate(item.path, item.isAi)}
+          sx={itemSx(active, item.hoverable)}
+          onClick={() => handleNavigate(item.path, false)}
         >
           <Icon />
           <Typography sx={labelSx(active)}>{item.label}</Typography>
@@ -131,7 +134,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
     const { Icon } = item;
     return (
       <TooltipWrap title={item.label}>
-        <Box sx={itemSx(active)} onClick={() => handleNavigate(item.path)}>
+        <Box sx={itemSx(active, false)} onClick={() => handleNavigate(item.path)}>
           <Icon />
           {item.showLabel && (
             <Typography sx={labelSx(active)}>{item.label}</Typography>
@@ -145,26 +148,28 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
     <Box
       component="aside"
       sx={{
-        width: 100,
+        width: { xs: 80, sm: 90, md: 100 },
         flexShrink: 0,
         background: SIDEBAR_BG,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        py: 2,
         borderRight: `1px solid ${SIDEBAR_BORDER}`,
         minHeight: "100vh",
         boxSizing: "border-box",
+        overflowY: "auto",
+        pt: "16px",   // top padding
+        pb: "12px",   // bottom padding
       }}
     >
-      {/* Logo */}
+      {/* Logo — mb matches ITEM_GAP so logo→AllEvents = AllEvents→SearchKit */}
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          mb: 2,
-          gap: "2px",
+          flexShrink: 0,
+          mb: "24px",   // ← explicit margin-bottom = 2× ITEM_GAP for clear visual separation
         }}
       >
         <img
@@ -172,7 +177,6 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
           alt="TiaTELE"
           style={{ width: 55, height: 55, objectFit: "contain" }}
         />
-     
       </Box>
 
       {/* Main nav */}
@@ -181,8 +185,10 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "4px",
+          gap: ITEM_GAP,
           flex: 1,
+          width: "100%",
+          px: "8px",
         }}
       >
         {mainItems.map((item, i) => (
@@ -190,14 +196,16 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
         ))}
       </Box>
 
-      {/* Bottom: Logout (with label) + Help + Settings (no label) */}
+      {/* Bottom items */}
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "4px",
-          pb: 1,
+          gap: ITEM_GAP,
+          width: "100%",
+          px: "8px",
+          flexShrink: 0,
         }}
       >
         <BottomItem item={logoutItem} />
