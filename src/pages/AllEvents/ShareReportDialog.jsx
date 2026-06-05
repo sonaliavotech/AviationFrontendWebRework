@@ -8,8 +8,11 @@ import {
   Button,
   Typography,
   IconButton,
+  InputAdornment,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import GroupIcon from "@mui/icons-material/Group";
 
 function ShareReportDialog({ open, handleClose }) {
   return (
@@ -20,9 +23,13 @@ function ShareReportDialog({ open, handleClose }) {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "20px",
-          p: 1,
-          width: { xs: "95%", sm: "500px" },
+          width: "350px",
+          borderRadius: "16px",
+          backgroundColor: "rgba(11, 29, 53, 1)",
+          color: "#fff",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0px 10px 30px rgba(0,0,0,0.35)",
+          overflow: "hidden",
         },
       }}
     >
@@ -32,23 +39,31 @@ function ShareReportDialog({ open, handleClose }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          fontWeight: 700,
+          fontWeight: 600,
           fontSize: "18px",
+          color: "#FFFFFF",
+          backgroundColor: "rgba(11, 29, 53, 1)",
           pb: 1,
         }}
       >
-        Share Template
-
-        <IconButton onClick={handleClose}>
+        Share template
+        <IconButton onClick={handleClose} sx={{ color: "#6E7B91" }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent
+        sx={{
+          backgroundColor: "rgba(11, 29, 53, 1)",
+          color: "#fff",
+          p: 3,
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             flexDirection: "column",
+            backgroundColor: "rgba(11, 29, 53, 1)",
             gap: 3,
             mt: 1,
           }}
@@ -65,14 +80,35 @@ function ShareReportDialog({ open, handleClose }) {
               fullWidth
               placeholder="Add comma separated emails to share"
               size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonAddIcon sx={{ color: "#1976d2", fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  background: "#EBF1FE",
-                  borderRadius: "10px",
+                  background: "#243B63",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  "& fieldset": { border: "none" },
+                },
+                "& input": {
+                  color: "#fff",
+                  fontSize: "14px",
+                },
+                "& input::placeholder": {
+                  color: "#fff",
+                  opacity: 1,
                 },
               }}
             />
-
             <Button
               variant="contained"
               sx={{
@@ -94,30 +130,11 @@ function ShareReportDialog({ open, handleClose }) {
               gap: 2,
             }}
           >
-            <Box
-              sx={{
-                flex: 1,
-                height: "1px",
-                background: "#E5E7EB",
-              }}
-            />
-
-            <Typography
-              sx={{
-                fontSize: "13px",
-                color: "#6B7280",
-              }}
-            >
+            <Box sx={{ flex: 1, height: "1px", background: "#2D4267" }} />
+            <Typography sx={{ fontSize: "13px", color: "#6E7B91" }}>
               OR
             </Typography>
-
-            <Box
-              sx={{
-                flex: 1,
-                height: "1px",
-                background: "#E5E7EB",
-              }}
-            />
+            <Box sx={{ flex: 1, height: "1px", background: "#2D4267" }} />
           </Box>
 
           {/* Row 2 */}
@@ -132,10 +149,32 @@ function ShareReportDialog({ open, handleClose }) {
               fullWidth
               placeholder="Everyone has access"
               size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <GroupIcon sx={{ color: "#1976d2", fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  background: "#EBF1FE",
-                  borderRadius: "10px",
+                  background: "#243B63",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  "& fieldset": { border: "none" },
+                },
+                "& input": {
+                  color: "#fff",
+                  fontSize: "14px",
+                },
+                "& input::placeholder": {
+                  color: "#fff",
+                  opacity: 1,
                 },
               }}
             />

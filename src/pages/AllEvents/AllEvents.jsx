@@ -6,9 +6,6 @@ import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { Drawer } from "@mui/material";
-import ShareReportDialog from "./ShareReportDialog";
-import Event from "./Event";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -37,6 +34,9 @@ import {
   TextField,
   Snackbar,
   Alert,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -61,8 +61,6 @@ import EditIcon from "@mui/icons-material/Edit";
 import CallIcon from "@mui/icons-material/Call";
 import CloseIcon from "@mui/icons-material/Close";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import EqualizerIcon from "@mui/icons-material/Equalizer";
-import ShareIcon from "@mui/icons-material/Share";
 
 // SVG assets
 import {
@@ -77,9 +75,15 @@ import {
   FilterSortIcon,
   ExportIcon,
   CalendarTodayIcon,
+  ViewVitalIcon,
+  ViewReportIcon,
+  ShareIcon,
 } from "../../assets/Assets";
 
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ShareReportDialog from "./ShareReportDialog";
+import Event from "./Event";
+import ViewVitalTrends from "./ViewVitalTrends";
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -91,7 +95,7 @@ const SidelistTabIcon = ({ isActive }) => (
     style={{ color: isActive ? "rgba(15, 38, 70, 1)" : "#94A3B8" }}
   >
     <path
-      d="M16 11V9H22V11H16ZM6.175 10.825C5.39167 10.0417 5 9.1 5 8C5 6.9 5.39167 5.95833 6.175 5.175C6.95833 4.39167 7.9 4 9 4C10.1 4 11.0417 4.39167 11.825 5.175C12.6083 5.95833 13 6.9 13 8C13 9.1 12.6083 10.0417 11.825 10.825C11.0417 11.6083 10.1 12 9 12C7.9 12 6.95833 11.6083 6.175 10.825ZM1 20V17.2C1 16.6333 1.14583 16.1125 1.4375 15.6375C1.72917 15.1625 2.11667 14.8 2.6 14.55C3.63333 14.0333 4.68333 13.6458 5.75 13.3875C6.81667 13.1292 7.9 13 9 13C10.1 13 11.1833 13.1292 12.25 13.3875C13.3167 13.6458 14.3667 14.0333 15.4 14.55C15.8833 14.8 16.2708 15.1625 16.5625 15.6375C16.8542 16.1125 17 16.6333 17 17.2V20H1ZM3 18H15V17.2C15 17.0167 14.9542 16.85 14.8625 16.7C14.7708 16.55 14.65 16.4333 14.5 16.35C13.6 15.9 12.6917 15.5625 11.775 15.3375C10.8583 15.1125 9.93333 15 9 15C8.06667 15 7.14167 15.1125 6.225 15.3375C5.30833 15.5625 4.4 15.9 3.5 16.35C3.35 16.4333 3.22917 16.55 3.1375 16.7C3.04583 16.85 3 17.0167 3 17.2V18ZM10.4125 9.4125C10.8042 9.02083 11 8.55 11 8C11 7.45 10.8042 6.97917 10.4125 6.5875C10.0208 6.19583 9.55 6 9 6C8.45 6 7.97917 6.19583 7.5875 6.5875C7.19583 6.97917 7 7.45 7 8C7 8.55 7.19583 9.02083 7.5875 9.4125C7.97917 9.80417 8.45 10 9 10C9.55 10 10.0208 9.80417 10.4125 9.4125Z"
+      d="M16 11V9H22V11H16ZM6.175 10.825C5.39167 10.0417 5 9.1 5 8C5 6.9 5.39167 5.95833 6.175 5.175C6.95833 4.39167 7.9 4 9 4C10.1 4 11.0417 4.39167 11.825 5.175C12.6083 5.95833 13 6.9 13 8C13 9.1 12.6083 10.0417 11.825 10.825C11.0417 11.6083 10.1 12 9 12C7.9 12 6.95833 11.6083 6.175 10.825ZM1 20V17.2C1 16.6333 1.14583 16.1125 1.4375 15.6375C1.72917 15.1625 2.11667 14.8 2.6 14.55C3.63333 14.0333 4.68333 13.6458 5.75 13.3875C6.81667 13.1292 7.9 13 9 13C10.1 13 11.1833 13.1292 12.25 13.3875C13.3167 13.6458 14.3667 14.0333 15.4 14.55C15.8833 14.8 16.2708 15.1625 16.5625 15.6375C16.8542 16.1125 17 16.6333 17 17.2V20H1ZM3 18H15V17.2C15 17.0167 14.9542 16.85 14.8625 16.7C14.7708 16.55 14.65 16.4333 14.5 16.35C13.6 15.9 12.6917 15.5625 11.775 15.3375C10.8583 15.1125 9.93333 15 9 15C8.06667 15 7.14167 15.1125 6.225 15.3375C5.30833 15.5625 4.4 15.9 3.5 16.35C3.35 16.55 3.22917 16.65 3.1375 16.7C3.04583 16.85 3 17.0167 3 17.2V18ZM10.4125 9.4125C10.8042 9.02083 11 8.55 11 8C11 7.45 10.8042 6.97917 10.4125 6.5875C10.0208 6.19583 9.55 6 9 6C8.45 6 7.97917 6.19583 7.5875 6.5875C7.19583 6.97917 7 7.45 7 8C7 8.55 7.19583 9.02083 7.5875 9.4125C7.97917 9.80417 8.45 10 9 10C9.55 10 10.0208 9.80417 10.4125 9.4125Z"
       fill="currentColor"
     />
   </svg>
@@ -518,26 +522,6 @@ export default function AllEvents() {
     );
     handleActionsMenuClose();
   };
-
-  //States for the Popupthree dots
-  const [openMainPopup, setOpenMainPopup] = useState(false);
-
-  const [openVitalTrend, setOpenVitalTrend] = useState(false);
-
-  const [openViewReport, setOpenViewReport] = useState(false);
-
-  const [openShareReport, setOpenShareReport] = useState(false);
-
-  // ✅ ADD useEffect HERE
-  useEffect(() => {
-    if (openMainPopup) {
-      const timer = setTimeout(() => {
-        setOpenMainPopup(false);
-      }, 4000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [openMainPopup]);
 
   const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
   const [currentTranscribePatient, setCurrentTranscribePatient] =
@@ -1346,6 +1330,28 @@ export default function AllEvents() {
     }
   };
 
+  // Handle menu actions
+  const handleViewVitalTrends = (row) => {
+    setOpenVitalTrends(true);
+    handleMenuClose();
+  };
+
+  const handleViewReport = (row) => {
+    setOpenViewReport(true);
+    handleMenuClose();
+  };
+
+  const handleShareReport = (row) => {
+    setSelectedPatient(row);
+    setOpenShare(true);
+    handleMenuClose();
+  };
+
+  const [openVitalTrends, setOpenVitalTrends] = useState(false);
+  const [openShare, setOpenShare] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [openViewReport, setOpenViewReport] = useState(false);
+
   return (
     <>
       <style>{`
@@ -1654,7 +1660,9 @@ export default function AllEvents() {
                 width: "350px",
               }}
             >
-              <SearchIcon sx={{ color: "#4DA3FF", fontSize: 20 }} />
+              <SearchIcon
+                sx={{ color: "rgba(210, 214, 219, 1)", fontSize: 20 }}
+              />
               <InputBase
                 placeholder="Search flight route, patients by name or MRN..."
                 value={patientSearch}
@@ -1731,9 +1739,9 @@ export default function AllEvents() {
               flex: 1,
               minHeight: 0,
               minWidth: 0,
-              bgcolor: "rgba(15, 38, 70, 1)",
+              bgcolor: "rgba(17, 35, 57, 1)",
               borderRadius: "14px",
-              border: "1px solid rgba(77,163,255,0.2)",
+              border: "1px solid rgba(51, 74, 104, 1)",
               width: "100%",
               maxWidth: "100%",
               overflow: "hidden",
@@ -1783,7 +1791,7 @@ export default function AllEvents() {
                     sx={{
                       backgroundColor: "rgba(7, 20, 40, 0.9)",
                       "& .MuiTableCell-head": {
-                        backgroundColor: "rgba(7, 20, 40, 0.9)",
+                        backgroundColor: "rgba(33, 50, 75, 1)",
                         fontWeight: 700,
                         fontSize: "13px",
                         color: "rgba(210, 214, 219, 1)",
@@ -2116,8 +2124,7 @@ export default function AllEvents() {
                             sx={{
                               "& .MuiTableCell-body": {
                                 padding: "6px 6px",
-                                borderBottom:
-                                  "1px solid rgba(234, 22, 22, 0.05)",
+                                borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
                                 fontSize: "13px",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -2131,6 +2138,10 @@ export default function AllEvents() {
                               "&:hover": {
                                 backgroundColor: "rgba(11, 29, 53, 0.6)",
                               },
+                              // Inner shadow for the row
+                              boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.08)", // This creates an inner border/shadow
+                              // OR multiple inner shadows for different sides:
+                              // boxShadow: "inset 0 1px 0 0 rgba(0, 0, 0, 0.08), inset 0 -1px 0 0 rgba(0, 0, 0, 0.08)",
                             }}
                           >
                             <TableCell
@@ -2675,7 +2686,7 @@ export default function AllEvents() {
                                       sx={{ p: "4px", flex: "0 0 auto" }}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setOpenMainPopup(true);
+                                        handleMenuOpen(e, row.id);
                                       }}
                                     >
                                       <MoreVertIcon
@@ -2729,217 +2740,389 @@ export default function AllEvents() {
             />
           </Box>
         </Box>
-        <Dialog
-          open={openAssignModal}
-          onClose={() => setOpenAssignModal(false)}
-          maxWidth="xs"
-          fullWidth
+
+        {/* More Options Menu Popup */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
           sx={{
             "& .MuiPaper-root": {
-              borderRadius: "24px !important",
-              overflow: "hidden",
+              backgroundColor: "rgba(11, 29, 53, 1)",
+              borderRadius: "12px",
+              minWidth: "200px",
+              border: "1px solid rgba(51, 74, 104, 1)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              backgroundImage: "none",
+            },
+            "& .MuiMenuItem-root": {
+              py: 1.2,
+              px: 2,
+              gap: 1.5,
+              fontSize: "14px",
+              color: "rgba(210, 214, 219, 1)",
+              "&:hover": {
+                backgroundColor: "rgba(77,163,255,0.1)",
+              },
+            },
+            "& .MuiDivider-root": {
+              borderColor: "rgba(77,163,255,0.15)",
+              my: 0.5,
             },
           }}
         >
-          <DialogContent
-            sx={{
-              p: 2,
-              bgcolor: "rgba(15, 38, 70, 1)",
-              display: "flex",
-              flexDirection: "column",
-              maxHeight: "72vh",
+          <MenuItem
+            onClick={() => {
+              const selectedPatient = rows.find((r) => r.id === menuRowId);
+              if (selectedPatient) handleViewVitalTrends(selectedPatient);
             }}
           >
-            {/* Header */}
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                mb: 1,
+                gap: 1.5,
+                width: "100%",
               }}
             >
-              <Typography fontWeight={600} fontSize={16}>
+              <ViewVitalIcon width={20} height={20} />
+              <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
+                View Vital Trends
+              </Typography>
+            </Box>
+          </MenuItem>
+
+          {/* <Divider /> */}
+
+          <MenuItem
+            onClick={() => {
+              const selectedPatient = rows.find((r) => r.id === menuRowId);
+              if (selectedPatient) handleViewReport(selectedPatient);
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                width: "100%",
+              }}
+            >
+              <ViewReportIcon width={20} height={20} />
+              <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
+                View report
+              </Typography>
+            </Box>
+          </MenuItem>
+
+          {/* <Divider /> */}
+
+          <MenuItem
+            onClick={() => {
+              const selectedPatient = rows.find((r) => r.id === menuRowId);
+              if (selectedPatient) handleShareReport(selectedPatient);
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                width: "100%",
+              }}
+            >
+              <ShareIcon width={20} height={20} />
+              <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
+                Share report
+              </Typography>
+            </Box>
+          </MenuItem>
+        </Menu>
+
+        <ViewVitalTrends
+          open={openVitalTrends}
+          onClose={() => setOpenVitalTrends(false)}
+        />
+
+        <Event open={openViewReport} onClose={() => setOpenViewReport(false)} />
+
+        <ShareReportDialog
+          open={openShare}
+          handleClose={() => setOpenShare(false)}
+          patient={selectedPatient}
+        />
+
+        <Dialog
+          open={openAssignModal}
+          onClose={() => setOpenAssignModal(false)}
+          maxWidth="sm"
+          fullWidth
+          sx={{
+            "& .MuiPaper-root": {
+              borderRadius: "20px !important",
+              overflow: "hidden",
+              width: "500px",
+              maxWidth: "460px",
+              bgcolor: "rgba(7, 20, 40, 1)",
+            },
+          }}
+        >
+          <DialogContent
+            sx={{ p: 0, display: "flex", flexDirection: "column" }}
+          >
+            {/* ── TOP HEADER BOX (separate bgcolor) ── */}
+            <Box
+              sx={{
+                px: 3,
+                py: 0,
+                bgcolor: "rgba(7, 20, 40, 1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography
+                fontWeight={600}
+                fontSize={18}
+                sx={{
+                  color: "#fff",
+                  fontFamily:
+                    "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+                }}
+              >
                 {assignType === "doctor"
-                  ? "Assign to Provider / Doctor"
+                  ? "Assign to Provider"
                   : "Assign to Resident / APP"}
               </Typography>
               <IconButton
                 size="small"
                 onClick={() => setOpenAssignModal(false)}
-                sx={{
-                  ml: "auto",
-                }}
               >
-                <CloseIcon sx={{ fontSize: 18 }} />
+                <CloseIcon sx={{ fontSize: 20, color: "#fff" }} />
               </IconButton>
             </Box>
-
             {/* Divider */}
             <Box
               sx={{
+                mt: 2,
                 height: "1px",
-                bgcolor: "rgba(255,255,255,0.15)",
-                mb: 2,
+                bgcolor: "#243B63",
               }}
             />
 
-            {/* Search */}
+            {/* ── BOTTOM CONTENT BOX (separate bgcolor) ── */}
             <Box
               sx={{
+                px: 3,
+                pt: 2,
+                pb: 3,
+                bgcolor: "rgba(11, 29, 53, 1)",
                 display: "flex",
-                alignItems: "center",
-                bgcolor: "rgba(11,29,53,0.8)",
-                borderRadius: "30px",
-                px: 2,
-                py: 1.2,
-                mb: 2,
+                flexDirection: "column",
+                maxHeight: "65vh",
               }}
             >
-              <SearchIcon sx={{ color: "#94A3B8", fontSize: 18 }} />
-
-              <InputBase
-                placeholder="Search by name or specialty"
-                value={assignSearch}
-                onChange={(e) => setAssignSearch(e.target.value)}
+              {/* Search */}
+              <Box
                 sx={{
-                  ml: 1,
-                  fontSize: "14px",
-                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  bgcolor: "#243B63",
+                  borderRadius: "20px",
+                  px: 2,
+                  py: 0.5,
+                  mb: 2,
                 }}
-              />
-            </Box>
-
-            {/* List */}
-            <Box
-              sx={{
-                maxHeight: "auto",
-                overflowY: "auto",
-                pr: 1,
-                p: 1,
-                borderRadius: "24px",
-                flex: 1,
-                minHeight: 0,
-              }}
-            >
-              {filteredAssignProviders.map((doc) => (
-                <Box
-                  key={doc.id}
-                  onClick={() => {
-                    setSelectedDoctor(doc.name);
-                    setSelectedDoctorId(doc.id);
-                  }}
+              >
+                <SearchIcon sx={{ color: "#eee7e7", fontSize: 12 }} />
+                <InputBase
+                  placeholder="Search by name or specialty"
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
                   sx={{
-                    p: 0.8,
-                    borderRadius: "16px",
-                    mb: 1,
-                    cursor: "pointer",
-                    border:
-                      selectedDoctorId === doc.id
-                        ? "2px solid #1a73e8"
-                        : "1px solid #e5e7eb",
-                    bgcolor:
-                      selectedDoctorId === doc.id
-                        ? "#e8f0fe"
-                        : "rgba(15, 38, 70, 1)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    ml: 1,
+                    fontSize: "14px",
+                    width: "100%",
+                    color: "#fff",
+                    "& input::placeholder": {
+                      color: "#eee7e7",
+                      opacity: 1,
+                      fontFamily:
+                        "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+                    },
                   }}
-                >
-                  <Box>
-                    <Typography fontSize={14} fontWeight={500}>
-                      {doc.name}
-                    </Typography>
-                    <Typography
-                      fontSize={12}
-                      sx={{
-                        color: "#4ADE80",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {[doc.status, doc.specialty]
-                        .filter(Boolean)
-                        .join(" • ") || "Available"}
-                    </Typography>
+                />
+              </Box>
+
+              {/* List */}
+              <Box
+                sx={{
+                  overflowY: "auto",
+                  flex: 1,
+                  minHeight: 0,
+                  "&::-webkit-scrollbar": { display: "none" },
+                  scrollbarWidth: "none",
+                }}
+              >
+                {filteredAssignProviders.map((doc) => (
+                  <Box
+                    key={doc.id}
+                    onClick={() => {
+                      setSelectedDoctor(doc.name);
+                      setSelectedDoctorId(doc.id);
+                    }}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderRadius: "14px",
+                      mb: 1.5,
+                      cursor: "pointer",
+                      border: "1px solid",
+                      borderColor:
+                        selectedDoctorId === doc.id
+                          ? "transparent"
+                          : "rgba(255,255,255,0.08)",
+                      bgcolor:
+                        selectedDoctorId === doc.id ? "#243B63" : "transparent",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      "&:hover": {
+                        bgcolor: "#243B63",
+                        borderColor: "transparent",
+                      },
+                    }}
+                  >
+                    <Box>
+                      <Typography
+                        //fontSize={12}
+                        //fontWeight={300}
+                        sx={{
+                          color: "#eee7e7",
+                          fontSize: "12px",
+                          fontWeight: 300,
+                          fontFamily:
+                            "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+                        }}
+                      >
+                        {doc.name}
+                      </Typography>
+                      <Typography
+                        //fontSize={10}
+                        //fontWeight={300}
+                        sx={{
+                          color: "#228B22",
+                          mt: 0.2,
+                          fontSize: "12px",
+                          fontFamily:
+                            "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+                        }}
+                      >
+                        {[doc.status, doc.specialty]
+                          .filter(Boolean)
+                          .join(" • ") || "Available"}
+                      </Typography>
+                    </Box>
+
+                    {selectedDoctorId === doc.id && (
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Typography
+                          fontSize={12}
+                          sx={{ color: "#1565FF", lineHeight: 1 }}
+                        >
+                          ✓
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
+                ))}
 
-                  {/* Check Icon */}
-                  {selectedDoctorId === doc.id && (
-                    <Typography color="#1a73e8" fontSize={18}>
-                      ✓
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-              {filteredAssignProviders.length === 0 && (
-                <Typography
-                  sx={{ px: 1, py: 2, color: "#94A3B8", fontSize: 13 }}
-                >
-                  {assignType === "resident"
-                    ? "No residents found."
-                    : "No providers found."}
-                </Typography>
-              )}
-            </Box>
+                {filteredAssignProviders.length === 0 && (
+                  <Typography
+                    sx={{ px: 1, py: 2, color: "#94A3B8", fontSize: 13 }}
+                  >
+                    {assignType === "resident"
+                      ? "No residents found."
+                      : "No providers found."}
+                  </Typography>
+                )}
+              </Box>
 
-            {/* Assign Button */}
-            <Button
-              fullWidth
-              variant="contained"
-              sx={{
-                mt: 2,
-                borderRadius: "14px",
-                py: 1.2,
-                textTransform: "none",
-                fontWeight: 500,
-              }}
-              onClick={async () => {
-                if (!selectedDoctor || !selectedDoctorId) return;
+              {/* Assign Button */}
+              <Button
+                fullWidth
+                variant="contained"
+                sx={{
+                  mt: 3,
+                  borderRadius: "12px",
+                  py: 1,
+                  textTransform: "none",
+                  fontWeight: 300,
+                  fontSize: "14px",
+                  bgcolor: "#1565FF",
+                  "&:hover": { bgcolor: "#1251CC" },
+                }}
+                onClick={async () => {
+                  if (!selectedDoctor || !selectedDoctorId) return;
 
-                console.log("Assign Type:", assignType);
+                  const selectedIds =
+                    selectionModel.size > 0
+                      ? Array.from(selectionModel)
+                      : selectedRow
+                        ? [selectedRow.id]
+                        : [];
 
-                const selectedIds =
-                  selectionModel.size > 0
-                    ? Array.from(selectionModel)
-                    : selectedRow
-                      ? [selectedRow.id]
-                      : [];
+                  if (selectedIds.length === 0) return;
 
-                if (selectedIds.length === 0) return;
-
-                setRows((prev) =>
-                  prev.map((row) => {
-                    if (!selectedIds.includes(row.id)) return row;
-
-                    if (assignType === "resident") {
+                  setRows((prev) =>
+                    prev.map((row) => {
+                      if (!selectedIds.includes(row.id)) return row;
+                      if (assignType === "resident") {
+                        return {
+                          ...row,
+                          resident: selectedDoctor,
+                          residentId: selectedDoctorId,
+                        };
+                      }
                       return {
                         ...row,
-                        resident: selectedDoctor,
-                        residentId: selectedDoctorId,
+                        physician: selectedDoctor,
+                        providerId: selectedDoctorId,
                       };
-                    }
+                    }),
+                  );
 
-                    return {
-                      ...row,
-                      physician: selectedDoctor,
-                      providerId: selectedDoctorId,
-                    };
-                  }),
-                );
-
-                setOpenAssignModal(false);
-                setSelectedDoctor("");
-                setSelectedDoctorId("");
-                setAssignSearch("");
-              }}
-            >
-              {selectionModel.size > 1
-                ? "Assign to all Selected Patients"
-                : "Assign"}
-            </Button>
+                  setOpenAssignModal(false);
+                  setSelectedDoctor("");
+                  setSelectedDoctorId("");
+                  setAssignSearch("");
+                }}
+              >
+                {selectionModel.size > 1
+                  ? "Assign to all Selected Patients"
+                  : "Assign"}
+              </Button>
+            </Box>
           </DialogContent>
         </Dialog>
+
         {/* Snackbar for notifications */}
         <Snackbar
           open={snackbar.open}
@@ -2957,143 +3140,6 @@ export default function AllEvents() {
           </Alert>
         </Snackbar>
       </Box>
-
-      {/* //Popup Logic */}
-      {openMainPopup && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: "400px",
-            right: "15px",
-            zIndex: 9999,
-            width: 230,
-            borderRadius: "24px",
-            overflow: "hidden",
-            bgcolor: "#0B1D35",
-            border: "2px solid #2B4570",
-            boxShadow: "0px 8px 25px rgba(0,0,0,0.35)",
-          }}
-        >
-          {/* Vital Trends */}
-          <Box
-            onClick={() => {
-              setOpenMainPopup(false); // close main popup
-              setOpenVitalTrend(true); // open new popup
-            }}
-            sx={{
-              height: 65,
-              px: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              cursor: "pointer",
-              color: "#DCE3EE",
-
-              "&:hover": {
-                bgcolor: "#2B4570",
-              },
-            }}
-          >
-            <EqualizerIcon
-              sx={{
-                color: "#00C2FF",
-                fontSize: 25,
-              }}
-            />
-            View Vital Trends
-          </Box>
-
-          {/* View Report */}
-          <Box
-            onClick={() => {
-              setOpenMainPopup(false); // close main popup
-              setOpenViewReport(true);
-            }}
-            sx={{
-              height: 65,
-              px: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              cursor: "pointer",
-              color: "#DCE3EE",
-
-              "&:hover": {
-                bgcolor: "#2B4570",
-              },
-            }}
-          >
-            <AssignmentIcon
-              sx={{
-                color: "#00C2FF",
-                fontSize: 25,
-              }}
-            />
-            View report
-          </Box>
-
-          {/* Share Report */}
-          <Box
-            onClick={() => {
-              setOpenMainPopup(false); // close main popup
-              setOpenShareReport(true);
-            }}
-            sx={{
-              height: 65,
-              px: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              cursor: "pointer",
-              color: "#DCE3EE",
-
-              "&:hover": {
-                bgcolor: "#2B4570",
-              },
-            }}
-          >
-            <ShareIcon
-              sx={{
-                color: "#00C2FF",
-                fontSize: 25,
-              }}
-            />
-            Share Report
-          </Box>
-        </Box>
-      )}
-
-      {/* Vital Trend Popup */}
-      {openVitalTrend && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: "80px",
-            right: "20px",
-            width: 420,
-            height: "80vh",
-            bgcolor: "#0B1D35",
-            borderRadius: "24px",
-            border: "1px solid #102543",
-            zIndex: 9999,
-            p: 3,
-            color: "#fff",
-          }}
-        >
-          <Typography variant="h5">Vital Trends Popup</Typography>
-        </Box>
-      )}
-
-      {/* View Report popup 2 */}
-      <Event
-        open={openViewReport}
-        onClose={() => setOpenViewReport(false)}
-      />
-
-      <ShareReportDialog
-        open={openShareReport}
-        handleClose={() => setOpenShareReport(false)}
-      />
     </>
   );
 }
