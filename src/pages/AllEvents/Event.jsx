@@ -143,7 +143,7 @@ const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VIT
       <Slide direction="left" in={open} mountOnEnter unmountOnExit timeout={300}>
         <Box sx={{
           position: "fixed", top: 0, right: 0,
-          width: 410, height: "100vh",
+          width: 380, height: "100vh",
           background: BG,
           borderLeft: `1px solid ${BORDER_NML_R}`,
           color: TEXT_WHITE,
