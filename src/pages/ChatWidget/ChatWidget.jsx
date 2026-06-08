@@ -1,5 +1,11 @@
 import React from "react";
-import { Box, IconButton, Typography, Avatar, TextField } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Typography,
+  Avatar,
+  TextField,
+} from "@mui/material";
 import tia from "../../assets/tia.png";
 
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -7,59 +13,85 @@ import CloseIcon from "@mui/icons-material/Close";
 
 export default function ChatWidget({ onClose, visible }) {
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        bottom: { xs: 10, sm: 20 },
+   <Box
+  sx={{
+    position: "fixed",
 
-        // responsive left position
-        left: {
-          xs: "63%",
-          sm: 110,
-          md: 130,
-        },
+    bottom: {
+      xs: 10,
+      sm: 15,
+      md: 20,
+    },
 
-        transform: {
-          xs: visible
-            ? "translateX(-50%)"
-            : "translateX(-50%) translateY(20px)",
-          sm: visible ? "translateX(0)" : "translateX(-40px)",
-        },
+    // Better sidebar spacing
+    left: {
+      xs: 10,
+      sm: 90,
+      md: 100,
+      lg: 110,
+      xl: 120,
+    },
 
-        width: {
-          xs: "70%",
-          sm: 300,
-          md: 340,
-          lg: 360,
-        },
+    right: "unset",
 
-        height: {
-          xs: "68vh",
-          sm: "65vh",
-          md: 430,
-          lg: 440,
-        },
+    transform: visible
+      ? "translateY(0)"
+      : "translateY(24px)",
 
-        borderRadius: "10px 10px 0 0",
-        boxShadow: "0px 5px 15px rgba(0,0,0,0.25)",
-        overflow: "hidden",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
+    width: {
+      xs: "92%",
+      sm: 320,
+      md: 340,
+      lg: 360,
+      xl: 380,
+    },
 
-        opacity: visible ? 1 : 0,
-        transition: "all 0.25s ease-in-out",
-        pointerEvents: visible ? "auto" : "none",
-      }}
-    >
+    maxWidth: "380px",
+
+    height: {
+      xs: "72vh",
+      sm: "68vh",
+      md: 430,
+      lg: 450,
+    },
+
+    maxHeight: "90vh",
+
+    borderRadius: {
+      xs: "18px",
+      sm: "18px 18px 0 0",
+    },
+
+    boxShadow:
+      "0px 12px 30px rgba(0,0,0,0.22)",
+
+    overflow: "hidden",
+    zIndex: 9999,
+
+    display: "flex",
+    flexDirection: "column",
+
+    // smoother animation
+    opacity: visible ? 1 : 0,
+    transition:
+      "transform 0.3s ease, opacity 0.3s ease",
+
+    pointerEvents: visible ? "auto" : "none",
+  }}
+ >
       {/* HEADER */}
       <Box
         sx={{
           position: "relative",
+
           height: {
-            xs: 150,
-            sm: 160,
+            xs: 145,
+            sm: 155,
+            md: 160,
           },
+
+          flexShrink: 0,
+
           background:
             "conic-gradient(from 223.72deg at 50.12% 33.82%, #ABE1CC 0deg, #83D9DC 103.12deg, #6CD0F3 146.43deg, #015DFF 271deg, #0285C7 345deg, #02589F 360deg)",
         }}
@@ -69,30 +101,20 @@ export default function ChatWidget({ onClose, visible }) {
           sx={{
             position: "absolute",
             top: 12,
-            right: 15,
+            right: 12,
             display: "flex",
             gap: 0.5,
           }}
         >
-          {/* MINIMIZE ICON */}
+          {/* MINIMIZE */}
           <IconButton
             disableRipple
             sx={{
               color: "#fff",
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               p: 0,
-              backgroundColor: "transparent",
-
               "&:hover": {
-                backgroundColor: "transparent",
-              },
-
-              "&:focus": {
-                backgroundColor: "transparent",
-              },
-
-              "&:active": {
                 backgroundColor: "transparent",
               },
             }}
@@ -100,26 +122,16 @@ export default function ChatWidget({ onClose, visible }) {
             <RemoveIcon sx={{ fontSize: 18 }} />
           </IconButton>
 
-          {/* CLOSE BUTTON */}
+          {/* CLOSE */}
           <IconButton
             onClick={onClose}
             disableRipple
             sx={{
               color: "#fff",
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               p: 0,
-              backgroundColor: "transparent",
-
               "&:hover": {
-                backgroundColor: "transparent",
-              },
-
-              "&:focus": {
-                backgroundColor: "transparent",
-              },
-
-              "&:active": {
                 backgroundColor: "transparent",
               },
             }}
@@ -140,17 +152,21 @@ export default function ChatWidget({ onClose, visible }) {
             px: 2,
           }}
         >
-          {/* PROFILE IMAGE */}
+          {/* PROFILE */}
           <Avatar
             sx={{
               width: {
-                xs: 58,
-                sm: 62,
+                xs: 56,
+                sm: 60,
+                md: 62,
               },
+
               height: {
-                xs: 58,
-                sm: 62,
+                xs: 56,
+                sm: 60,
+                md: 62,
               },
+
               mb: 1,
               overflow: "hidden",
             }}
@@ -162,9 +178,8 @@ export default function ChatWidget({ onClose, visible }) {
               sx={{
                 width: "100%",
                 height: "100%",
-                objectFit: "cover", // ✅ full face visible
-                objectPosition: "center top", // ✅ center image
-                transform: "scale(1.00)", // ✅ slightly zoom out
+                objectFit: "cover",
+                objectPosition: "center top",
               }}
             />
           </Avatar>
@@ -173,9 +188,11 @@ export default function ChatWidget({ onClose, visible }) {
             sx={{
               color: "#fff",
               fontWeight: 600,
+
               fontSize: {
-                xs: "20px",
-                sm: "22px",
+                xs: "18px",
+                sm: "20px",
+                md: "22px",
               },
             }}
           >
@@ -185,10 +202,13 @@ export default function ChatWidget({ onClose, visible }) {
           <Typography
             sx={{
               color: "#fff",
+
               fontSize: {
-                xs: "12px",
-                sm: "13px",
+                xs: "11px",
+                sm: "12px",
+                md: "13px",
               },
+
               mt: 0.5,
               opacity: 0.9,
             }}
@@ -204,10 +224,17 @@ export default function ChatWidget({ onClose, visible }) {
           flex: 1,
           p: 2,
           backgroundColor: "#0B1D35",
+
           backgroundImage:
             "radial-gradient(rgba(2,88,159,0.08) 1px, transparent 1px)",
+
           backgroundSize: "18px 18px",
+
           overflowY: "auto",
+
+          "&::-webkit-scrollbar": {
+            width: "4px",
+          },
         }}
       >
         <Box
@@ -219,119 +246,127 @@ export default function ChatWidget({ onClose, visible }) {
             py: 1.2,
             borderRadius: "8px",
             maxWidth: "85%",
-            fontSize: "14px",
+
+            fontSize: {
+              xs: "12px",
+              sm: "14px",
+            },
           }}
         >
           I’m here to answer any questions you may have..
         </Box>
       </Box>
 
-     {/* INPUT SECTION */}
-<Box
-  sx={{
-    display: "flex",
-    alignItems: "center",
-    px: 1,
-    py: 1.2,
-    borderTop: "1px solid #102543",
-    bgcolor: "#0B1D35",
-  }}
->
-  {/* MENU */}
-  <IconButton
-    sx={{
-      p: 0.5,
-      mr: 0.5,
-    }}
-  >
-    <img
-      src="https://cdn-icons-png.flaticon.com/512/1828/1828859.png"
-      width={20}
-      height={20}
-      alt="menu"
-      style={{
-        filter:
-          "invert(24%) sepia(89%) saturate(1655%) hue-rotate(189deg) brightness(92%) contrast(101%)",
-      }}
-    />
-  </IconButton>
+      {/* INPUT SECTION */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.5,
 
-  {/* INPUT */}
-  <TextField
-    fullWidth
-    size="small"
-    placeholder="Type a message..."
-    sx={{
-      flex: 1,
+          px: 1,
+          py: 1,
 
-      "& .MuiOutlinedInput-root": {
-        borderRadius: "999px",
-        height: 42,
-        backgroundColor: "#102543",
-        color: "white",
+          borderTop: "1px solid #102543",
+          bgcolor: "#0B1D35",
 
-        "& fieldset": {
-          border: "1px solid transparent",
-        },
-
-        "&:hover fieldset": {
-          border: "1px solid #c5c5c5",
-        },
-
-        "&.Mui-focused fieldset": {
-          border: "2px solid #fff",
-        },
-      },
-
-      "& input": {
-        color: "white",
-        fontSize: {
-          xs: "12px",
-          sm: "13px",
-        },
-        px: 1,
-      },
-
-      "& input::placeholder": {
-        color: "#bdbdbd",
-        opacity: 1,
-      },
-    }}
-  />
-
-  {/* RIGHT ICONS */}
-  <Box
-    sx={{
-      display: "flex",
-      alignItems: "center",
-      ml: 0.5,
-    }}
-  >
-    {/* MIC */}
-    <IconButton sx={{ p: 0.5 }}>
-      <img
-        src="https://cdn-icons-png.flaticon.com/512/709/709682.png"
-        width={18}
-        height={18}
-        alt="mic"
-        style={{
-          filter:
-            "invert(24%) sepia(89%) saturate(1655%) hue-rotate(189deg) brightness(92%) contrast(101%)",
+          flexShrink: 0,
         }}
-      />
-    </IconButton>
+      >
+        {/* MENU */}
+        <IconButton sx={{ p: 0.5, flexShrink: 0 }}>
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/1828/1828859.png"
+            width={20}
+            height={20}
+            alt="menu"
+            style={{
+              filter:
+                "invert(24%) sepia(89%) saturate(1655%) hue-rotate(189deg) brightness(92%) contrast(101%)",
+            }}
+          />
+        </IconButton>
 
-    {/* SEND */}
-    <IconButton sx={{ p: 0.5 }}>
-      <img
-        src="https://cdn-icons-png.flaticon.com/512/3682/3682321.png"
-        width={20}
-        height={20}
-        alt="send"
-      />
-    </IconButton>
-  </Box>
-</Box>
-</Box>
+        {/* INPUT */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Type a message..."
+          sx={{
+            flex: 1,
+
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "999px",
+              height: {
+                xs: 40,
+                sm: 42,
+              },
+
+              backgroundColor: "#102543",
+              color: "white",
+
+              "& fieldset": {
+                border: "1px solid transparent",
+              },
+
+              "&:hover fieldset": {
+                border: "1px solid #c5c5c5",
+              },
+
+              "&.Mui-focused fieldset": {
+                border: "2px solid #fff",
+              },
+            },
+
+            "& input": {
+              color: "white",
+
+              fontSize: {
+                xs: "12px",
+                sm: "13px",
+              },
+            },
+
+            "& input::placeholder": {
+              color: "#bdbdbd",
+              opacity: 1,
+            },
+          }}
+        />
+
+        {/* RIGHT ICONS */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {/* MIC */}
+          <IconButton sx={{ p: 0.5 }}>
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/709/709682.png"
+              width={18}
+              height={18}
+              alt="mic"
+              style={{
+                filter:
+                  "invert(24%) sepia(89%) saturate(1655%) hue-rotate(189deg) brightness(92%) contrast(101%)",
+              }}
+            />
+          </IconButton>
+
+          {/* SEND */}
+          <IconButton sx={{ p: 0.5 }}>
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/3682/3682321.png"
+              width={20}
+              height={20}
+              alt="send"
+            />
+          </IconButton>
+        </Box>
+      </Box>
+    </Box>
   );
 }

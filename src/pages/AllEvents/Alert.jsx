@@ -35,7 +35,7 @@ export default function NotificationPanel({ open, onClose }) {
 
         <Typography
           sx={{
-            fontSize: "11px",
+            fontSize: "13px",
             color: "#555",
           }}
         >
