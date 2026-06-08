@@ -13,7 +13,7 @@ import CloseIcon from "@mui/icons-material/Close";
 
 export default function ChatWidget({ onClose, visible }) {
   return (
-   <Box
+  <Box
   sx={{
     position: "fixed",
 
@@ -23,23 +23,21 @@ export default function ChatWidget({ onClose, visible }) {
       md: 20,
     },
 
-    // Better sidebar spacing
+    // RIGHT OF SIDEBAR + GAP
     left: {
-      xs: 10,
-      sm: 90,
-      md: 100,
-      lg: 110,
-      xl: 120,
+      xs: "88px",   // mobile
+      sm: "105px",  // tablet
+      md: "110px",  // ipad / medium
+      lg: "108px",  // desktop
+      xl: "112px",  // large screens
     },
-
-    right: "unset",
 
     transform: visible
       ? "translateY(0)"
-      : "translateY(24px)",
+      : "translateY(20px)",
 
     width: {
-      xs: "92%",
+      xs: "calc(100vw - 98px)",
       sm: 320,
       md: 340,
       lg: 360,
@@ -52,15 +50,12 @@ export default function ChatWidget({ onClose, visible }) {
       xs: "72vh",
       sm: "68vh",
       md: 430,
-      lg: 450,
+      lg: 490,
     },
 
     maxHeight: "90vh",
 
-    borderRadius: {
-      xs: "18px",
-      sm: "18px 18px 0 0",
-    },
+    borderRadius: "18px",
 
     boxShadow:
       "0px 12px 30px rgba(0,0,0,0.22)",
@@ -71,14 +66,14 @@ export default function ChatWidget({ onClose, visible }) {
     display: "flex",
     flexDirection: "column",
 
-    // smoother animation
     opacity: visible ? 1 : 0,
+
     transition:
       "transform 0.3s ease, opacity 0.3s ease",
 
     pointerEvents: visible ? "auto" : "none",
   }}
- >
+>
       {/* HEADER */}
       <Box
         sx={{
@@ -287,52 +282,58 @@ export default function ChatWidget({ onClose, visible }) {
           />
         </IconButton>
 
-        {/* INPUT */}
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Type a message..."
-          sx={{
-            flex: 1,
+       <TextField
+  fullWidth
+  size="small"
+  placeholder="Type a message..."
+  sx={{
+    flex: 1,
 
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "999px",
-              height: {
-                xs: 40,
-                sm: 42,
-              },
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "999px",
 
-              backgroundColor: "#102543",
-              color: "white",
+      height: {
+        xs: 40,
+        sm: 42,
+      },
 
-              "& fieldset": {
-                border: "1px solid transparent",
-              },
+      backgroundColor: "#102543",
+      color: "white",
 
-              "&:hover fieldset": {
-                border: "1px solid #c5c5c5",
-              },
+      // SAME BORDER ALWAYS
+      "& fieldset": {
+        border: "1px solid transparent",
+      },
 
-              "&.Mui-focused fieldset": {
-                border: "2px solid #fff",
-              },
-            },
+      "&:hover fieldset": {
+        border: "1px solid transparent",
+      },
 
-            "& input": {
-              color: "white",
+      "&.Mui-focused fieldset": {
+        border: "1px solid transparent",
+      },
 
-              fontSize: {
-                xs: "12px",
-                sm: "13px",
-              },
-            },
+      // remove focus glow
+      "&.Mui-focused": {
+        boxShadow: "none",
+      },
+    },
 
-            "& input::placeholder": {
-              color: "#bdbdbd",
-              opacity: 1,
-            },
-          }}
-        />
+    "& input": {
+      color: "white",
+
+      fontSize: {
+        xs: "12px",
+        sm: "13px",
+      },
+    },
+
+    "& input::placeholder": {
+      color: "#bdbdbd",
+      opacity: 1,
+    },
+  }}
+/>
 
         {/* RIGHT ICONS */}
         <Box
