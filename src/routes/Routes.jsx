@@ -9,9 +9,14 @@ import SearchKit from "../pages/SearchKit/SearchKit"
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
 
+
+import Response from "../pages/Response/Response";
+
+
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
 const SignIn = lazy(() => import("../componants/SignIn"));
+const FindMedicineinKit = lazy(() => import("../pages/FindMedicineinKit/FindMedicineinKit"));
 
 const MainLayout = ({ children }) => {
   const isAuthenticated =
@@ -80,6 +85,8 @@ const CustomRoutes = () => {
     <Routes>
       <Route path="/sign-in" element={<SignIn />} />
 
+   
+      {/* Protected routes with sidebar */}
       <Route
         path="/all-events"
         element={
@@ -94,6 +101,29 @@ const CustomRoutes = () => {
           <SearchKit/>
          </MainLayout>
       }
+      />
+      <Route path="/alerts"
+        element={
+          <MainLayout>
+            <SearchKit />
+          </MainLayout>
+        }
+      />
+         <Route
+        path="/FindMedicineinKit"
+        element={
+          <MainLayout>
+            <FindMedicineinKit />
+          </MainLayout>
+        }
+      />
+         <Route
+        path="/Response"
+        element={
+          <MainLayout>
+            <Response />
+          </MainLayout>
+        }
       />
       {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
       <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />

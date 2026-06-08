@@ -20,6 +20,7 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import rightImg from "../assets/signInBgimg.png";
 import logo2 from "../assets/logo4.png";
+import logo5 from "../assets/logo5.png";
 import { TitleRoundIcon } from "../assets/Assets";
 import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -71,6 +72,7 @@ const SignInForm = () => {
     const token = localStorage.getItem("token");
     if (token) {
       navigate("/all-events", { replace: true });
+
     }
   }, []);
 
@@ -82,7 +84,52 @@ const SignInForm = () => {
   // const [pendingLoginData, setPendingLoginData] = useState(null);
   // const [twoFactorResendLoading, setTwoFactorResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const theme_colors = isDark ? {
 
+    pageBg: "#0B1D35",
+
+    formBg: "#0B1D35",
+
+    inputBg: "#112339",
+
+    inputBorder: "#334A68",
+
+    titleColor: "#D2D6DB",
+
+    labelColor: "#4A5568",
+
+    subtitleColor: "#718096",
+
+    forgotColor: "#D2D6DB",
+
+    dividerColor: "#515f72",
+
+    iconColor: "#D2D6DB",
+
+  } : {
+
+    pageBg: "#F0F4F8",
+
+    formBg: "#FFFFFF",
+
+    inputBg: "#F8FAFC",
+
+    inputBorder: "#CBD5E0",
+
+    titleColor: "#1A202C",
+
+    labelColor: "#718096",
+
+    subtitleColor: "#718096",
+
+    forgotColor: "#2D3748",
+
+    dividerColor: "#CBD5E0",
+
+    iconColor: "#4A5568",
+
+  };
   // 2FA OTP expiry countdown (5 min = 300s) and resend cooldown (60s)
   // const OTP_TTL = 5 * 60; // seconds — must match backend otpStore TTL
   // const [otpExpiryTimer, setOtpExpiryTimer] = useState(0);
@@ -427,7 +474,7 @@ const SignInForm = () => {
       });
 
       // Navigate to dashboard
-      navigate("/Dashboard", { replace: true });
+      navigate("/all-events", { replace: true });
 
     } catch (error) {
       setGeneralSignInError("Login failed. Please check your credentials and try again.");
@@ -466,18 +513,19 @@ const SignInForm = () => {
   const inputSx = {
     "& .MuiOutlinedInput-root, &.MuiOutlinedInput-root": {
       borderRadius: "12px",
-      backgroundColor: "#112339",
+      backgroundColor: theme_colors.inputBg,
       // boxShadow:
       //   "0px 2px 4px 1px #E7EBEE55 inset, 0 4px 12px rgba(0, 0, 0, 0.06), 0 8px 20px rgba(0, 0, 0, 0.04)",
       // transition: "box-shadow 0.2s ease",
       "& fieldset": {
-        border: "1px solid #334A68",
+        border: `1px solid ${theme_colors.inputBorder}`,
+
       },
       "&:hover fieldset": {
-        border: "1px solid #334A68",
+        border: `1px solid ${theme_colors.inputBorder}`,
       },
       "&.Mui-focused fieldset": {
-        border: "1px solid #334A68",
+        border: `1px solid ${theme_colors.inputBorder}`,
       },
       "&.Mui-focused": {
         boxShadow:
@@ -549,7 +597,7 @@ const SignInForm = () => {
               xs: "linear-gradient(180deg, #ffffff 0%, #f1f5f9 48%, #eef2f6 100%)",
               md: "#ffffff",
             },
-            backgroundColor: { xs: "transparent", md: "#0B1D35" },
+            backgroundColor: { xs: "transparent", md: theme_colors.formBg },
             display: "flex",
             flexDirection: "column",
             justifyContent: { xs: "flex-start", sm: "center" },
@@ -856,23 +904,76 @@ const SignInForm = () => {
               }}
             >
               {/* Logo */}
-              <Box
-                sx={{
-                  width: "100%",
-                  maxWidth: { xs: "100%", sm: 420, md: 460 },
-                  mx: "auto",
-                  mb: { xs: 2, sm: 3 },
-                }}
-              >
+              <Box sx={{
+                mb: { xs: 2, sm: 3 },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",  // ← add this
+                width: "100%",
+                maxWidth: { xs: "100%", sm: 420, md: 460 },
+                mx: "auto",
+              }}>
+                <Box component="img" src={isDark ? logo2 : logo5} alt="Logo" sx={{
+                  width: { xs: 100, sm: 120, md: 140 },
+                  height: "auto",
+                }} />
+
+                {/* ── Theme Toggle ── */}
+
+                {/* ── Theme Toggle ── */}
                 <Box
-                  component="img"
-                  src={logo2}
-                  alt="Logo"
+                  onClick={() => setIsDark(prev => !prev)}
                   sx={{
-                    width: { xs: 100, sm: 120, md: 140 },
-                    height: "auto",
+                    width: "72px",
+                    height: "34px",
+                    borderRadius: "17px",
+                    border: `1.5px solid ${isDark ? "#334A68" : "#CBD5E0"}`,
+                    backgroundColor: isDark ? "#1a2f4a" : "#E2E8F0",
+                    position: "relative",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    transition: "background 0.3s ease, border-color 0.3s ease",
+                    userSelect: "none",
                   }}
-                />
+                >
+                  {/* Sun icon — left side */}
+                  <Typography sx={{
+                    position: "absolute",
+                    left: "7px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                  }}>☀️</Typography>
+
+                  {/* Moon icon — right side */}
+                  <Typography sx={{
+                    position: "absolute",
+                    right: "7px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                  }}>🌙</Typography>
+
+                  {/* Sliding thumb */}
+                  <Box sx={{
+                    position: "absolute",
+                    top: "3px",
+                    left: isDark ? "40px" : "3px",
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    backgroundColor: "#015DFF",
+                    transition: "left 0.3s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "13px",
+                  }}>
+                    {isDark ? "🌙" : "☀️"}
+                  </Box>
+                </Box>
               </Box>
 
               {/* Form content — centered block */}
@@ -895,7 +996,7 @@ const SignInForm = () => {
                     variant="h5"
                     sx={{
                       fontWeight: 600,
-                      color: "#D2D6DB",
+                      color: theme_colors.titleColor,
                       mb: 1,
                       fontSize: { xs: "22px", sm: "24px", md: "28px" },
                       letterSpacing: "-0.01em",
@@ -907,7 +1008,7 @@ const SignInForm = () => {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: "#718096",
+                      color: theme_colors.subtitleColor,
                       mb: 4,
                       fontSize: { xs: "14px", sm: "15px" },
                       fontWeight: 400,
@@ -926,7 +1027,7 @@ const SignInForm = () => {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: "#4A5568",
+                      color: theme_colors.labelColor,
                       fontWeight: 500,
                       mb: 1,
                       mt: { xs: 1.5, sm: 2 },
@@ -951,7 +1052,7 @@ const SignInForm = () => {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: "#4A5568",
+                      color: theme_colors.labelColor,
                       fontWeight: 500,
                       mb: 1,
                       mt: 1,
@@ -979,7 +1080,7 @@ const SignInForm = () => {
                             sx={{
                               width: "1px",
                               height: "22px",
-                              backgroundColor: "#515f72",
+                              backgroundColor: theme_colors.dividerColor,
                               marginRight: "8px",
                             }}
                           />
@@ -987,7 +1088,7 @@ const SignInForm = () => {
                             onClick={handleClickShowPassword}
                             onMouseDown={handleMouseDownPassword}
                             edge="end"
-                            sx={{ color: "#D2D6DB", padding: "6px", transform: "scaleX(-1)", }}
+                            sx={{ color: theme_colors.iconColor, padding: "6px", transform: "scaleX(-1)", }}
                           >
                             {showPassword ? <Visibility /> : <VisibilityOff />}
                           </IconButton>
@@ -1006,7 +1107,7 @@ const SignInForm = () => {
                       type="button"
                       onClick={openForgotPassword}
                       sx={{
-                        color: "#D2D6DB",
+                        color: theme_colors.forgotColor,
                         fontWeight: 500,
                         fontSize: { xs: "13px", sm: "14px" },
                         textDecoration: "underline",
@@ -1014,7 +1115,7 @@ const SignInForm = () => {
                         background: "none",
                         border: "none",
                         padding: 0,
-                        "&:hover": { color: "#c0c3c7", textDecoration: "underline" },
+                        "&:hover": { color: theme_colors.subtitleColor, textDecoration: "underline" },
                       }}
                     >
                       Forgot Password?
@@ -1160,7 +1261,7 @@ const SignInForm = () => {
                 letterSpacing: { xs: "-0.02em", md: "-0.02em" },
               }}
             >
-              Real-Time Medical Support,
+              Real-Time Medical <br/>Support,
               <br />
               When It Matters Most
             </Typography>
