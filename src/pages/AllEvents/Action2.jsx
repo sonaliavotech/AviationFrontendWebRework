@@ -17,6 +17,67 @@ import {
   AVPUIcon,
 } from "../../assets/Assets";
 
+function ECGWaveform() {
+  return (
+    <svg
+      viewBox="0 0 120 52"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", display: "block" }}
+      preserveAspectRatio="none"
+    >
+      <rect width="120" height="52" fill="white" />
+
+
+      <polyline
+        points="
+          0,26
+          8,26
+          10,26
+          12,22
+          14,1
+          16,51
+          18,26
+          22,26
+          26,24
+          30,26
+          34,26
+          36,22
+          38,1
+          40,51
+          42,26
+          46,26
+          50,24
+          54,26
+          58,26
+          60,22
+          62,1
+          64,51
+          66,26
+          70,26
+          74,24
+          78,22
+          82,20
+          86,18
+          90,16
+          94,14
+          98,12
+          102,10
+          106,12
+          110,14
+          114,16
+          118,18
+          120,18
+        "
+        fill="none"
+        stroke="#E05C6E"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const vitals = [
   {
     title: "Heart Rate",
@@ -88,7 +149,7 @@ const vitals = [
     labelColor: "#8EA3BC",
     bg: "#183355",
     border: "#2A527C",
-    icon: <ECGIcon />,
+    icon: <ECGWaveform />,
   },
   {
     title: "Pain Score",
@@ -126,56 +187,45 @@ function Action2({ onClose }) {
         position: "fixed",
         top: 0,
         right: 0,
-        width: "240px",
+        width: "280px",
         height: "100vh",
         background: "#081B36",
         borderLeft: "1px solid rgba(255,255,255,0.08)",
-        p: 1.5,
-        overflowY: "auto",
         zIndex: 9999,
         boxSizing: "border-box",
-
-        "&::-webkit-scrollbar": {
-          width: "4px",
-        },
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",         // ← no scroll at all
+        p: 1.5,
       }}
     >
       {/* HEADER */}
       <Box
         sx={{
-          background: "#132C4F",
-          borderRadius: "10px",
-          px: 1.5,
-          py: 1.2,
-          mb: 1.5,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 1,
+          mb: 1.5,
+          flexShrink: 0,            // ← header never shrinks
         }}
       >
         <Box
           sx={{
+            flex: 1,
+            background: "#132C4F",
+            borderRadius: "10px",
+            px: 1.5,
+            py: 1.2,
             display: "flex",
             alignItems: "center",
-            gap: 1,
           }}
         >
-          <TimelineIcon
-            sx={{
-              color: "#FFFFFF",
-              fontSize: 18,
-            }}
-          />
-
-          <Typography
-            sx={{
-              color: "#FFFFFF",
-              fontSize: "14px",
-              fontWeight: 500,
-            }}
-          >
-            Show Vital trends
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TimelineIcon sx={{ color: "#FFFFFF", fontSize: 18 }} />
+            <Typography sx={{ color: "#FFFFFF", fontSize: "14px", fontWeight: 500 }}>
+              Show Vital trends
+            </Typography>
+          </Box>
         </Box>
 
         <IconButton
@@ -183,94 +233,110 @@ function Action2({ onClose }) {
           onClick={onClose}
           sx={{
             color: "#FFFFFF",
-            p: 0,
+            marginTop: "3px",
+            width: 32,
+            height: 32,
+            borderRadius: "10px",
+            flexShrink: 0,
           }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
-      {/* VITAL CARDS */}
-      {vitals.map((item, index) => (
-        <Box
-          key={index}
-          sx={{
-            background: item.bg,
-            borderRadius: "12px",
-            px: 1.5,
-            py: 1.2,
-            mb: 1,
-
-            display: "flex",
-            alignItems: "center",
-
-            borderLeft: `3px solid ${item.border}`,
-
-            minHeight: "40px",
-            boxSizing: "border-box",
-          }}
-        >
-          {/* LEFT CONTENT */}
+      {/* VITAL CARDS — flex column, fills remaining height evenly */}
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          overflow: "hidden",       // ← no scroll
+        }}
+      >
+        {vitals.map((item, index) => (
           <Box
+            key={index}
             sx={{
-              flex: 1,
-              minWidth: 0,
-              textAlign: "left",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                color: item.labelColor,
-                fontSize: "11px",
-                fontWeight: 400,
-                lineHeight: "14px",
-                textAlign: "left",
-                mb: 0.3,
-              }}
-            >
-              {item.title}
-            </Typography>
-
-            <Typography
-              sx={{
-                color: item.color,
-                fontSize: "14px",
-                fontWeight: 700,
-                lineHeight: "18px",
-                textAlign: "left",
-              }}
-            >
-              {item.value}
-            </Typography>
-          </Box>
-
-          {/* RIGHT ICON */}
-          <Box
-            sx={{
-              width: 30,
-              height: 30,
-              flexShrink: 0,
-
+              background: item.bg,
+              borderRadius: item.title === "ECG" ? "14px" : "12px",
+              px: item.title === "ECG" ? 0 : 1.5,
+              py: item.title === "ECG" ? 0 : 0,
+              flex: 1,              // ← each card takes equal share of height
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-
-              ml: 1,
-
-              "& svg": {
-                width: 32,
-                height: 32,
-                opacity: 0.65,
-              },
+              borderLeft: `3px solid ${item.border}`,
+              overflow: "hidden",
+              boxSizing: "border-box",
             }}
           >
-            {item.icon}
+            {/* LEFT CONTENT */}
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                textAlign: "left",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                px: item.title === "ECG" ? 1.5 : 0,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: item.labelColor,
+                  fontSize: "11px",
+                  fontWeight: 400,
+                  lineHeight: "14px",
+                  textAlign: "left",
+                  mb: 0.3,
+                }}
+              >
+                {item.title}
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: item.color,
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  lineHeight: "18px",
+                  textAlign: "left",
+                }}
+              >
+                {item.value}
+              </Typography>
+            </Box>
+
+            {/* RIGHT ICON */}
+            <Box
+              sx={{
+                width: item.title === "ECG" ? 120 : 30,
+                height: item.title === "ECG" ? "100%" : 30,
+                flexShrink: 0,
+                ml: 1,
+                mr: item.title === "ECG" ? 0 : 0,
+                overflow: "hidden",
+                borderRadius: item.title === "ECG" ? "0 14px 14px 0" : 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background:
+                  item.title === "ECG"
+                    ? "linear-gradient(180deg, #1B3558 0%, #122844 100%)"
+                    : "transparent",
+                "& svg": {
+                  width: item.title === "ECG" ? "100%" : 32,
+                  height: item.title === "ECG" ? "100%" : 32,
+                  opacity: item.title === "ECG" ? 1 : 0.65,
+                },
+              }}
+            >
+              {item.icon}
+            </Box>
           </Box>
-        </Box>
-      ))}
+        ))}
+      </Box>
     </Box>
   );
 }
