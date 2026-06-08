@@ -133,9 +133,9 @@ const staticPatientData = [
     encounterId: "enc_1",
     room: "AA1234",
     bed: "A15",
-    name: "Lisha Cook",
-    age: "45y",
-    gender: "F",
+    name: "Jennie M",
+    age: "35y",
+    gender: "Female",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -157,6 +157,7 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T10:30:00Z",
     created_at: "2026-06-01T08:00:00Z",
+    duration: "Just now",
   },
   {
     id: "enc_2",
@@ -164,9 +165,9 @@ const staticPatientData = [
     encounterId: "enc_2",
     room: "AA1234",
     bed: "A15",
-    name: "Lisha Cook",
+    name: "Illy",
     age: "45y",
-    gender: "F",
+    gender: "male",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -188,6 +189,7 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T09:15:00Z",
     created_at: "2026-06-01T09:00:00Z",
+    duration: "Just now",
   },
   {
     id: "enc_3",
@@ -197,7 +199,7 @@ const staticPatientData = [
     bed: "A15",
     name: "Lisha Cook",
     age: "45y",
-    gender: "F",
+    gender: "male",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -219,6 +221,7 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T11:00:00Z",
     created_at: "2026-06-01T10:00:00Z",
+    duration: "Just now",
   },
   {
     id: "enc_4",
@@ -228,7 +231,7 @@ const staticPatientData = [
     bed: "A15",
     name: "Lisha Cook",
     age: "45y",
-    gender: "F",
+    gender: "male",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -250,6 +253,7 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T08:00:00Z",
     created_at: "2026-06-01T11:00:00Z",
+    duration: "Just now",
   },
   {
     id: "enc_5",
@@ -259,7 +263,7 @@ const staticPatientData = [
     bed: "A15",
     name: "Lisha Cook",
     age: "45y",
-    gender: "F",
+    gender: "male",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -281,6 +285,7 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T12:00:00Z",
     created_at: "2026-06-01T12:00:00Z",
+    duration: "Just now",
   },
   {
     id: "enc_6",
@@ -290,7 +295,7 @@ const staticPatientData = [
     bed: "A15",
     name: "Lisha Cook",
     age: "45y",
-    gender: "F",
+    gender: "male",
     mrn: "719471345",
     status: "Critical",
     location: "SYD → LAX",
@@ -312,6 +317,39 @@ const staticPatientData = [
     is_marked: false,
     updated_at: "2026-06-02T10:00:00Z",
     created_at: "2026-06-01T13:00:00Z",
+    duration: "Just now",
+  },
+  {
+    id: "enc_1",
+    patientDbId: "pat_101",
+    encounterId: "enc_1",
+    room: "AA1234",
+    bed: "A15",
+    name: "Jennie M",
+    age: "35y",
+    gender: "Female",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "",
+    providerId: "",
+    providerRole: "",
+    resident: "Julia R",
+    residentId: "res_1",
+    residentRole: "RESIDENT",
+    visitStatus: "",
+    seenByRole: "",
+    visitType: "IP",
+    dos: "2026-06-02",
+    fin: "FIN12345",
+    facesheet: "",
+    noteStatus: "Final",
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
+    updated_at: "2026-06-02T10:30:00Z",
+    created_at: "2026-06-01T08:00:00Z",
+    duration: "Just now",
   },
 ];
 
@@ -1412,7 +1450,8 @@ export default function AllEvents() {
             <Box sx={{ flex: "1 1 180px", minWidth: 0 }}>
               <Box
                 sx={{
-                  background: "rgba(40, 151, 255, 1)",
+                  //background: "rgba(40, 151, 255, 1)",
+                  background: "#1565FF",
                   color: "rgba(210, 214, 219, 1)",
                   borderRadius: "16px",
                   px: 2,
@@ -1547,7 +1586,7 @@ export default function AllEvents() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                backgroundColor: "rgba(15, 38, 70, 1)",
+                bgcolor: "rgba(33, 50, 75, 1)",
                 borderRadius: "10px",
                 border: "1px solid rgba(255,255,255,0.10)",
                 px: 1.5,
@@ -1625,8 +1664,12 @@ export default function AllEvents() {
               transformOrigin={{ vertical: "top", horizontal: "center" }}
               PaperProps={{
                 sx: {
+                  display: "flex",
+                  alignItems: "center",
+                  backgroundColor: "rgba(33, 50, 75, 1)",
                   borderRadius: "12px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  px: 1.5,
                 },
               }}
             >
@@ -1655,8 +1698,9 @@ export default function AllEvents() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                backgroundColor: "rgba(15, 38, 70, 1)",
-                borderRadius: "10px",
+                //backgroundColor: "rgba(15, 38, 70, 1)",
+                bgcolor: "rgba(33, 50, 75, 1)",
+                borderRadius: "12px",
                 border: "1px solid rgba(255,255,255,0.10)",
                 px: 1.5,
                 height: "40px",
@@ -1674,8 +1718,9 @@ export default function AllEvents() {
                 sx={{
                   width: "100%",
                   fontSize: "14px",
+                  color: "rgba(210, 214, 219, 1)",
                   "& input::placeholder": {
-                    color: "#94A3B8",
+                    color: "rgba(210, 214, 219, 1)",
                     opacity: 1,
                   },
                 }}
@@ -1699,7 +1744,7 @@ export default function AllEvents() {
                   textTransform: "none",
                   border: "1.5px solid rgba(210, 214, 219, 1)",
                   color: "rgba(210, 214, 219, 1)",
-                  backgroundColor: "rgba(15, 38, 70, 1)",
+                  //backgroundColor: "rgba(15, 38, 70, 1)",
                   px: 2,
                   height: "40px",
                   fontWeight: 600,
@@ -1721,7 +1766,7 @@ export default function AllEvents() {
                   textTransform: "none",
                   border: "1.5px solid rgba(210, 214, 219, 1)",
                   color: "rgba(210, 214, 219, 1)",
-                  backgroundColor: "rgba(15, 38, 70, 1)",
+                  //backgroundColor: "rgba(15, 38, 70, 1)",
                   px: 2,
                   height: "40px",
                   fontWeight: 600,
@@ -2186,14 +2231,6 @@ export default function AllEvents() {
                               />
                             </TableCell>
 
-                            {/* Room + Bed */}
-                            <EditableCell field="room">
-                              <Box sx={{ display: "inline-block" }}>
-                                {row.room}
-                                <Typography fontSize={11}>{row.bed}</Typography>
-                              </Box>
-                            </EditableCell>
-
                             {/* Name + Age/Gender */}
                             <EditableCell field="name">
                               <Box
@@ -2202,24 +2239,43 @@ export default function AllEvents() {
                                 sx={{ display: "inline-block" }}
                               >
                                 {row.name}
-                                <Typography fontWeight={600} fontSize={12}>
+                                <Typography
+                                  fontWeight={600}
+                                  sx={{ fontSize: "11px", color: "#C0B5AE" }}
+                                >
                                   {row.age} ({row.gender})
                                 </Typography>
                               </Box>
                             </EditableCell>
 
+                            {/* Patient ID */}
                             <EditableCell field="mrn">
-                              <Box sx={{ display: "inline-block" }}>
-                                <Typography fontWeight={600} fontSize={12}>
-                                  {row.mrn}
-                                </Typography>
+                              <Box
+                                fontWeight={600}
+                                fontSize={12}
+                                sx={{ display: "inline-block" }}
+                              >
+                                {row.mrn}
                               </Box>
                             </EditableCell>
+
+                            {/* Duration */}
+                            <EditableCell field="duration">
+                              <Box
+                                fontWeight={600}
+                                fontSize={12}
+                                sx={{ display: "inline-block" }}
+                              >
+                                {row.duration}
+                              </Box>
+                            </EditableCell>
+
                             <EditableCell field="status">
-                              <Box sx={{ display: "inline-block" }}>
+                              <Box fontWeight={600} fontSize={12}>
                                 {row.status}
                               </Box>
                             </EditableCell>
+
                             {/* Location chip — editable */}
                             <TableCell>
                               <Box
@@ -2350,7 +2406,7 @@ export default function AllEvents() {
                                       display: "inline-block",
                                       px: 1.6,
                                       py: 0.8,
-                                      borderRadius: "8px",
+                                      borderRadius: "20px",
                                       backgroundColor:
                                         "rgba(161, 120, 0, 0.85)",
                                       color: "rgba(255, 241, 194, 1)",
@@ -2367,7 +2423,7 @@ export default function AllEvents() {
                                       display: "inline-block",
                                       px: 1.5,
                                       py: 0.5,
-                                      borderRadius: "8px",
+                                      borderRadius: "20px",
                                       backgroundColor:
                                         "rgba(161, 120, 0, 0.85)",
                                       color: "rgba(255, 241, 194, 1)",
@@ -2453,7 +2509,7 @@ export default function AllEvents() {
                                       display: "inline-block",
                                       px: 1.6,
                                       py: 0.8,
-                                      borderRadius: "2px",
+                                      borderRadius: "20px",
                                       backgroundColor:
                                         "rgba(16, 120, 100, 0.7)",
                                       color: "rgba(210, 214, 219, 1)",
@@ -2480,7 +2536,7 @@ export default function AllEvents() {
                                       textAlign: "center",
                                     }}
                                   >
-                                    Assign
+                                    Test Crew
                                   </Box>
                                 )}
                               </Box>
@@ -2924,9 +2980,7 @@ export default function AllEvents() {
                     "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                 }}
               >
-                {assignType === "doctor"
-                  ? "Assign to Provider"
-                  : "Assign to Resident / APP"}
+                {assignType === "doctor" ? "Assign to Provider" : null}
               </Typography>
               <IconButton
                 size="small"
@@ -2935,6 +2989,7 @@ export default function AllEvents() {
                 <CloseIcon sx={{ fontSize: 20, color: "#fff" }} />
               </IconButton>
             </Box>
+
             {/* Divider */}
             <Box
               sx={{
