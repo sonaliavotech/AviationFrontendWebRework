@@ -206,7 +206,7 @@ function Action2({ onClose }) {
 
             borderLeft: `3px solid ${item.border}`,
 
-            minHeight: "64px",
+            minHeight: "40px",
             boxSizing: "border-box",
           }}
         >
@@ -261,8 +261,8 @@ function Action2({ onClose }) {
               ml: 1,
 
               "& svg": {
-                width: 22,
-                height: 22,
+                width: 32,
+                height: 32,
                 opacity: 0.65,
               },
             }}

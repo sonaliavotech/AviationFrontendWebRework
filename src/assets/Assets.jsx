@@ -530,7 +530,7 @@ export const BloodPressureIcon = () => (
 );
 
 export const ECGIcon = () => (
-  <Box sx={{ width: 50, height: 44, borderRadius: "5px", overflow: "hidden", position: "relative", flexShrink: 0, background: "#ffffff" }}>
+  <Box sx={{ width: 35, height: 40, borderRadius: "5px", overflow: "hidden", position: "relative", flexShrink: 0, background: "#ffffff" }}>
     <svg width="100%" height="100%" viewBox="0 0 82 50" fill="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}>
       <g opacity="0.4">
         {[0,20.56,41.13,61.69].flatMap((x) =>
@@ -549,10 +549,10 @@ export const ECGIcon = () => (
         )}
       </g>
     </svg>
-    <svg width="100%" height="100%" viewBox="0 0 74 44" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0 }}>
+    <svg width="100%" height="100%" viewBox="0 0 135 44" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0 }}>
       <polyline
-        points="0,30 5,30 7,32 9,14 11,36 13,30 19,30 23,20 25,5 27,32 29,30 39,20 41,5 43,32 45,30 56,22 58,7 60,34 62,30 74,30"
-        fill="none" stroke="#d43535" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"
+       points="0,30 10,30 14,32 18,14 22,36 26,30 38,30 46,20 50,5 54,32 58,30 74,20 78,5 82,32 86,30 106,22 110,7 114,34 118,30 135,30"
+        fill="none" stroke="#d43535" strokeWidth="2.8" strokeLinejoin="round" strokeLinecap="round"
       />
     </svg>
   </Box>
