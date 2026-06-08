@@ -61,6 +61,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import CallIcon from "@mui/icons-material/Call";
 import CloseIcon from "@mui/icons-material/Close";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 
 // SVG assets
 import {
@@ -84,6 +85,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ShareReportDialog from "./ShareReportDialog";
 import Event from "./Event";
 import ViewVitalTrends from "./ViewVitalTrends";
+import Action2 from "./Action2";
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -1352,6 +1354,8 @@ export default function AllEvents() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [openViewReport, setOpenViewReport] = useState(false);
 
+  const [openAction2, setOpenAction2] = useState(false);
+
   return (
     <>
       <style>{`
@@ -1851,25 +1855,18 @@ export default function AllEvents() {
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "room"}
-                        direction={orderBy === "room" ? order : "asc"}
-                        onClick={() => handleRequestSort("room")}
-                        hideSortIcon
-                      >
-                        <Box sx={{ lineHeight: 1.3 }}>
-                          <div>Flight #</div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              color: "rgba(210, 214, 219, 1)",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Seat
-                          </div>
-                        </Box>
-                      </TableSortLabel>
+                      <Box sx={{ lineHeight: 1.3 }}>
+                        <div>Name</div>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: "rgba(210, 214, 219, 1)",
+                            fontSize: "14px",
+                          }}
+                        >
+                          Age
+                        </div>
+                      </Box>
                     </TableCell>
                     <TableCell
                       sx={{
@@ -1877,25 +1874,18 @@ export default function AllEvents() {
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "name"}
-                        direction={orderBy === "name" ? order : "asc"}
-                        onClick={() => handleRequestSort("name")}
-                        hideSortIcon
-                      >
-                        <Box sx={{ lineHeight: 1.3 }}>
-                          <div>Name</div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              color: "rgba(210, 214, 219, 1)",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Age (Gender)
-                          </div>
-                        </Box>
-                      </TableSortLabel>
+                      <Box sx={{ lineHeight: 1.3 }}>
+                        <div>Patient</div>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: "rgba(210, 214, 219, 1)",
+                            fontSize: "14px",
+                          }}
+                        >
+                          ID
+                        </div>
+                      </Box>
                     </TableCell>
                     <TableCell
                       sx={{
@@ -1903,39 +1893,43 @@ export default function AllEvents() {
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "mrn"}
-                        direction={orderBy === "mrn" ? order : "asc"}
-                        onClick={() => handleRequestSort("mrn")}
-                        hideSortIcon
-                      >
-                        <Box sx={{ lineHeight: 1.3 }}>
-                          <div>MRN</div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              color: "rgba(210, 214, 219, 1)",
-                              fontSize: "14px",
-                            }}
-                          >
-                            (Patient ID)
-                          </div>
-                        </Box>
-                      </TableSortLabel>
+                      <Box sx={{ lineHeight: 1.3 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: "rgba(210, 214, 219, 1)",
+                            fontSize: "14px",
+                          }}
+                        >
+                          Duration
+                        </div>
+                      </Box>
                     </TableCell>
                     <TableCell
                       sx={{
-                        width: "9%",
+                        width: "10%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "status"}
-                        direction={orderBy === "status" ? order : "asc"}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          //alignItems: "center",
+                          justifyContent: "center",
+                          width: "100%",
+                          cursor: "pointer",
+                        }}
                         onClick={() => handleRequestSort("status")}
                       >
                         Status
-                      </TableSortLabel>
+                        <UnfoldMoreIcon
+                          sx={{
+                            fontSize: 20,
+                            fontWeight: 600,
+                            color: "rgba(210,214,219,1)",
+                          }}
+                        />
+                      </Box>
                     </TableCell>
                     <TableCell
                       sx={{
@@ -1943,14 +1937,22 @@ export default function AllEvents() {
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <TableSortLabel
-                          active={orderBy === "location"}
-                          direction={orderBy === "location" ? order : "asc"}
-                          onClick={() => handleRequestSort("location")}
-                        >
-                          Flight Route
-                        </TableSortLabel>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          //alignItems: "center",
+                          justifyContent: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        Route
+                        <KeyboardArrowDownIcon
+                          sx={{
+                            fontSize: 20,
+                            fontWeight: 600,
+                            color: "rgba(210,214,219,1)",
+                          }}
+                        />
                       </Box>
                     </TableCell>
 
@@ -1960,27 +1962,46 @@ export default function AllEvents() {
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "physician"}
-                        direction={orderBy === "physician" ? order : "asc"}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
                         onClick={() => handleRequestSort("physician")}
                       >
                         Physician
-                      </TableSortLabel>
+                        <KeyboardArrowDownIcon
+                          sx={{ fontSize: 20, fontWeight: 600 }}
+                        />
+                      </Box>
                     </TableCell>
+
                     <TableCell
                       sx={{
                         width: "11%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
-                      <TableSortLabel
-                        active={orderBy === "resident"}
-                        direction={orderBy === "resident" ? order : "asc"}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
                         onClick={() => handleRequestSort("resident")}
                       >
                         Crew
-                      </TableSortLabel>
+                        <KeyboardArrowDownIcon
+                          sx={{ fontSize: 20, fontWeight: 600 }}
+                        />
+                      </Box>
                     </TableCell>
 
                     {activeTab === "Sidelist" ? (
@@ -2596,12 +2617,17 @@ export default function AllEvents() {
                                       sx={{ p: "4px", flex: "0 0 auto" }}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleOpenEncounterModal(row);
+                                        setOpenAction2(true);
                                       }}
                                     >
                                       <ActionIcon2 />
                                     </IconButton>
                                   </Tooltip>
+                                  {openAction2 && (
+                                    <Action2
+                                      onClose={() => setOpenAction2(false)}
+                                    />
+                                  )}
 
                                   {canEditFacesheet && (
                                     <Tooltip

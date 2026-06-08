@@ -70,7 +70,7 @@ const SignInForm = () => {
   React.useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/Dashboard", { replace: true });
+      navigate("/all-events", { replace: true });
     }
   }, []);
 

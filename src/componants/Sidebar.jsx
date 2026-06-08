@@ -36,7 +36,7 @@ const Sidebar = ({ onAiClick, onRequestClose }) => {
   const isActive = (path) =>
     currentPath === path ||
     (path === "/rounding-list" && currentPath === "/view_details") ||
-    (path === "/Dashboard"     && currentPath === "/encounters");
+    (path === "/sign-in"     && currentPath === "/encounters");
 
   const itemSx = (active, hoverable) => ({
     width:  ITEM_SIZE,
