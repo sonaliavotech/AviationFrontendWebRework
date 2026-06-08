@@ -1,87 +1,121 @@
 import React from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
-import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
-import CoronavirusOutlinedIcon from "@mui/icons-material/CoronavirusOutlined";
-import ThermostatOutlinedIcon from "@mui/icons-material/ThermostatOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import OpacityOutlinedIcon from "@mui/icons-material/OpacityOutlined";
-import GraphicEqOutlinedIcon from "@mui/icons-material/GraphicEqOutlined";
-import SentimentSatisfiedAltOutlinedIcon from "@mui/icons-material/SentimentSatisfiedAltOutlined";
 import TimelineIcon from "@mui/icons-material/Timeline";
+
+import {
+  HeartRateIcon,
+  BloodPressureIcon,
+  OxygenIcon,
+  RespiratoryRateIcon,
+  TemperatureIcon,
+  SkinColorIcon,
+  SweatingIcon,
+  ECGIcon,
+  PainScoreIcon,
+  BloodGlucoseIcon,
+  AVPUIcon,
+} from "../../assets/Assets";
 
 const vitals = [
   {
     title: "Heart Rate",
     value: "88 bpm",
-    color: "#FFFFFF",
-    icon: <FavoriteBorderIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <HeartRateIcon />,
   },
   {
     title: "Blood Pressure",
     value: "135/85 mmHg",
-    color: "#FFFFFF",
-    icon: <MonitorHeartOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <BloodPressureIcon />,
   },
   {
     title: "Oxygen",
     value: "80%",
-    color: "#FF4D4F",
-    border: "#FF4D4F",
-    icon: <AirOutlinedIcon />,
+    color: "#FFFFFF",
+    labelColor: "#BDA7B5",
+    bg: "#4B2B43",
+    border: "#FF4D67",
+    icon: <OxygenIcon />,
   },
   {
     title: "Respiratory rate",
     value: "24 mins.",
-    color: "#FFA940",
-    border: "#FFA940",
-    icon: <CoronavirusOutlinedIcon />,
+    color: "#F8F8F8",
+    labelColor: "#C0B5AE",
+    bg: "#504844",
+    border: "#F5A03C",
+    icon: <RespiratoryRateIcon />,
   },
   {
     title: "Temperature",
     value: "34.5 C",
-    color: "#FFA940",
-    border: "#FFA940",
-    icon: <ThermostatOutlinedIcon />,
+    color: "#F8F8F8",
+    labelColor: "#C0B5AE",
+    bg: "#504844",
+    border: "#F5A03C",
+    icon: <TemperatureIcon />,
   },
   {
     title: "Skin Colour",
     value: "Normal",
-    color: "#FFFFFF",
-    icon: <VisibilityOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <SkinColorIcon />,
   },
   {
     title: "Sweating",
     value: "Mild",
-    color: "#FFFFFF",
-    icon: <OpacityOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <SweatingIcon />,
   },
   {
     title: "ECG",
     value: "Sinus",
-    color: "#FFFFFF",
-    icon: <GraphicEqOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <ECGIcon />,
   },
   {
     title: "Pain Score",
     value: "6/10",
-    color: "#FFFFFF",
-    icon: <SentimentSatisfiedAltOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <PainScoreIcon />,
   },
   {
     title: "Blood Glucose",
     value: "100 mg/dl",
-    color: "#FFFFFF",
-    icon: <OpacityOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <BloodGlucoseIcon />,
   },
   {
     title: "AVPU Score",
     value: "15",
-    color: "#FFFFFF",
-    border: "#1890FF",
-    icon: <SentimentSatisfiedAltOutlinedIcon />,
+    color: "#F2F6FC",
+    labelColor: "#8EA3BC",
+    bg: "#183355",
+    border: "#2A527C",
+    icon: <AVPUIcon />,
   },
 ];
 
@@ -100,9 +134,13 @@ function Action2({ onClose }) {
         overflowY: "auto",
         zIndex: 9999,
         boxSizing: "border-box",
+
+        "&::-webkit-scrollbar": {
+          width: "4px",
+        },
       }}
     >
-      {/* Header */}
+      {/* HEADER */}
       <Box
         sx={{
           background: "#132C4F",
@@ -152,29 +190,44 @@ function Action2({ onClose }) {
         </IconButton>
       </Box>
 
-      {/* Vital Cards */}
+      {/* VITAL CARDS */}
       {vitals.map((item, index) => (
         <Box
           key={index}
           sx={{
-            background: "#1A3254",
-            borderRadius: "10px",
-            px: 1,
-            py: 1,
+            background: item.bg,
+            borderRadius: "12px",
+            px: 1.5,
+            py: 1.2,
             mb: 1,
+
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            borderLeft: `3px solid ${item.border || "#FFFFFF"}`,
-            minHeight: "50px",
+
+            borderLeft: `3px solid ${item.border}`,
+
+            minHeight: "64px",
+            boxSizing: "border-box",
           }}
         >
-          <Box>
+          {/* LEFT CONTENT */}
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
             <Typography
               sx={{
-                color: "#9FB0C9",
+                color: item.labelColor,
                 fontSize: "11px",
-                lineHeight: 1,
+                fontWeight: 400,
+                lineHeight: "14px",
+                textAlign: "left",
                 mb: 0.3,
               }}
             >
@@ -185,21 +238,32 @@ function Action2({ onClose }) {
               sx={{
                 color: item.color,
                 fontSize: "14px",
-                fontWeight: 600,
-                lineHeight: 1.2,
+                fontWeight: 700,
+                lineHeight: "18px",
+                textAlign: "left",
               }}
             >
               {item.value}
             </Typography>
           </Box>
 
+          {/* RIGHT ICON */}
           <Box
             sx={{
-              color: "#60748E",
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
+
+              ml: 1,
+
               "& svg": {
-                fontSize: 18,
+                width: 22,
+                height: 22,
+                opacity: 0.65,
               },
             }}
           >

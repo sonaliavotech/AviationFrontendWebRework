@@ -530,7 +530,7 @@ export const BloodPressureIcon = () => (
 );
 
 export const ECGIcon = () => (
-  <Box sx={{ width: 74, height: 44, borderRadius: "5px", overflow: "hidden", position: "relative", flexShrink: 0, background: "#ffffff" }}>
+  <Box sx={{ width: 50, height: 44, borderRadius: "5px", overflow: "hidden", position: "relative", flexShrink: 0, background: "#ffffff" }}>
     <svg width="100%" height="100%" viewBox="0 0 82 50" fill="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}>
       <g opacity="0.4">
         {[0,20.56,41.13,61.69].flatMap((x) =>
