@@ -83,9 +83,10 @@ import {
 
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ShareReportDialog from "./ShareReportDialog";
-import Event from "./Event";
+import ViewReport from "./ViewReport";
 import ViewVitalTrends from "./ViewVitalTrends";
-import Action2 from "./Action2";
+import Action2 from "../Response/Action2";
+import Action3 from "../Response/Action3";
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -405,36 +406,36 @@ const staticProviderOptions = [
     isAdmittingPhysician: false,
     isResident: false,
   },
-  {
-    id: "res_1",
-    name: "Julia R",
-    specialty: "Cabin Crew",
-    status: "Available",
-    isProvider: false,
-    isPcpPhysician: false,
-    isAdmittingPhysician: false,
-    isResident: true,
-  },
-  {
-    id: "res_2",
-    name: "Mark Davis",
-    specialty: "Cabin Crew",
-    status: "Available",
-    isProvider: false,
-    isPcpPhysician: false,
-    isAdmittingPhysician: false,
-    isResident: true,
-  },
-  {
-    id: "res_3",
-    name: "Lisa Anderson",
-    specialty: "Senior Crew",
-    status: "On Call",
-    isProvider: false,
-    isPcpPhysician: false,
-    isAdmittingPhysician: false,
-    isResident: true,
-  },
+  // {
+  //   id: "res_1",
+  //   name: "Julia R",
+  //   specialty: "Cabin Crew",
+  //   status: "Available",
+  //   isProvider: false,
+  //   isPcpPhysician: false,
+  //   isAdmittingPhysician: false,
+  //   isResident: true,
+  // },
+  // {
+  //   id: "res_2",
+  //   name: "Mark Davis",
+  //   specialty: "Cabin Crew",
+  //   status: "Available",
+  //   isProvider: false,
+  //   isPcpPhysician: false,
+  //   isAdmittingPhysician: false,
+  //   isResident: true,
+  // },
+  // {
+  //   id: "res_3",
+  //   name: "Lisa Anderson",
+  //   specialty: "Senior Crew",
+  //   status: "On Call",
+  //   isProvider: false,
+  //   isPcpPhysician: false,
+  //   isAdmittingPhysician: false,
+  //   isResident: true,
+  // },
 ];
 
 export default function AllEvents() {
@@ -1393,6 +1394,7 @@ export default function AllEvents() {
   const [openViewReport, setOpenViewReport] = useState(false);
 
   const [openAction2, setOpenAction2] = useState(false);
+  const [openAction3, setOpenAction3] = useState(false);
 
   return (
     <>
@@ -2442,19 +2444,8 @@ export default function AllEvents() {
                             {/* Resident */}
                             <TableCell>
                               <Box
-                                contentEditable={isEditing("resident")}
                                 suppressContentEditableWarning
-                                onClick={() => {
-                                  if (!canAssignProvider) return;
-                                  if (!isEditing("resident")) {
-                                    setSelectedRow(row);
-                                    setSelectedDoctor("");
-                                    setSelectedDoctorId("");
-                                    setAssignSearch("");
-                                    setAssignType("resident");
-                                    setOpenAssignModal(true);
-                                  }
-                                }}
+                                onClick={() => {}}
                                 onBlur={(e) => {
                                   if (isEditing("resident")) {
                                     const newValue =
@@ -2685,6 +2676,12 @@ export default function AllEvents() {
                                     />
                                   )}
 
+                                  {openAction3 && (
+                                    <Action3
+                                      onClose={() => setOpenAction3(false)}
+                                    />
+                                  )}
+
                                   {canEditFacesheet && (
                                     <Tooltip
                                       // title="Facesheet"
@@ -2711,8 +2708,7 @@ export default function AllEvents() {
                                         }}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setFacesheetPatient(row);
-                                          setFacesheetOpen(true);
+                                          setOpenAction3(true);
                                         }}
                                       >
                                         <ActionIcon3 />
@@ -2934,7 +2930,10 @@ export default function AllEvents() {
           onClose={() => setOpenVitalTrends(false)}
         />
 
-        <Event open={openViewReport} onClose={() => setOpenViewReport(false)} />
+        <ViewReport
+          open={openViewReport}
+          onClose={() => setOpenViewReport(false)}
+        />
 
         <ShareReportDialog
           open={openShare}
@@ -3135,15 +3134,15 @@ export default function AllEvents() {
                   </Box>
                 ))}
 
-                {filteredAssignProviders.length === 0 && (
+                {/* {filteredAssignProviders.length === 0 && (
                   <Typography
                     sx={{ px: 1, py: 2, color: "#94A3B8", fontSize: 13 }}
                   >
                     {assignType === "resident"
                       ? "No residents found."
-                      : "No providers found."}
+                      : null }
                   </Typography>
-                )}
+                )} */}
               </Box>
 
               {/* Assign Button */}

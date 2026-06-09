@@ -4,13 +4,14 @@ import { Box } from "@mui/material";
 
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-import SearchKit from "../pages/SearchKit/SearchKit"
+//import SearchKit from "../pages/SearchKit/SearchKit"
 // import PatientVitalsSidebar from "../pages/AllEvents/Event";
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
+import FindMedicineInKit from "../pages/FindMedicineinKit/FindMedicineinKit";
 
 
-import Response from "../pages/Response/Response";
+// import Response from "../pages/Response/Response";
 
 
 // Lazy loaded pages
@@ -98,17 +99,17 @@ const CustomRoutes = () => {
       <Route path="/search-kit"
       element={
          <MainLayout>
-          <SearchKit/>
+          <FindMedicineInKit/>
          </MainLayout>
       }
       />
-      <Route path="/alerts"
+      {/* <Route path="/alerts"
         element={
           <MainLayout>
             <SearchKit />
           </MainLayout>
         }
-      />
+      /> */}
          <Route
         path="/FindMedicineinKit"
         element={
@@ -117,14 +118,16 @@ const CustomRoutes = () => {
           </MainLayout>
         }
       />
-         <Route
+         {/* <Route
         path="/Response"
         element={
           <MainLayout>
             <Response />
           </MainLayout>
         }
-      />
+      /> */}
+
+      
       {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
       <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
     </Routes>
