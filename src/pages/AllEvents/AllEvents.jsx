@@ -2190,7 +2190,7 @@ export default function AllEvents() {
                                 sx={{
                                   display: "inline-block",
                                   width: "fit-content",
-                                  cursor: isEditing(field) ? "text" : "pointer",
+                                  cursor: isEditing(field) ? "text" : "defult",
                                   minHeight: 20,
                                   outline: "none !important",
                                   border: "none !important",
@@ -2200,9 +2200,9 @@ export default function AllEvents() {
                                     ? "rgba(1, 93, 255, 0.18)"
                                     : "transparent",
                                   px: isEditing(field) ? 0.5 : 0,
-                                  "&:hover": {
-                                    bgcolor: "rgba(1, 93, 255, 0.12)",
-                                  },
+                                  // "&:hover": {
+                                  //   bgcolor: "rgba(1, 93, 255, 0.12)",
+                                  // },
                                   "&:focus": {
                                     outline: "none !important",
                                     border: "none !important",
@@ -2878,7 +2878,7 @@ export default function AllEvents() {
               gap: 1.5,
               fontSize: "14px",
               color: theme.textPrimary,
-              "&:hover": { backgroundColor: "rgba(77,163,255,0.1)" },
+              "&:hover": { backgroundColor: "rgba(255, 122, 77, 0.1)" },
             },
             "& .MuiDivider-root": {
               borderColor: theme.divider,
@@ -3003,6 +3003,7 @@ export default function AllEvents() {
                 fontSize={18}
                 sx={{
                   color: theme.textPrimary,
+                  mt: 2,
                   fontFamily:
                     "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                 }}
@@ -3013,7 +3014,9 @@ export default function AllEvents() {
                 size="small"
                 onClick={() => setOpenAssignModal(false)}
               >
-                <CloseIcon sx={{ fontSize: 20, color: theme.textPrimary }} />
+                <CloseIcon
+                  sx={{ fontSize: 20, color: theme.textPrimary, mt: 2 }}
+                />
               </IconButton>
             </Box>
             <Box
@@ -3047,7 +3050,7 @@ export default function AllEvents() {
                   border: darkMode ? "none" : `1px solid ${theme.borderColor}`,
                 }}
               >
-                <SearchIcon sx={{ color: theme.textSecondary, fontSize: 12 }} />
+                <SearchIcon sx={{ color: theme.textSecondary, fontSize: 16 }} />
                 <InputBase
                   placeholder="Search by name or specialty"
                   value={assignSearch}
@@ -3114,7 +3117,7 @@ export default function AllEvents() {
                         //fontWeight={300}
                         sx={{
                           color: theme.textPrimary,
-                          fontSize: "12px",
+                          fontSize: "14px",
                           fontWeight: 300,
                           fontFamily:
                             "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
@@ -3128,7 +3131,7 @@ export default function AllEvents() {
                         sx={{
                           color: "#228B22",
                           mt: 0.2,
-                          fontSize: "12px",
+                          fontSize: "14px",
                           fontFamily:
                             "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                         }}
@@ -3187,9 +3190,10 @@ export default function AllEvents() {
                   py: 1,
                   textTransform: "none",
                   fontWeight: 300,
+                  bgcolor: "#1251CC",
                   fontSize: "14px",
-                  bgcolor: theme.actionIconColor,
-                  "&:hover": { bgcolor: "#1251CC" },
+                  // bgcolor: theme.actionIconColor,
+                  // "&:hover": { bgcolor: "#1251CC" },
                 }}
                 onClick={async () => {
                   if (!selectedDoctor || !selectedDoctorId) return;
