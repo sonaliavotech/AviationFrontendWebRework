@@ -540,6 +540,20 @@ const SignInForm = () => {
       color: "#718096",
     },
     "& .MuiOutlinedInput-input::placeholder": { color: "#718096", opacity: 1 },
+    "& input:-webkit-autofill": {
+  WebkitBoxShadow: `0 0 0 1000px ${theme_colors.inputBg} inset !important`,
+  WebkitTextFillColor: isDark ? "#D2D6DB" : "#1A202C",
+  borderRadius: "12px",
+  transition: "background-color 9999s ease-in-out 0s",
+},
+
+"& input:-webkit-autofill:hover": {
+  WebkitBoxShadow: `0 0 0 1000px ${theme_colors.inputBg} inset !important`,
+},
+
+"& input:-webkit-autofill:focus": {
+  WebkitBoxShadow: `0 0 0 1000px ${theme_colors.inputBg} inset !important`,
+},
     "& .MuiInputAdornment-root": { marginRight: "6px" },
     // Hide browser native password reveal button
     "& input::-ms-reveal, & input::-ms-clear": { display: "none" },
