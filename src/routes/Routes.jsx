@@ -4,15 +4,18 @@ import { Box } from "@mui/material";
 
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-import SearchKit from "../pages/SearchKit/SearchKit"
+import SearchKit from "../pages/SearchKit/SearchKit";
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
 import { useThemeMode, getTheme } from "../context/ThemeContext";
+import NotificationPanel from "../pages/AllEvents/Alert";
 
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
 const SignIn = lazy(() => import("../componants/SignIn"));
-const FindMedicineinKit = lazy(() => import("../pages/FindMedicineinKit/FindMedicineinKit"));
+const FindMedicineinKit = lazy(
+  () => import("../pages/FindMedicineinKit/FindMedicineinKit"),
+);
 
 const MainLayout = ({ children }) => {
   const isAuthenticated = !!localStorage.getItem("token");
@@ -63,9 +66,7 @@ const MainLayout = ({ children }) => {
           {children}
         </Box>
 
-        {openChat && (
-          <ChatWidget onClose={handleCloseChat} visible={visible} />
-        )}
+        {openChat && <ChatWidget onClose={handleCloseChat} visible={visible} />}
       </Box>
     </ProtectedRoute>
   );
@@ -85,15 +86,42 @@ const CustomRoutes = () => {
             </MainLayout>
           }
         />
-        <Route path="/search-kit"
-        element={
-           <MainLayout>
-            <SearchKit/>
-           </MainLayout>
-        }
+
+        <Route
+          path="/search-kit"
+          element={
+            <MainLayout>
+              <SearchKit />
+            </MainLayout>
+          }
         />
-        {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
-        <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
+
+        <Route
+          path="/find-medicine"
+          element={
+            <MainLayout>
+              <FindMedicineinKit />
+            </MainLayout>
+          }
+        />
+
+        <Route
+          path="/alert"
+          element={
+            <MainLayout>
+              <NotificationPanel />
+            </MainLayout>
+          }
+        />
+
+        <Route
+          path="/CaseDetails"
+          element={
+            <MainLayout>
+              <CaseDetails />
+            </MainLayout>
+          }
+        />
 
         {/* Redirect root and unknown paths */}
         <Route path="/" element={<Navigate to="/all-events" replace />} />
