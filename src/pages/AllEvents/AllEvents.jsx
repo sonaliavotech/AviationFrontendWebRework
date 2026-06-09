@@ -2154,6 +2154,7 @@ export default function AllEvents() {
                           fontWeight: 500,
                           color: theme.textSecondary,
                           backgroundColor: theme.tableRowBg,
+                          borderBottom: "none",
                         }}
                       >
                         No Patient Found
