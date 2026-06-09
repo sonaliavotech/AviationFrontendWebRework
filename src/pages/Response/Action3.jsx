@@ -8,6 +8,8 @@ import {
     useTheme,
     useMediaQuery,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+
 import { EcgBg, SyncIcon, DeviceConnectedIcon, VideoCallIcon, NotificationIcon, AIAssistIcon } from "../../assets/Assets";
 import EcgWaveSvg from "../../assets/ECG-Graph.svg";
 import Lead1Svg from "../../assets/lead1.svg";
@@ -121,20 +123,26 @@ const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
     );
 };
 
-const Response = () => {
+function Action3({ onClose }) {
     const theme = useTheme();
     const isMd = useMediaQuery(theme.breakpoints.down("md"));
     const [time] = useState("Today 12:00 PM");
 
     return (
         <Box
-            sx={{
-                background: "#0a1628",
-                minHeight: "100vh",
-                fontFamily: "'Inter', sans-serif",
-                color: "#D2D6DB",
-            }}
-        >
+  sx={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100vh",
+    background: "#0a1628",
+    fontFamily: "'Inter', sans-serif",
+    color: "#D2D6DB",
+    zIndex: 9999,
+    overflowY: "auto",
+  }}
+>
             {/* Top Bar */}
             <Box
                 sx={{
@@ -191,6 +199,20 @@ const Response = () => {
                         Last synced {time}
                     </Typography>
                 </Box>
+                <Box sx={{ ml: "auto" }}>
+  <IconButton
+    onClick={onClose}
+    sx={{
+      width: 36,
+      height: 36,
+      borderRadius: "10px",
+      color: "#fff",
+      background: "rgba(255,255,255,0.08)",
+    }}
+  >
+    <CloseIcon />
+  </IconButton>
+</Box>
             </Box>
 
             {/* Main Layout - Responsive */}
@@ -581,4 +603,4 @@ const Response = () => {
     );
 };
 
-export default Response;
+export default Action3;

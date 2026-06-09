@@ -27,7 +27,6 @@ function ECGWaveform() {
     >
       <rect width="120" height="52" fill="white" />
 
-
       <polyline
         points="
           0,26
@@ -187,7 +186,7 @@ function Action2({ onClose }) {
         position: "fixed",
         top: 0,
         right: 0,
-        width: "280px",
+        width: "300px",
         height: "100vh",
         background: "#081B36",
         borderLeft: "1px solid rgba(255,255,255,0.08)",
@@ -195,7 +194,7 @@ function Action2({ onClose }) {
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",         // ← no scroll at all
+        overflow: "hidden", // ← no scroll at all
         p: 1.5,
       }}
     >
@@ -206,25 +205,22 @@ function Action2({ onClose }) {
           alignItems: "flex-start",
           gap: 1,
           mb: 1.5,
-          flexShrink: 0,            // ← header never shrinks
+          flexShrink: 0, // ← header never shrinks
         }}
       >
-        <Box
-          sx={{
-            flex: 1,
-            background: "#132C4F",
-            borderRadius: "10px",
-            px: 1.5,
-            py: 1.2,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <TimelineIcon sx={{ color: "#FFFFFF", fontSize: 18 }} />
-            <Typography sx={{ color: "#FFFFFF", fontSize: "14px", fontWeight: 500 }}>
-              Show Vital trends
-            </Typography>
+        <Box>
+          <Box
+            style={{
+              color: "#fff",
+              fontWeight: 500,
+              fontSize: "15px",
+              marginRight: "40px",
+            }}
+          >
+            John Smith, 58 M
+          </Box>
+          <Box style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>
+            Flight AA1234 (SYD → LAX)
           </Box>
         </Box>
 
@@ -234,6 +230,7 @@ function Action2({ onClose }) {
           sx={{
             color: "#FFFFFF",
             marginTop: "3px",
+            marginLeft: "75px",
             width: 32,
             height: 32,
             borderRadius: "10px",
@@ -251,7 +248,7 @@ function Action2({ onClose }) {
           display: "flex",
           flexDirection: "column",
           gap: 1,
-          overflow: "hidden",       // ← no scroll
+          overflow: "hidden", // ← no scroll
         }}
       >
         {vitals.map((item, index) => (
@@ -262,7 +259,7 @@ function Action2({ onClose }) {
               borderRadius: item.title === "ECG" ? "14px" : "12px",
               px: item.title === "ECG" ? 0 : 1.5,
               py: item.title === "ECG" ? 0 : 0,
-              flex: 1,              // ← each card takes equal share of height
+              flex: 1, // ← each card takes equal share of height
               display: "flex",
               alignItems: "center",
               borderLeft: `3px solid ${item.border}`,
