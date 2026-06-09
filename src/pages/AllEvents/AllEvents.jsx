@@ -353,6 +353,40 @@ const staticPatientData = [
     created_at: "2026-06-01T08:00:00Z",
     duration: "Just now",
   },
+
+  {
+    id: "enc_7",
+    patientDbId: "pat_107",
+    encounterId: "enc_7",
+    room: "AA1234",
+    bed: "A15",
+    name: "John Cook",
+    age: "45y",
+    gender: "male",
+    mrn: "719471345",
+    status: "Critical",
+    location: "SYD → LAX",
+    physician: "Alex Tobar",
+    providerId: "prov_6", // New provider ID
+    providerRole: "DOCTOR",
+    resident: "Julia R",
+    residentId: "",
+    residentRole: "",
+    visitStatus: "Seen",
+    seenByRole: "PHYSICIAN",
+    visitType: "IP",
+    dos: "2026-06-09",
+    fin: "FIN12351",
+    facesheet: "",
+    noteStatus: "Draft",
+    is_sidelist: false, // New is_sidelist value
+    sidelist_reason: "", // New sidelist_reason value
+    is_marked: false, // New is_marked value
+    updated_at: "2026-06-02T11:00:00Z",
+    created_at: "2026-06-01T14:00:00Z",
+    duration: "Just now",
+  }
+
 ];
 
 // Static provider options for assign modal
