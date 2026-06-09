@@ -473,9 +473,57 @@ const staticProviderOptions = [
   // },
 ];
 
+const INITIAL_TABLE_FILTERS = {
+  roundingStatus: [],
+  physician: [],
+  crew: [],
+  status: [],
+};
+
+const FILTER_CATEGORIES = [
+  { id: "roundingStatus", label: "Rounding status", section: "Sort by" },
+  { id: "physician", label: "Physician", section: "Filter by" },
+  { id: "crew", label: "Crew", section: "Filter by" },
+  { id: "status", label: "Status", section: "Filter by" },
+];
+
+const ROUNDING_STATUS_OPTIONS = [
+  { value: "Seen", label: "Seen" },
+  { value: "Unseen", label: "Unseen" },
+  { value: "Sidelist", label: "Sidelist" },
+];
+
 export default function AllEvents() {
   const { darkMode } = useThemeMode();
   const theme = getTheme(darkMode);
+  const tableHeaderColor = darkMode ? "#FFFFFF" : "#000000";
+  const crewValueStyles = darkMode
+    ? {
+        backgroundColor: "rgba(14, 86, 72, 1)",
+        color: "rgba(232, 248, 245, 1)",
+      }
+    : {
+        backgroundColor: "rgba(232, 248, 245, 1)",
+        color: "rgba(18, 133, 132, 1)",
+      };
+  const getPhysicianValueStyles = (hasPhysician) => {
+    if (darkMode) {
+      return {
+        backgroundColor: "rgba(76, 61, 12, 1)",
+        color: "rgba(255, 241, 194, 1)",
+      };
+    }
+    if (hasPhysician) {
+      return {
+        backgroundColor: "rgba(232, 248, 245, 1)",
+        color: "rgba(18, 133, 132, 1)",
+      };
+    }
+    return {
+      backgroundColor: "rgba(255, 241, 194, 1)",
+      color: "rgba(191, 106, 2, 1)",
+    };
+  };
 
   const actionIconButtonSx = {
     p: "4px",
@@ -505,8 +553,15 @@ export default function AllEvents() {
     severity: "success",
   });
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [activeFilterCategory, setActiveFilterCategory] =
+    useState("roundingStatus");
+  const [appliedTableFilters, setAppliedTableFilters] = useState(
+    INITIAL_TABLE_FILTERS,
+  );
+  const [pendingTableFilters, setPendingTableFilters] = useState(
+    INITIAL_TABLE_FILTERS,
+  );
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
-  const [roundingStatusFilter, setRoundingStatusFilter] = useState("");
   const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [activityLogPatient, setActivityLogPatient] = useState(null);
 
@@ -783,36 +838,129 @@ export default function AllEvents() {
     );
   }, [tabFilteredRows, patientSearch]);
 
+  const isSidelistFilterActive =
+    appliedTableFilters.roundingStatus.includes("Sidelist");
+
+  const filterOptionsByCategory = React.useMemo(() => {
+    const uniqueValues = (values) =>
+      [...new Set(values.map((value) => String(value || "").trim()))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+    const physicians = uniqueValues(searchFilteredRows.map((row) => row.physician));
+    const crews = uniqueValues(searchFilteredRows.map((row) => row.resident));
+    const statuses = uniqueValues(searchFilteredRows.map((row) => row.status));
+
+    return {
+      roundingStatus: ROUNDING_STATUS_OPTIONS,
+      physician: [
+        ...physicians.map((name) => ({ value: name, label: name })),
+        { value: "__unassigned__", label: "Unassigned" },
+      ],
+      crew: crews.map((name) => ({ value: name, label: name })),
+      status: statuses.map((name) => ({ value: name, label: name })),
+    };
+  }, [searchFilteredRows]);
+
+  const handleOpenFilterModal = () => {
+    setPendingTableFilters(appliedTableFilters);
+    setActiveFilterCategory("roundingStatus");
+    setFilterModalOpen(true);
+  };
+
+  const togglePendingFilter = (categoryId, value) => {
+    setPendingTableFilters((prev) => {
+      const current = prev[categoryId] || [];
+      const next = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value];
+      return { ...prev, [categoryId]: next };
+    });
+  };
+
+  const handleClearPendingFilters = () => {
+    setPendingTableFilters(INITIAL_TABLE_FILTERS);
+  };
+
+  const handleApplyTableFilters = () => {
+    setAppliedTableFilters(pendingTableFilters);
+    setPage(0);
+    setFilterModalOpen(false);
+  };
+
+  const rowMatchesTableFilters = (row, filters) => {
+    const roundingSelections = filters.roundingStatus || [];
+
+    if (roundingSelections.length > 0) {
+      let roundingMatch = false;
+
+      if (
+        roundingSelections.includes("Seen") &&
+        !row.is_sidelist &&
+        !row.is_marked &&
+        isRowSeen(row)
+      ) {
+        roundingMatch = true;
+      }
+
+      if (
+        roundingSelections.includes("Unseen") &&
+        !row.is_sidelist &&
+        !row.is_marked &&
+        !isRowSeen(row)
+      ) {
+        roundingMatch = true;
+      }
+
+      if (
+        roundingSelections.includes("Sidelist") &&
+        row.is_sidelist === true &&
+        String(row.sidelist_reason || "").trim() !== ""
+      ) {
+        roundingMatch = true;
+      }
+
+      if (!roundingMatch) {
+        return false;
+      }
+    } else if (row.is_sidelist || row.is_marked) {
+      return false;
+    }
+
+    if (filters.physician?.length > 0) {
+      const physicianName = String(row.physician || "").trim();
+      const physicianMatch =
+        physicianName && filters.physician.includes(physicianName);
+      const unassignedMatch =
+        !physicianName && filters.physician.includes("__unassigned__");
+
+      if (!physicianMatch && !unassignedMatch) {
+        return false;
+      }
+    }
+
+    if (filters.crew?.length > 0) {
+      const crewName = String(row.resident || "").trim();
+      if (!crewName || !filters.crew.includes(crewName)) {
+        return false;
+      }
+    }
+
+    if (filters.status?.length > 0) {
+      const status = String(row.status || "").trim();
+      if (!status || !filters.status.includes(status)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const displayRows = React.useMemo(() => {
-    let filtered = searchFilteredRows;
-
-    if (roundingStatusFilter === "Sidelist") {
-      return filtered.filter(
-        (row) =>
-          row.is_sidelist === true &&
-          row.sidelist_reason &&
-          row.sidelist_reason.trim() !== "",
-      );
-    }
-
-    if (roundingStatusFilter === "Marked not seen") {
-      return filtered.filter((row) => row.is_marked === true);
-    }
-
-    if (roundingStatusFilter === "Unseen") {
-      return filtered.filter(
-        (row) => !row.is_sidelist && !row.is_marked && !isRowSeen(row),
-      );
-    }
-
-    if (roundingStatusFilter === "Seen") {
-      return filtered.filter(
-        (row) => !row.is_sidelist && !row.is_marked && isRowSeen(row),
-      );
-    }
-
-    return filtered.filter((row) => !row.is_sidelist && !row.is_marked);
-  }, [searchFilteredRows, roundingStatusFilter]);
+    return searchFilteredRows.filter((row) =>
+      rowMatchesTableFilters(row, appliedTableFilters),
+    );
+  }, [searchFilteredRows, appliedTableFilters]);
 
   const sortedRows = React.useMemo(() => {
     const comparator = (a, b) => {
@@ -1495,15 +1643,15 @@ export default function AllEvents() {
           {/* Row 1: Doctor card + 4 stat cards */}
           <Box
             sx={{
-              display: "flex",
-              flexWrap: "wrap",
+              display: "grid",
+              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
               gap: 1.5,
               width: "100%",
               mb: 2,
             }}
           >
             {/* Doctor Card */}
-            <Box sx={{ flex: "1 1 180px", minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, height: "80px" }}>
               <Box
                 sx={{
                   background: "rgba(40, 151, 255, 1)",
@@ -1511,7 +1659,8 @@ export default function AllEvents() {
                   borderRadius: "16px",
                   px: 2,
                   py: 1,
-                  height: "80px",
+                  height: "100%",
+                  width: "100%",
                   display: "flex",
                   alignItems: "center",
                   gap: 1.5,
@@ -1531,26 +1680,40 @@ export default function AllEvents() {
                 >
                   {providerInitials}
                 </Avatar>
-                <Box sx={{ lineHeight: 1.3, overflow: "hidden" }}>
+                <Box sx={{ lineHeight: 1.15, overflow: "hidden" }}>
                   <Typography
-                    fontSize={10}
+                    variant="inherit"
                     noWrap
-                    sx={{ opacity: 0.9, color: "#fff" }}
+                    sx={{
+                      fontSize: "11px",
+                      lineHeight: 1.15,
+                      opacity: 0.9,
+                      color: "#fff",
+                    }}
                   >
                     {greetingText}
                   </Typography>
                   <Typography
-                    fontWeight={700}
-                    fontSize={10}
+                    variant="inherit"
                     noWrap
-                    color="#fff"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "16px",
+                      lineHeight: 1.15,
+                      color: "#fff",
+                    }}
                   >
                     {providerDisplayName}
                   </Typography>
                   <Typography
-                    fontSize={10}
+                    variant="inherit"
                     noWrap
-                    sx={{ opacity: 0.85, color: "#fff" }}
+                    sx={{
+                      fontSize: "11px",
+                      lineHeight: 1.15,
+                      opacity: 0.85,
+                      color: "#fff",
+                    }}
                   >
                     {providerSubtitle}
                   </Typography>
@@ -1573,7 +1736,7 @@ export default function AllEvents() {
               },
               { value: "XX", label: "Critical Cases", icon: CriticalCasesIcon },
             ].map((item, i) => (
-              <Box key={i} sx={{ flex: "1 1 120px", minWidth: 0 }}>
+              <Box key={i} sx={{ minWidth: 0, height: "80px" }}>
                 <Box
                   sx={{
                     bgcolor: theme.statCardBg,
@@ -1583,7 +1746,8 @@ export default function AllEvents() {
                     display: "flex",
                     alignItems: "center",
                     gap: 1.5,
-                    height: "80px",
+                    height: "100%",
+                    width: "100%",
                     border: `1px solid ${theme.statCardBorder}`,
                     color: theme.textPrimary,
                     transition: "background 0.3s, border 0.3s",
@@ -1607,14 +1771,14 @@ export default function AllEvents() {
                   <Box sx={{ minWidth: 0 }}>
                     <Typography
                       fontWeight={700}
-                      fontSize={18}
-                      lineHeight={1.1}
+                      fontSize="18px"
+                      lineHeight="1.1"
                       color={theme.textPrimary}
                     >
                       {item.value}
                     </Typography>
                     <Typography
-                      fontSize={10}
+                      fontSize="10px"
                       fontWeight={700}
                       color={theme.textSecondary}
                       sx={{
@@ -1807,7 +1971,7 @@ export default function AllEvents() {
               }}
             >
               <Button
-                onClick={() => setFilterModalOpen(true)}
+                onClick={handleOpenFilterModal}
                 startIcon={<FilterSortIcon />}
                 sx={{
                   borderRadius: "10px",
@@ -1914,7 +2078,7 @@ export default function AllEvents() {
                         backgroundColor: theme.tableHeadBg,
                         fontWeight: 700,
                         fontSize: "13px",
-                        color: theme.textPrimary,
+                        color: tableHeaderColor,
                         padding: "6px 6px",
                         borderBottom: "none",
                         whiteSpace: "normal",
@@ -1924,17 +2088,17 @@ export default function AllEvents() {
                         transition: "background 0.3s, color 0.3s",
                       },
                       "& .MuiTableSortLabel-root": {
-                        color: theme.textPrimary,
+                        color: tableHeaderColor,
                         width: "100%",
                         display: "flex",
                         justifyContent: "center",
                         textAlign: "center",
                       },
                       "& .MuiTableSortLabel-root:hover": {
-                        color: theme.textPrimary,
+                        color: tableHeaderColor,
                       },
                       "& .MuiTableSortLabel-root.Mui-active": {
-                        color: theme.textPrimary,
+                        color: tableHeaderColor,
                       },
                     }}
                   >
@@ -1977,7 +2141,7 @@ export default function AllEvents() {
                         <div
                           style={{
                             fontWeight: 600,
-                            color: "rgba(210, 214, 219, 1)",
+                            color: tableHeaderColor,
                             fontSize: "14px",
                           }}
                         >
@@ -1996,7 +2160,7 @@ export default function AllEvents() {
                         <div
                           style={{
                             fontWeight: 600,
-                            color: "rgba(210, 214, 219, 1)",
+                            color: tableHeaderColor,
                             fontSize: "14px",
                           }}
                         >
@@ -2014,7 +2178,7 @@ export default function AllEvents() {
                         <div
                           style={{
                             fontWeight: 600,
-                            color: "rgba(210, 214, 219, 1)",
+                            color: tableHeaderColor,
                             fontSize: "14px",
                           }}
                         >
@@ -2043,7 +2207,7 @@ export default function AllEvents() {
                           sx={{
                             fontSize: 20,
                             fontWeight: 600,
-                            color: "rgba(210,214,219,1)",
+                            color: tableHeaderColor,
                           }}
                         />
                       </Box>
@@ -2067,7 +2231,7 @@ export default function AllEvents() {
                           sx={{
                             fontSize: 20,
                             fontWeight: 600,
-                            color: "rgba(210,214,219,1)",
+                            color: tableHeaderColor,
                           }}
                         />
                       </Box>
@@ -2092,7 +2256,11 @@ export default function AllEvents() {
                       >
                         Physician
                         <KeyboardArrowDownIcon
-                          sx={{ fontSize: 20, fontWeight: 600 }}
+                          sx={{
+                            fontSize: 20,
+                            fontWeight: 600,
+                            color: tableHeaderColor,
+                          }}
                         />
                       </Box>
                     </TableCell>
@@ -2116,7 +2284,11 @@ export default function AllEvents() {
                       >
                         Crew
                         <KeyboardArrowDownIcon
-                          sx={{ fontSize: 20, fontWeight: 600 }}
+                          sx={{
+                            fontSize: 20,
+                            fontWeight: 600,
+                            color: tableHeaderColor,
+                          }}
                         />
                       </Box>
                     </TableCell>
@@ -2133,7 +2305,7 @@ export default function AllEvents() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {roundingStatusFilter === "Sidelist" ? (
+                        {isSidelistFilterActive ? (
                           <>Reasons</>
                         ) : (
                           <> Actions</>
@@ -2313,7 +2485,10 @@ export default function AllEvents() {
                                 {row.name}
                                 <Typography
                                   fontWeight={600}
-                                  sx={{ fontSize: "11px", color: "#C0B5AE" }}
+                                  sx={{
+                                    fontSize: "11px",
+                                    color: darkMode ? "#C0B5AE" : "#000000",
+                                  }}
                                 >
                                   {row.age} ({row.gender})
                                 </Typography>
@@ -2479,12 +2654,10 @@ export default function AllEvents() {
                                       px: 1.6,
                                       py: 0.8,
                                       borderRadius: "20px",
-                                      backgroundColor:
-                                        "rgba(161, 120, 0, 0.85)",
-                                      color: "rgba(255, 241, 194, 1)",
                                       fontSize: "12px",
                                       fontWeight: 600,
                                       lineHeight: 1,
+                                      ...getPhysicianValueStyles(true),
                                     }}
                                   >
                                     {row.physician}
@@ -2496,13 +2669,11 @@ export default function AllEvents() {
                                       px: 1.5,
                                       py: 0.5,
                                       borderRadius: "20px",
-                                      backgroundColor:
-                                        "rgba(161, 120, 0, 0.85)",
-                                      color: "rgba(255, 241, 194, 1)",
                                       fontSize: "12px",
                                       fontWeight: 600,
                                       minWidth: "90px",
                                       textAlign: "center",
+                                      ...getPhysicianValueStyles(false),
                                     }}
                                   >
                                     Assign
@@ -2571,12 +2742,10 @@ export default function AllEvents() {
                                       px: 1.6,
                                       py: 0.8,
                                       borderRadius: "20px",
-                                      backgroundColor:
-                                        "rgba(16, 120, 100, 0.7)",
-                                      color: "rgba(210, 214, 219, 1)",
                                       fontSize: "12px",
                                       fontWeight: 600,
                                       lineHeight: 1,
+                                      ...crewValueStyles,
                                     }}
                                   >
                                     {row.resident}
@@ -2588,13 +2757,11 @@ export default function AllEvents() {
                                       px: 1.5,
                                       py: 0.5,
                                       borderRadius: "8px",
-                                      backgroundColor:
-                                        "rgba(161, 120, 0, 0.85)",
-                                      color: "rgba(210, 214, 219, 1)",
                                       fontSize: "12px",
                                       fontWeight: 600,
                                       minWidth: "90px",
                                       textAlign: "center",
+                                      ...crewValueStyles,
                                     }}
                                   >
                                     Test Crew
@@ -2603,7 +2770,7 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
-                            {roundingStatusFilter === "Sidelist" ? (
+                            {isSidelistFilterActive ? (
                               <TableCell
                                 sx={{ width: "25%", minWidth: "200px" }}
                               >
@@ -3004,6 +3171,233 @@ export default function AllEvents() {
           handleClose={() => setOpenShare(false)}
           patient={selectedPatient}
         />
+
+        <Dialog
+          open={filterModalOpen}
+          onClose={() => setFilterModalOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          sx={{
+            "& .MuiPaper-root": {
+              borderRadius: "16px !important",
+              overflow: "hidden",
+              width: "520px",
+              maxWidth: "520px",
+              bgcolor: darkMode ? theme.modalBg : "#FFFFFF",
+              boxShadow: "0 12px 40px rgba(15, 23, 42, 0.18)",
+            },
+          }}
+        >
+          <DialogContent sx={{ p: 0 }}>
+            <Box
+              sx={{
+                px: 3,
+                py: 2.25,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: `1px solid ${darkMode ? theme.modalDivider : "#E5E7EB"}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "18px",
+                  color: theme.textPrimary,
+                }}
+              >
+                Filter & sort
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setFilterModalOpen(false)}
+                sx={{ color: theme.textSecondary }}
+              >
+                <CloseIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                minHeight: 300,
+                maxHeight: "52vh",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 190,
+                  flexShrink: 0,
+                  bgcolor: darkMode ? "rgba(255,255,255,0.04)" : "#F3F4F6",
+                  py: 2,
+                  overflowY: "auto",
+                }}
+              >
+                {["Sort by", "Filter by"].map((section) => (
+                  <Box key={section} sx={{ mb: 1.5 }}>
+                    <Typography
+                      sx={{
+                        px: 2,
+                        mb: 0.75,
+                        fontSize: "12px",
+                        fontWeight: 500,
+                        color: theme.textSecondary,
+                      }}
+                    >
+                      {section}
+                    </Typography>
+                    {FILTER_CATEGORIES.filter(
+                      (category) => category.section === section,
+                    ).map((category) => (
+                      <Box
+                        key={category.id}
+                        onClick={() => setActiveFilterCategory(category.id)}
+                        sx={{
+                          px: 2,
+                          py: 1.25,
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight:
+                            activeFilterCategory === category.id ? 700 : 500,
+                          color: theme.textPrimary,
+                          bgcolor:
+                            activeFilterCategory === category.id
+                              ? darkMode
+                                ? "rgba(255,255,255,0.08)"
+                                : "#FFFFFF"
+                              : "transparent",
+                          transition: "background 0.2s",
+                        }}
+                      >
+                        {category.label}
+                      </Box>
+                    ))}
+                  </Box>
+                ))}
+              </Box>
+
+              <Box
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  px: 2.5,
+                  overflowY: "auto",
+                  bgcolor: darkMode ? theme.modalBg : "#FFFFFF",
+                }}
+              >
+                {(filterOptionsByCategory[activeFilterCategory] || []).length ===
+                0 ? (
+                  <Typography
+                    sx={{
+                      py: 2,
+                      fontSize: "14px",
+                      color: theme.textSecondary,
+                    }}
+                  >
+                    No options available
+                  </Typography>
+                ) : (
+                  (filterOptionsByCategory[activeFilterCategory] || []).map(
+                    (option) => (
+                      <Box
+                        key={option.value}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          py: 1.25,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: "15px",
+                            fontWeight: 500,
+                            color: theme.textPrimary,
+                          }}
+                        >
+                          {option.label}
+                        </Typography>
+                        <Checkbox
+                          checked={(pendingTableFilters[activeFilterCategory] || []).includes(
+                            option.value,
+                          )}
+                          onChange={() =>
+                            togglePendingFilter(
+                              activeFilterCategory,
+                              option.value,
+                            )
+                          }
+                          sx={{
+                            p: 0.5,
+                            color: darkMode ? "rgba(148,163,184,0.8)" : "#CBD5E1",
+                            "&.Mui-checked": {
+                              color: darkMode ? "#4DA3FF" : "#2563EB",
+                            },
+                          }}
+                        />
+                      </Box>
+                    ),
+                  )
+                )}
+              </Box>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 3,
+                py: 2,
+                borderTop: `1px solid ${darkMode ? theme.modalDivider : "#E5E7EB"}`,
+              }}
+            >
+              <Button
+                onClick={handleClearPendingFilters}
+                sx={{
+                  borderRadius: "999px",
+                  textTransform: "none",
+                  px: 2.5,
+                  py: 0.75,
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  border: `1.5px solid ${darkMode ? theme.btnOutlineBorder : "#2563EB"}`,
+                  color: darkMode ? theme.btnOutlineText : "#2563EB",
+                  backgroundColor: "transparent",
+                  minWidth: 110,
+                  "&:hover": {
+                    backgroundColor: darkMode
+                      ? "rgba(77,163,255,0.08)"
+                      : "rgba(37,99,235,0.05)",
+                  },
+                }}
+              >
+                Clear all
+              </Button>
+              <Button
+                onClick={handleApplyTableFilters}
+                sx={{
+                  borderRadius: "999px",
+                  textTransform: "none",
+                  px: 3,
+                  py: 0.75,
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  minWidth: 110,
+                  color: "#FFFFFF",
+                  backgroundColor: darkMode ? "#2563EB" : "#2563EB",
+                  boxShadow: "none",
+                  "&:hover": {
+                    backgroundColor: darkMode ? "#1D4ED8" : "#1D4ED8",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                Apply
+              </Button>
+            </Box>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={openAssignModal}
