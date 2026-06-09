@@ -1,79 +1,73 @@
 import React from "react";
-import {
-  Box,
-  IconButton,
-  Typography,
-  Avatar,
-  TextField,
-} from "@mui/material";
+import { Box, IconButton, Typography, Avatar, TextField } from "@mui/material";
 import tia from "../../assets/tia.png";
+import { useThemeMode, getTheme } from "../../context/ThemeContext";
 
 import RemoveIcon from "@mui/icons-material/Remove";
 import CloseIcon from "@mui/icons-material/Close";
 
 export default function ChatWidget({ onClose, visible }) {
+  const { darkMode } = useThemeMode();
+  const theme = getTheme(darkMode);
+
   return (
-  <Box
-  sx={{
-    position: "fixed",
+    <Box
+      sx={{
+        position: "fixed",
 
-    bottom: {
-      xs: 10,
-      sm: 15,
-      md: 20,
-    },
+        bottom: {
+          xs: 10,
+          sm: 15,
+          md: 20,
+        },
 
-    // RIGHT OF SIDEBAR + GAP
-    left: {
-      xs: "88px",   // mobile
-      sm: "105px",  // tablet
-      md: "110px",  // ipad / medium
-      lg: "108px",  // desktop
-      xl: "112px",  // large screens
-    },
+        // RIGHT OF SIDEBAR + GAP
+        left: {
+          xs: "88px", // mobile
+          sm: "105px", // tablet
+          md: "110px", // ipad / medium
+          lg: "108px", // desktop
+          xl: "112px", // large screens
+        },
 
-    transform: visible
-      ? "translateY(0)"
-      : "translateY(20px)",
+        transform: visible ? "translateY(0)" : "translateY(20px)",
 
-    width: {
-      xs: "calc(100vw - 98px)",
-      sm: 320,
-      md: 340,
-      lg: 360,
-      xl: 380,
-    },
+        width: {
+          xs: "calc(100vw - 98px)",
+          sm: 320,
+          md: 340,
+          lg: 360,
+          xl: 380,
+        },
 
-    maxWidth: "380px",
+        maxWidth: "380px",
 
-    height: {
-      xs: "72vh",
-      sm: "68vh",
-      md: 430,
-      lg: 490,
-    },
+        height: {
+          xs: "72vh",
+          sm: "68vh",
+          md: 430,
+          lg: 490,
+        },
 
-    maxHeight: "90vh",
+        maxHeight: "90vh",
 
-    borderRadius: "18px",
+        borderRadius: "18px",
 
-    boxShadow:
-      "0px 12px 30px rgba(0,0,0,0.22)",
+        boxShadow: "0px 12px 30px rgba(0,0,0,0.22)",
 
-    overflow: "hidden",
-    zIndex: 9999,
+        overflow: "hidden",
+        zIndex: 9999,
 
-    display: "flex",
-    flexDirection: "column",
+        display: "flex",
+        flexDirection: "column",
 
-    opacity: visible ? 1 : 0,
+        opacity: visible ? 1 : 0,
 
-    transition:
-      "transform 0.3s ease, opacity 0.3s ease",
+        transition: "transform 0.3s ease, opacity 0.3s ease",
 
-    pointerEvents: visible ? "auto" : "none",
-  }}
->
+        pointerEvents: visible ? "auto" : "none",
+      }}
+    >
       {/* HEADER */}
       <Box
         sx={{
@@ -218,54 +212,44 @@ export default function ChatWidget({ onClose, visible }) {
         sx={{
           flex: 1,
           p: 2,
-          backgroundColor: "#0B1D35",
-
-          backgroundImage:
-            "radial-gradient(rgba(2,88,159,0.08) 1px, transparent 1px)",
-
+          backgroundColor: theme.pageBg,
+          backgroundImage: darkMode
+            ? "radial-gradient(rgba(2,88,159,0.08) 1px, transparent 1px)"
+            : "none",
           backgroundSize: "18px 18px",
-
           overflowY: "auto",
-
-          "&::-webkit-scrollbar": {
-            width: "4px",
-          },
+          transition: "background 0.3s",
+          "&::-webkit-scrollbar": { width: "4px" },
         }}
       >
         <Box
           sx={{
             display: "inline-block",
-            bgcolor: "#102543",
-            color: "#fff",
+            bgcolor: darkMode ? "#102543" : theme.modalSurface,
+            color: theme.textPrimary,
             px: 2,
             py: 1.2,
             borderRadius: "8px",
             maxWidth: "85%",
-
-            fontSize: {
-              xs: "12px",
-              sm: "14px",
-            },
+            border: darkMode ? "none" : `1px solid ${theme.borderColor}`,
+            fontSize: { xs: "12px", sm: "14px" },
           }}
         >
           I’m here to answer any questions you may have..
         </Box>
       </Box>
 
-      {/* INPUT SECTION */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-
           px: 1,
           py: 1,
-
-          borderTop: "1px solid #102543",
-          bgcolor: "#0B1D35",
-
+          borderTop: `1px solid ${theme.borderColor}`,
+          bgcolor: theme.pageBg,
           flexShrink: 0,
+          transition: "background 0.3s, border-color 0.3s",
         }}
       >
         {/* MENU */}
@@ -282,58 +266,33 @@ export default function ChatWidget({ onClose, visible }) {
           />
         </IconButton>
 
-       <TextField
-  fullWidth
-  size="small"
-  placeholder="Type a message..."
-  sx={{
-    flex: 1,
-
-    "& .MuiOutlinedInput-root": {
-      borderRadius: "999px",
-
-      height: {
-        xs: 40,
-        sm: 42,
-      },
-
-      backgroundColor: "#102543",
-      color: "white",
-
-      // SAME BORDER ALWAYS
-      "& fieldset": {
-        border: "1px solid transparent",
-      },
-
-      "&:hover fieldset": {
-        border: "1px solid transparent",
-      },
-
-      "&.Mui-focused fieldset": {
-        border: "1px solid transparent",
-      },
-
-      // remove focus glow
-      "&.Mui-focused": {
-        boxShadow: "none",
-      },
-    },
-
-    "& input": {
-      color: "white",
-
-      fontSize: {
-        xs: "12px",
-        sm: "13px",
-      },
-    },
-
-    "& input::placeholder": {
-      color: "#bdbdbd",
-      opacity: 1,
-    },
-  }}
-/>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Type a message..."
+          sx={{
+            flex: 1,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "999px",
+              height: { xs: 40, sm: 42 },
+              backgroundColor: theme.inputBg,
+              color: theme.textPrimary,
+              "& fieldset": { border: `1px solid ${theme.borderColor}` },
+              "&:hover fieldset": { border: `1px solid ${theme.iconColor}` },
+              "&.Mui-focused fieldset": {
+                border: `2px solid ${theme.actionIconColor}`,
+              },
+            },
+            "& input": {
+              color: theme.textPrimary,
+              fontSize: { xs: "12px", sm: "13px" },
+            },
+            "& input::placeholder": {
+              color: theme.textSecondary,
+              opacity: 1,
+            },
+          }}
+        />
 
         {/* RIGHT ICONS */}
         <Box

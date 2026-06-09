@@ -6,6 +6,7 @@ import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { useThemeMode, getTheme } from "../../context/ThemeContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -149,7 +150,7 @@ const staticPatientData = [
     visitStatus: "",
     seenByRole: "",
     visitType: "IP",
-    dos: "2026-06-02",
+    dos: "2026-06-09",
     fin: "FIN12345",
     facesheet: "",
     noteStatus: "Final",
@@ -181,7 +182,7 @@ const staticPatientData = [
     visitStatus: "Seen",
     seenByRole: "PHYSICIAN",
     visitType: "IP",
-    dos: "2026-06-02",
+    dos: "2026-06-09",
     fin: "FIN12346",
     facesheet: "",
     noteStatus: "Draft",
@@ -213,7 +214,7 @@ const staticPatientData = [
     visitStatus: "Seen",
     seenByRole: "PHYSICIAN",
     visitType: "IP",
-    dos: "2026-06-02",
+    dos: "2026-06-09",
     fin: "FIN12347",
     facesheet: "",
     noteStatus: "",
@@ -245,7 +246,7 @@ const staticPatientData = [
     visitStatus: "Seen",
     seenByRole: "PHYSICIAN",
     visitType: "IP",
-    dos: "2026-06-02",
+    dos: "2026-06-09",
     fin: "FIN12348",
     facesheet: "",
     noteStatus: "",
@@ -309,7 +310,7 @@ const staticPatientData = [
     visitStatus: "Seen",
     seenByRole: "PHYSICIAN",
     visitType: "IP",
-    dos: "2026-06-02",
+    dos: "2026-06-09",
     fin: "FIN12350",
     facesheet: "",
     noteStatus: "Draft",
@@ -439,6 +440,22 @@ const staticProviderOptions = [
 ];
 
 export default function AllEvents() {
+  const { darkMode } = useThemeMode();
+  const theme = getTheme(darkMode);
+
+  const actionIconButtonSx = {
+    p: "4px",
+    flex: "0 0 auto",
+    color: theme.actionIconColor,
+    "& svg path": { fill: "currentColor" },
+  };
+
+  const toolbarIconButtonSx = {
+    color: theme.actionIconColor,
+    "& .MuiButton-startIcon": { color: theme.actionIconColor },
+    "& .MuiButton-startIcon svg path": { fill: "currentColor" },
+  };
+
   const [activeTab, setActiveTab] = useState("Rounding List");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [anchorEl, setAnchorEl] = useState(null);
@@ -1422,6 +1439,9 @@ export default function AllEvents() {
           overflowY: "visible",
           px: { xs: 1, sm: 2 },
           py: { xs: 1.5, sm: 2 },
+          bgcolor: theme.pageBg,
+          color: theme.textPrimary,
+          transition: "background 0.3s, color 0.3s",
         }}
       >
         {/* Main content area – no scrollbars */}
@@ -1452,9 +1472,8 @@ export default function AllEvents() {
             <Box sx={{ flex: "1 1 180px", minWidth: 0 }}>
               <Box
                 sx={{
-                  //background: "rgba(40, 151, 255, 1)",
-                  background: "#1565FF",
-                  color: "rgba(210, 214, 219, 1)",
+                  background: "rgba(40, 151, 255, 1)",
+                  color: "rgba(243, 243, 243, 1)",
                   borderRadius: "16px",
                   px: 2,
                   py: 1,
@@ -1473,18 +1492,32 @@ export default function AllEvents() {
                     fontWeight: 600,
                     fontSize: 10,
                     flexShrink: 0,
+                    color: "rgba(243, 243, 243, 1)",
                   }}
                 >
                   {providerInitials}
                 </Avatar>
                 <Box sx={{ lineHeight: 1.3, overflow: "hidden" }}>
-                  <Typography fontSize={10} noWrap sx={{ opacity: 0.9 }}>
+                  <Typography
+                    fontSize={10}
+                    noWrap
+                    sx={{ opacity: 0.9, color: "#fff" }}
+                  >
                     {greetingText}
                   </Typography>
-                  <Typography fontWeight={700} fontSize={10} noWrap>
+                  <Typography
+                    fontWeight={700}
+                    fontSize={10}
+                    noWrap
+                    color="#fff"
+                  >
                     {providerDisplayName}
                   </Typography>
-                  <Typography fontSize={10} noWrap sx={{ opacity: 0.85 }}>
+                  <Typography
+                    fontSize={10}
+                    noWrap
+                    sx={{ opacity: 0.85, color: "#fff" }}
+                  >
                     {providerSubtitle}
                   </Typography>
                 </Box>
@@ -1493,11 +1526,7 @@ export default function AllEvents() {
 
             {/* Stat Cards */}
             {[
-              {
-                value: "XX",
-                label: "Events today",
-                icon: EventCardIcon,
-              },
+              { value: "XX", label: "Events today", icon: EventCardIcon },
               {
                 value: "XX/XX",
                 label: "Patients to see",
@@ -1508,16 +1537,12 @@ export default function AllEvents() {
                 label: "Patients to assign",
                 icon: PatientAssignCardIcon,
               },
-              {
-                value: "XX",
-                label: "Critical Cases",
-                icon: CriticalCasesIcon,
-              },
+              { value: "XX", label: "Critical Cases", icon: CriticalCasesIcon },
             ].map((item, i) => (
               <Box key={i} sx={{ flex: "1 1 120px", minWidth: 0 }}>
                 <Box
                   sx={{
-                    bgcolor: "rgba(33, 50, 75, 1)",
+                    bgcolor: theme.statCardBg,
                     borderRadius: "12px",
                     px: 1.5,
                     py: 1,
@@ -1525,8 +1550,9 @@ export default function AllEvents() {
                     alignItems: "center",
                     gap: 1.5,
                     height: "80px",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "rgba(210, 214, 219, 1)",
+                    border: `1px solid ${theme.statCardBorder}`,
+                    color: theme.textPrimary,
+                    transition: "background 0.3s, border 0.3s",
                   }}
                 >
                   <Box
@@ -1534,28 +1560,29 @@ export default function AllEvents() {
                       width: 40,
                       height: 40,
                       borderRadius: "50%",
-                      bgcolor: "rgba(1, 93, 255, 0.35)",
+                      bgcolor: theme.statIconBg,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      transition: "background-color 0.3s",
                     }}
                   >
-                    <item.icon width={24} height={24} />
+                    <item.icon color={theme.statIconColor} />
                   </Box>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography
                       fontWeight={700}
                       fontSize={18}
                       lineHeight={1.1}
-                      color="red"
+                      color={theme.textPrimary}
                     >
                       {item.value}
                     </Typography>
                     <Typography
                       fontSize={10}
                       fontWeight={700}
-                      color="#b89994"
+                      color={theme.textSecondary}
                       sx={{
                         lineHeight: 1.2,
                         display: "-webkit-box",
@@ -1588,22 +1615,24 @@ export default function AllEvents() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                bgcolor: "rgba(33, 50, 75, 1)",
+
+                backgroundColor: theme.inputBg,
                 borderRadius: "10px",
-                border: "1px solid rgba(255,255,255,0.10)",
+                border: `1px solid ${theme.borderColor}`,
                 px: 1.5,
                 py: 0.8,
                 gap: 0.5,
                 flexShrink: 0,
                 cursor: "pointer",
                 height: "40px",
-                color: "rgba(210, 214, 219, 1)",
+                color: theme.textPrimary,
+                transition: "background 0.3s, border 0.3s",
               }}
             >
               <ChevronLeftIcon
                 sx={{
                   fontSize: 18,
-                  color: "rgba(210, 214, 219, 1)",
+                  color: theme.textPrimary,
                   cursor: "pointer",
                 }}
                 onClick={(e) => {
@@ -1614,22 +1643,28 @@ export default function AllEvents() {
                 }}
               />
 
-              <CalendarTodayIcon
-                sx={{ fontSize: 16, color: "#94A3B8", cursor: "pointer" }}
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  color: theme.iconColor,
+                  cursor: "pointer",
+                  lineHeight: 0,
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setCalendarAnchorEl(e.currentTarget);
                 }}
-              />
+              >
+                <CalendarTodayIcon />
+              </Box>
 
               <Typography
                 fontSize={14}
                 fontWeight={500}
-                color="#94A3B8"
                 sx={{
                   cursor: "pointer",
                   userSelect: "none",
-                  color: "rgba(210, 214, 219, 1)",
+                  color: theme.textPrimary,
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1645,7 +1680,7 @@ export default function AllEvents() {
               <ChevronRightIcon
                 sx={{
                   fontSize: 18,
-                  color: "rgba(210, 214, 219, 1)",
+                  color: theme.textPrimary,
                   cursor: "pointer",
                 }}
                 onClick={(e) => {
@@ -1700,19 +1735,18 @@ export default function AllEvents() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                //backgroundColor: "rgba(15, 38, 70, 1)",
-                bgcolor: "rgba(33, 50, 75, 1)",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.10)",
+
+                backgroundColor: theme.searchBg,
+                borderRadius: "10px",
+                border: `1px solid ${theme.searchBorder}`,
                 px: 1.5,
                 height: "40px",
                 gap: 1,
                 width: "350px",
+                transition: "background 0.3s, border 0.3s",
               }}
             >
-              <SearchIcon
-                sx={{ color: "rgba(210, 214, 219, 1)", fontSize: 20 }}
-              />
+              <SearchIcon sx={{ color: theme.textSecondary, fontSize: 20 }} />
               <InputBase
                 placeholder="Search flight route, patients by name or MRN..."
                 value={patientSearch}
@@ -1720,9 +1754,9 @@ export default function AllEvents() {
                 sx={{
                   width: "100%",
                   fontSize: "14px",
-                  color: "rgba(210, 214, 219, 1)",
+                  color: theme.textPrimary,
                   "& input::placeholder": {
-                    color: "rgba(210, 214, 219, 1)",
+                    color: theme.textSecondary,
                     opacity: 1,
                   },
                 }}
@@ -1744,17 +1778,18 @@ export default function AllEvents() {
                 sx={{
                   borderRadius: "10px",
                   textTransform: "none",
-                  border: "1.5px solid rgba(210, 214, 219, 1)",
-                  color: "rgba(210, 214, 219, 1)",
-                  //backgroundColor: "rgba(15, 38, 70, 1)",
+
+                  border: `1.5px solid ${theme.btnOutlineBorder}`,
+                  color: theme.btnOutlineText,
+                  backgroundColor: theme.inputBg,
                   px: 2,
                   height: "40px",
                   fontWeight: 600,
                   fontSize: "14px",
                   flexShrink: 0,
-                  "&:hover": {
-                    backgroundColor: "rgba(1,93,255,0.05)",
-                  },
+                  transition: "background 0.3s, border 0.3s, color 0.3s",
+                  "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
+                  ...toolbarIconButtonSx,
                 }}
               >
                 Filter
@@ -1766,17 +1801,17 @@ export default function AllEvents() {
                 sx={{
                   borderRadius: "10px",
                   textTransform: "none",
-                  border: "1.5px solid rgba(210, 214, 219, 1)",
-                  color: "rgba(210, 214, 219, 1)",
-                  //backgroundColor: "rgba(15, 38, 70, 1)",
+                  border: `1.5px solid ${theme.btnOutlineBorder}`,
+                  color: theme.btnOutlineText,
+                  backgroundColor: theme.inputBg,
                   px: 2,
                   height: "40px",
                   fontWeight: 600,
                   fontSize: "14px",
                   flexShrink: 0,
-                  "&:hover": {
-                    backgroundColor: "rgba(1,93,255,0.05)",
-                  },
+                  transition: "background 0.3s, border 0.3s, color 0.3s",
+                  "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
+                  ...toolbarIconButtonSx,
                 }}
               >
                 Export
@@ -1784,24 +1819,25 @@ export default function AllEvents() {
             </Box>
           </Box>
 
-          {/* Table container – MUI Table with horizontal scroll */}
+          {/* Table container */}
           <Box
             sx={{
               flex: 1,
               minHeight: 0,
               minWidth: 0,
-              bgcolor: "rgba(17, 35, 57, 1)",
+              bgcolor: theme.cardBg,
               borderRadius: "14px",
-              border: "1px solid rgba(51, 74, 104, 1)",
+              border: `1px solid ${theme.tableBorder}`,
               width: "100%",
               maxWidth: "100%",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
+              transition: "background 0.3s, border 0.3s",
             }}
           >
             {loadingPatients && (
-              <Typography sx={{ p: 2, color: "#94A3B8" }}>
+              <Typography sx={{ p: 2, color: theme.textSecondary }}>
                 Loading patients...
               </Typography>
             )}
@@ -1840,31 +1876,31 @@ export default function AllEvents() {
                 <TableHead>
                   <TableRow
                     sx={{
-                      backgroundColor: "rgba(7, 20, 40, 0.9)",
                       "& .MuiTableCell-head": {
-                        backgroundColor: "rgba(33, 50, 75, 1)",
+                        backgroundColor: theme.tableHeadBg,
                         fontWeight: 700,
                         fontSize: "13px",
-                        color: "rgba(210, 214, 219, 1)",
+                        color: theme.textPrimary,
                         padding: "6px 6px",
                         borderBottom: "none",
                         whiteSpace: "normal",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         textAlign: "center",
+                        transition: "background 0.3s, color 0.3s",
                       },
                       "& .MuiTableSortLabel-root": {
-                        color: "rgba(210, 214, 219, 1)",
+                        color: theme.textPrimary,
                         width: "100%",
                         display: "flex",
                         justifyContent: "center",
                         textAlign: "center",
                       },
                       "& .MuiTableSortLabel-root:hover": {
-                        color: "rgba(210, 214, 219, 1)",
+                        color: theme.textPrimary,
                       },
                       "& .MuiTableSortLabel-root.Mui-active": {
-                        color: "rgba(210, 214, 219, 1)",
+                        color: theme.textPrimary,
                       },
                     }}
                   >
@@ -1886,12 +1922,12 @@ export default function AllEvents() {
                         }
                         onChange={handleSelectAllClick}
                         sx={{
-                          color: "#94A3B8",
+                          color: theme.iconColor,
                           "&.Mui-checked": {
-                            color: "#4DA3FF",
+                            color: darkMode ? "#4DA3FF" : theme.actionIconColor,
                           },
                           "&.MuiCheckbox-indeterminate": {
-                            color: "#4DA3FF",
+                            color: darkMode ? "#4DA3FF" : theme.actionIconColor,
                           },
                         }}
                       />
@@ -2082,8 +2118,8 @@ export default function AllEvents() {
                           py: 4,
                           fontSize: "14px",
                           fontWeight: 500,
-                          color: "#94A3B8",
-                          backgroundColor: "rgba(15, 38, 70, 1)",
+                          color: theme.textSecondary,
+                          backgroundColor: theme.tableRowBg,
                         }}
                       >
                         No Patient Found
@@ -2099,7 +2135,6 @@ export default function AllEvents() {
                         const isEditing = (field) =>
                           editingCell?.rowId === row.id &&
                           editingCell?.field === field;
-                        const eyeColors = getEyeColorsForRow(row);
                         // const eyeTooltip = isRowSeen(row) ? "Seen" : "Unseen";
 
                         const EditableCell = ({ field, children, sx }) => {
@@ -2192,24 +2227,22 @@ export default function AllEvents() {
                             sx={{
                               "& .MuiTableCell-body": {
                                 padding: "6px 6px",
-                                borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
+                                borderBottom: `1px solid ${theme.divider}`,
                                 fontSize: "13px",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 textAlign: "center",
                                 verticalAlign: "middle",
-                                color: "rgba(210, 214, 219, 1)",
+                                color: theme.textPrimary,
+                                backgroundColor: theme.tableRowBg,
+                                transition: "background 0.3s, color 0.3s",
                               },
                               "& .MuiTableCell-body:last-child": {
                                 overflow: "visible",
                               },
-                              "&:hover": {
-                                backgroundColor: "rgba(11, 29, 53, 0.6)",
+                              "&:hover .MuiTableCell-body": {
+                                backgroundColor: theme.tableHoverBg,
                               },
-                              // Inner shadow for the row
-                              boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.08)", // This creates an inner border/shadow
-                              // OR multiple inner shadows for different sides:
-                              // boxShadow: "inset 0 1px 0 0 rgba(0, 0, 0, 0.08), inset 0 -1px 0 0 rgba(0, 0, 0, 0.08)",
                             }}
                           >
                             <TableCell
@@ -2225,9 +2258,11 @@ export default function AllEvents() {
                                 checked={selectionModel.has(row.id)}
                                 onChange={() => handleRowCheckboxClick(row.id)}
                                 sx={{
-                                  color: "#94A3B8",
+                                  color: theme.iconColor,
                                   "&.Mui-checked": {
-                                    color: "#4DA3FF",
+                                    color: darkMode
+                                      ? "#4DA3FF"
+                                      : theme.actionIconColor,
                                   },
                                 }}
                               />
@@ -2379,7 +2414,7 @@ export default function AllEvents() {
                                 }}
                                 sx={{
                                   cursor: "pointer",
-                                  color: "#4DA3FF",
+                                  color: theme.actionIconColor,
                                   fontWeight: 500,
                                   display: "inline-block",
                                   outline: "none !important",
@@ -2471,7 +2506,7 @@ export default function AllEvents() {
                                 }}
                                 sx={{
                                   cursor: "pointer",
-                                  color: "#4DA3FF",
+                                  color: theme.actionIconColor,
                                   fontWeight: 400,
                                   display: "inline-block",
                                   outline: "none !important",
@@ -2556,7 +2591,10 @@ export default function AllEvents() {
                                       "No reason provided"}
                                   </Typography>
                                   <Typography
-                                    sx={{ fontSize: "11px", color: "#94A3B8" }}
+                                    sx={{
+                                      fontSize: "11px",
+                                      color: theme.textMuted,
+                                    }}
                                   >
                                     {console.log("Rwe", row)}
                                     Added:{" "}
@@ -2610,20 +2648,13 @@ export default function AllEvents() {
                                         handleToggleSeen(row);
                                       }}
                                       sx={{
-                                        p: "4px",
+                                        ...actionIconButtonSx,
                                         borderRadius: "50%",
                                         marginRight: "15px",
-                                        // backgroundColor: eyeColors.bg,
-                                        "& svg": {
-                                          color: `${eyeColors.icon} !important`,
-                                        },
-                                        "&:hover": {
-                                          // backgroundColor: eyeColors.hoverBg,
-                                        },
                                         position: "relative",
                                       }}
                                     >
-                                      <VisibilityIcon sx={{ fontSize: 16 }} />
+                                      <VisibilityIcon />
                                       {/* {!isRowSeen(row) && (
                                         <Box
                                           sx={{
@@ -2661,7 +2692,7 @@ export default function AllEvents() {
                                   >
                                     <IconButton
                                       size="small"
-                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      sx={actionIconButtonSx}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setOpenAction2(true);
@@ -2702,8 +2733,7 @@ export default function AllEvents() {
                                       <IconButton
                                         size="small"
                                         sx={{
-                                          p: "4px",
-                                          flex: "0 0 auto",
+                                          ...actionIconButtonSx,
                                           boxShadow: "none",
                                         }}
                                         onClick={(e) => {
@@ -2734,7 +2764,7 @@ export default function AllEvents() {
                                   >
                                     <IconButton
                                       size="small"
-                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      sx={actionIconButtonSx}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                       }}
@@ -2761,16 +2791,13 @@ export default function AllEvents() {
                                   >
                                     <IconButton
                                       size="small"
-                                      sx={{ p: "4px", flex: "0 0 auto" }}
+                                      sx={actionIconButtonSx}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleMenuOpen(e, row.id);
                                       }}
                                     >
-                                      <MoreVertIcon
-                                        fontSize="small"
-                                        sx={{ color: "rgba(210, 214, 219, 1)" }}
-                                      />
+                                      <MoreVertIcon fontSize="small" />
                                     </IconButton>
                                   </Tooltip>
                                 </Box>
@@ -2795,10 +2822,12 @@ export default function AllEvents() {
               }}
               rowsPerPageOptions={[5, 10, 25]}
               sx={{
-                borderTop: "1px solid rgba(255,255,255,0.10)",
+                borderTop: `1px solid ${theme.divider}`,
                 fontSize: "13px",
                 flexShrink: 0,
-                color: "rgba(210, 214, 219, 1)",
+                color: theme.textPrimary,
+                bgcolor: theme.cardBg,
+                transition: "background 0.3s, color 0.3s",
                 "& .MuiTablePagination-toolbar": {
                   minHeight: "44px",
                   px: { xs: 1, sm: 2 },
@@ -2809,11 +2838,12 @@ export default function AllEvents() {
                 "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
                   {
                     fontSize: { xs: "12px", sm: "13px" },
-                    color: "#94A3B8",
+                    color: theme.textSecondary,
                   },
                 "& .MuiTablePagination-actions button": {
-                  color: "rgba(210, 214, 219, 1)",
+                  color: theme.textPrimary,
                 },
+                "& .MuiSelect-select": { color: theme.textPrimary },
               }}
             />
           </Box>
@@ -2834,25 +2864,24 @@ export default function AllEvents() {
           }}
           sx={{
             "& .MuiPaper-root": {
-              backgroundColor: "rgba(11, 29, 53, 1)",
+              backgroundColor: theme.menuBg,
               borderRadius: "12px",
               minWidth: "200px",
-              border: "1px solid rgba(51, 74, 104, 1)",
+              border: `1px solid ${theme.menuBorder}`,
               boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
               backgroundImage: "none",
+              transition: "background 0.3s",
             },
             "& .MuiMenuItem-root": {
               py: 1.2,
               px: 2,
               gap: 1.5,
               fontSize: "14px",
-              color: "rgba(210, 214, 219, 1)",
-              "&:hover": {
-                backgroundColor: "rgba(77,163,255,0.1)",
-              },
+              color: theme.textPrimary,
+              "&:hover": { backgroundColor: "rgba(77,163,255,0.1)" },
             },
             "& .MuiDivider-root": {
-              borderColor: "rgba(77,163,255,0.15)",
+              borderColor: theme.divider,
               my: 0.5,
             },
           }}
@@ -2952,19 +2981,18 @@ export default function AllEvents() {
               overflow: "hidden",
               width: "500px",
               maxWidth: "460px",
-              bgcolor: "rgba(7, 20, 40, 1)",
+              bgcolor: theme.modalHeaderBg,
             },
           }}
         >
           <DialogContent
             sx={{ p: 0, display: "flex", flexDirection: "column" }}
           >
-            {/* ── TOP HEADER BOX (separate bgcolor) ── */}
             <Box
               sx={{
                 px: 3,
                 py: 0,
-                bgcolor: "rgba(7, 20, 40, 1)",
+                bgcolor: theme.modalHeaderBg,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -2974,7 +3002,7 @@ export default function AllEvents() {
                 fontWeight={600}
                 fontSize={18}
                 sx={{
-                  color: "#fff",
+                  color: theme.textPrimary,
                   fontFamily:
                     "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                 }}
@@ -2985,44 +3013,41 @@ export default function AllEvents() {
                 size="small"
                 onClick={() => setOpenAssignModal(false)}
               >
-                <CloseIcon sx={{ fontSize: 20, color: "#fff" }} />
+                <CloseIcon sx={{ fontSize: 20, color: theme.textPrimary }} />
               </IconButton>
             </Box>
-
-            {/* Divider */}
             <Box
               sx={{
                 mt: 2,
                 height: "1px",
-                bgcolor: "#243B63",
+                bgcolor: theme.modalDivider,
               }}
             />
 
-            {/* ── BOTTOM CONTENT BOX (separate bgcolor) ── */}
             <Box
               sx={{
                 px: 3,
                 pt: 2,
                 pb: 3,
-                bgcolor: "rgba(11, 29, 53, 1)",
+                bgcolor: theme.modalBg,
                 display: "flex",
                 flexDirection: "column",
                 maxHeight: "65vh",
               }}
             >
-              {/* Search */}
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  bgcolor: "#243B63",
+                  bgcolor: theme.modalSurface,
                   borderRadius: "20px",
                   px: 2,
                   py: 0.5,
                   mb: 2,
+                  border: darkMode ? "none" : `1px solid ${theme.borderColor}`,
                 }}
               >
-                <SearchIcon sx={{ color: "#eee7e7", fontSize: 12 }} />
+                <SearchIcon sx={{ color: theme.textSecondary, fontSize: 12 }} />
                 <InputBase
                   placeholder="Search by name or specialty"
                   value={assignSearch}
@@ -3031,9 +3056,9 @@ export default function AllEvents() {
                     ml: 1,
                     fontSize: "14px",
                     width: "100%",
-                    color: "#fff",
+                    color: theme.textPrimary,
                     "& input::placeholder": {
-                      color: "#eee7e7",
+                      color: theme.textSecondary,
                       opacity: 1,
                       fontFamily:
                         "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
@@ -3069,14 +3094,16 @@ export default function AllEvents() {
                       borderColor:
                         selectedDoctorId === doc.id
                           ? "transparent"
-                          : "rgba(255,255,255,0.08)",
+                          : theme.borderColor,
                       bgcolor:
-                        selectedDoctorId === doc.id ? "#243B63" : "transparent",
+                        selectedDoctorId === doc.id
+                          ? theme.modalSurface
+                          : "transparent",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
                       "&:hover": {
-                        bgcolor: "#243B63",
+                        bgcolor: theme.modalSurface,
                         borderColor: "transparent",
                       },
                     }}
@@ -3086,7 +3113,7 @@ export default function AllEvents() {
                         //fontSize={12}
                         //fontWeight={300}
                         sx={{
-                          color: "#eee7e7",
+                          color: theme.textPrimary,
                           fontSize: "12px",
                           fontWeight: 300,
                           fontFamily:
@@ -3125,7 +3152,7 @@ export default function AllEvents() {
                       >
                         <Typography
                           fontSize={12}
-                          sx={{ color: "#1565FF", lineHeight: 1 }}
+                          sx={{ color: theme.actionIconColor, lineHeight: 1 }}
                         >
                           ✓
                         </Typography>
@@ -3136,7 +3163,12 @@ export default function AllEvents() {
 
                 {/* {filteredAssignProviders.length === 0 && (
                   <Typography
-                    sx={{ px: 1, py: 2, color: "#94A3B8", fontSize: 13 }}
+                    sx={{
+                      px: 1,
+                      py: 2,
+                      color: theme.textSecondary,
+                      fontSize: 13,
+                    }}
                   >
                     {assignType === "resident"
                       ? "No residents found."
@@ -3156,7 +3188,7 @@ export default function AllEvents() {
                   textTransform: "none",
                   fontWeight: 300,
                   fontSize: "14px",
-                  bgcolor: "#1565FF",
+                  bgcolor: theme.actionIconColor,
                   "&:hover": { bgcolor: "#1251CC" },
                 }}
                 onClick={async () => {

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Box, Typography, Button, IconButton, useMediaQuery, useTheme } from "@mui/material";
+import { useThemeMode, getTheme } from "../../../context/ThemeContext";
 import CloseIcon from "@mui/icons-material/Close";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -23,7 +24,7 @@ import {
 } from "../../../assets/Assets";
 
 // ── Colors ────────────────────────────────────────────────────────────────────
-const C = {
+const DARK_C = {
   bg:           "#0b1d35",
   surface:      "#0f2040",
   surfaceSoft:  "#0d1e38",
@@ -46,6 +47,32 @@ const C = {
   tagText:      "#5a9ad0",
   accent:       "#4a8adc",
 };
+
+const buildLightC = (t) => ({
+  bg:           t.pageBg,
+  surface:      t.cardBg,
+  surfaceSoft:  t.tableHeadBg,
+  card:         t.cardBg,
+  cardHover:    t.tableHoverBg,
+  border:       t.borderColor,
+  borderLight:  t.divider,
+  text:         t.textPrimary,
+  textMuted:    t.textSecondary,
+  textWhite:    t.textPrimary,
+  primary:      "#015DFF",
+  primarySoft:  "rgba(1,93,255,0.08)",
+  dangerBg:     "#FEF2F2",
+  dangerBorder: "#c13a3a",
+  dangerText:   "#f05050",
+  dangerLabel:  "#e07070",
+  successBg:    "#2e7d52",
+  successHover: "#3a9e68",
+  tagBg:        t.tableHeadBg,
+  tagText:      t.actionIconColor,
+  accent:       t.actionIconColor,
+  cardInner:    t.tableHeadBg,
+  iconBg:       t.tableHeadBg,
+});
 
 // ── Threshold system (mirrors PatientVitalsSidebar) ───────────────────────────
 const THRESHOLDS = {
@@ -187,19 +214,19 @@ const TIALogo = ({ size = 20 }) => (
 );
 
 // ── Graph Card ────────────────────────────────────────────────────────────────
-const GraphCard = ({ title, sparkPoints, sparkColor, badge }) => (
-  <Box sx={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", p: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+const GraphCard = ({ title, sparkPoints, sparkColor, badge, c }) => (
+  <Box sx={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: "12px", p: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <Typography sx={{ fontSize: "12px", fontWeight: 700, color: C.text }}>{title}</Typography>
-      <Box sx={{ display: "flex", alignItems: "center", gap: "3px", background: C.tagBg, borderRadius: "20px", px: "7px", py: "2px" }}>
-        <AccessTimeIcon sx={{ fontSize: "10px", color: C.accent }} />
-        <Typography sx={{ fontSize: "9px", color: C.tagText }}>Last 20 min</Typography>
+      <Typography sx={{ fontSize: "12px", fontWeight: 700, color: c.text }}>{title}</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: "3px", background: c.tagBg, borderRadius: "20px", px: "7px", py: "2px" }}>
+        <AccessTimeIcon sx={{ fontSize: "10px", color: c.accent }} />
+        <Typography sx={{ fontSize: "9px", color: c.tagText }}>Last 20 min</Typography>
       </Box>
     </Box>
     {badge && (
       <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <TrendingDownIcon sx={{ fontSize: "12px", color: C.dangerText }} />
-        <Typography sx={{ fontSize: "10px", color: C.dangerText }}>{badge}</Typography>
+        <TrendingDownIcon sx={{ fontSize: "12px", color: c.dangerText }} />
+        <Typography sx={{ fontSize: "10px", color: c.dangerText }}>{badge}</Typography>
       </Box>
     )}
     <Sparkline points={sparkPoints} color={sparkColor} />
@@ -211,12 +238,18 @@ export const CaseDetails = () => {
   const [showTrends, setShowTrends] = useState(false);
   const [showTia, setShowTia]       = useState(true);
   const [view, setView]             = useState("summary");
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const isTablet = useMediaQuery(theme.breakpoints.down("lg"));
+  const muiTheme = useTheme();
+  const { darkMode } = useThemeMode();
+  const appTheme = getTheme(darkMode);
+  const C = useMemo(
+    () => (darkMode ? DARK_C : buildLightC(appTheme)),
+    [darkMode, appTheme],
+  );
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
+  const isTablet = useMediaQuery(muiTheme.breakpoints.down("lg"));
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", width: "100%", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: "hidden", color: C.text }}>
+    <Box sx={{ display: "flex", height: "100vh", width: "100%", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: "hidden", color: C.text, transition: "background 0.3s, color 0.3s" }}>
 
       {/* ── MAIN CONTENT ── */}
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", minWidth: 0 }}>
@@ -247,7 +280,7 @@ export const CaseDetails = () => {
               { v: "summary", label: "Event summary", icon: <CalendarTodayIcon sx={{ fontSize: 13 }} /> },
               { v: "chat",    label: "Chat",          icon: <ChatIcon sx={{ fontSize: 13 }} /> },
             ].map(({ v, label, icon }) => (
-              <Box key={v} onClick={() => setView(v)} sx={{ display: "flex", alignItems: "center", gap: "6px", px: { xs: "10px", md: "16px" }, borderRadius: "999px", cursor: "pointer", fontSize: "13px", fontWeight: 600, transition: "all 0.25s", background: view === v ? C.primary : "transparent", color: view === v ? "#fff" : "#4a8adc", whiteSpace: "nowrap" }}>
+              <Box key={v} onClick={() => setView(v)} sx={{ display: "flex", alignItems: "center", gap: "6px", px: { xs: "10px", md: "16px" }, borderRadius: "999px", cursor: "pointer", fontSize: "13px", fontWeight: 600, transition: "all 0.25s", background: view === v ? C.primary : "transparent", color: view === v ? "#fff" : C.accent, whiteSpace: "nowrap" }}>
                 {icon}{label}
               </Box>
             ))}
@@ -329,9 +362,9 @@ export const CaseDetails = () => {
             </Box>
             <Typography sx={{ fontSize: "11px", color: C.textMuted, mt: "3px" }}>Medicine and equipment in stock</Typography>
           </Box>
-          <KitSection title="Suggested Medications" subtitle="Medicine In Stock"   items={medicationsFa} onClose={() => {}} />
-          <KitSection title="Suggested Essentials"  subtitle="Equipment In Stock" items={essentials}    onClose={() => {}} />
-          <Box sx={{ p: "14px", background: "#0a1f3a", border: `1px solid ${C.border}`, borderRadius: "12px" }}>
+          <KitSection c={C} title="Suggested Medications" subtitle="Medicine In Stock"   items={medicationsFa} onClose={() => {}} />
+          <KitSection c={C} title="Suggested Essentials"  subtitle="Equipment In Stock" items={essentials}    onClose={() => {}} />
+          <Box sx={{ p: "14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: "12px" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: "8px" }}>
               <TIALogo size={16} />
               <IconButton size="small" sx={{ color: C.textMuted, p: 0 }}><CloseIcon sx={{ fontSize: 14 }} /></IconButton>
@@ -395,9 +428,9 @@ export const CaseDetails = () => {
             </IconButton>
           </Box>
 
-          <GraphCard title="SpO₂"          sparkPoints={spo2Points} sparkColor="#f05050" badge="Trending Down" />
-          <GraphCard title="Heart Rate"     sparkPoints={hrPoints}   sparkColor="#4a8adc" />
-          <GraphCard title="Blood Pressure" sparkPoints={bpPoints}   sparkColor="#a78bfa" />
+          <GraphCard c={C} title="SpO₂"          sparkPoints={spo2Points} sparkColor="#f05050" badge="Trending Down" />
+          <GraphCard c={C} title="Heart Rate"     sparkPoints={hrPoints}   sparkColor="#4a8adc" />
+          <GraphCard c={C} title="Blood Pressure" sparkPoints={bpPoints}   sparkColor="#a78bfa" />
 
           <Box sx={{ background: C.dangerBg, border: `1px solid ${C.dangerBorder}`, borderRadius: "12px", p: "12px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
             <ErrorIcon sx={{ fontSize: 20, color: C.dangerText, flexShrink: 0, mt: "1px" }} />

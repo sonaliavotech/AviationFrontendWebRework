@@ -1,18 +1,13 @@
-import React, { lazy, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import React, { lazy, useState, Suspense } from "react";
+import { Route, Routes, Navigate } from "react-router-dom";
 import { Box } from "@mui/material";
 
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-//import SearchKit from "../pages/SearchKit/SearchKit"
-// import PatientVitalsSidebar from "../pages/AllEvents/Event";
+import SearchKit from "../pages/SearchKit/SearchKit"
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
-import FindMedicineInKit from "../pages/FindMedicineinKit/FindMedicineinKit";
-
-
-// import Response from "../pages/Response/Response";
-
+import { useThemeMode, getTheme } from "../context/ThemeContext";
 
 // Lazy loaded pages
 const AllEvents = lazy(() => import("../pages/AllEvents/AllEvents"));
@@ -20,26 +15,22 @@ const SignIn = lazy(() => import("../componants/SignIn"));
 const FindMedicineinKit = lazy(() => import("../pages/FindMedicineinKit/FindMedicineinKit"));
 
 const MainLayout = ({ children }) => {
-  const isAuthenticated =
-    !!localStorage.getItem("token");
+  const isAuthenticated = !!localStorage.getItem("token");
+  const { darkMode } = useThemeMode();
+  const theme = getTheme(darkMode);
 
   // CHAT STATE
   const [openChat, setOpenChat] = useState(false);
   const [visible, setVisible] = useState(false);
 
-  // OPEN CHAT
   const handleOpenChat = () => {
     setOpenChat(true);
-    setTimeout(() => setVisible(true), 10); // allow render first
+    setTimeout(() => setVisible(true), 10);
   };
 
-  // CLOSE CHAT
   const handleCloseChat = () => {
-    setVisible(false); // trigger animation first
-
-    setTimeout(() => {
-      setOpenChat(false); // then remove
-    }, 200);
+    setVisible(false);
+    setTimeout(() => setOpenChat(false), 200);
   };
 
   return (
@@ -49,8 +40,9 @@ const MainLayout = ({ children }) => {
           display: "flex",
           height: "100vh",
           overflow: "hidden",
-          bgcolor: "rgba(11, 29, 53, 1)",
+          bgcolor: theme.pageBg,
           position: "relative",
+          transition: "background-color 0.3s ease",
         }}
       >
         {/* Sidebar */}
@@ -64,17 +56,15 @@ const MainLayout = ({ children }) => {
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
+            bgcolor: theme.pageBg,
+            transition: "background-color 0.3s ease",
           }}
         >
           {children}
         </Box>
 
-        {/* CHAT (NO BUG NOW) */}
         {openChat && (
-          <ChatWidget
-            onClose={handleCloseChat}
-            visible={visible}
-          />
+          <ChatWidget onClose={handleCloseChat} visible={visible} />
         )}
       </Box>
     </ProtectedRoute>
@@ -83,54 +73,33 @@ const MainLayout = ({ children }) => {
 
 const CustomRoutes = () => {
   return (
-    <Routes>
-      <Route path="/sign-in" element={<SignIn />} />
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
 
-   
-      {/* Protected routes with sidebar */}
-      <Route
-        path="/all-events"
+        <Route
+          path="/all-events"
+          element={
+            <MainLayout>
+              <AllEvents />
+            </MainLayout>
+          }
+        />
+        <Route path="/search-kit"
         element={
-          <MainLayout>
-            <AllEvents />
-          </MainLayout>
+           <MainLayout>
+            <SearchKit/>
+           </MainLayout>
         }
-      />
-      <Route path="/search-kit"
-      element={
-         <MainLayout>
-          <FindMedicineInKit/>
-         </MainLayout>
-      }
-      />
-      {/* <Route path="/alerts"
-        element={
-          <MainLayout>
-            <SearchKit />
-          </MainLayout>
-        }
-      /> */}
-         <Route
-        path="/FindMedicineinKit"
-        element={
-          <MainLayout>
-            <FindMedicineinKit />
-          </MainLayout>
-        }
-      />
-         {/* <Route
-        path="/Response"
-        element={
-          <MainLayout>
-            <Response />
-          </MainLayout>
-        }
-      /> */}
+        />
+        {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
+        <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
 
-      
-      {/* <Route path="/Event" element={<PatientVitalsSidebar/>} /> */}
-      <Route path="/CaseDetails" element={<MainLayout><CaseDetails/></MainLayout>} />
-    </Routes>
+        {/* Redirect root and unknown paths */}
+        <Route path="/" element={<Navigate to="/all-events" replace />} />
+        <Route path="*" element={<Navigate to="/all-events" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

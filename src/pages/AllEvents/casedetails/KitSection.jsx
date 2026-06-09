@@ -1,8 +1,7 @@
-// src/pages/AllEvents/KitSection.jsx
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-const C = {
+const DARK_KIT = {
   card:        "#112240",
   cardInner:   "#0f1e38",
   border:      "rgba(255,255,255,0.08)",
@@ -12,12 +11,12 @@ const C = {
   iconBg:      "#0a1a30",
 };
 
-export const KitSection = ({ title, subtitle, items, onClose }) => {
+export const KitSection = ({ title, subtitle, items, onClose, c = DARK_KIT }) => {
   return (
     <Box
       sx={{
-        background: C.card,
-        border: `1px solid ${C.borderLight}`,
+        background: c.card,
+        border: `1px solid ${c.borderLight}`,
         borderRadius: "14px",
         p: "14px",
         display: "flex",
@@ -25,26 +24,24 @@ export const KitSection = ({ title, subtitle, items, onClose }) => {
         gap: "10px",
       }}
     >
-      {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <Box>
-          <Typography sx={{ fontSize: "13px", fontWeight: 700, color: C.text }}>
+          <Typography sx={{ fontSize: "13px", fontWeight: 700, color: c.text }}>
             {title}
           </Typography>
-          <Typography sx={{ fontSize: "11px", color: C.textMuted, mt: "2px" }}>
+          <Typography sx={{ fontSize: "11px", color: c.textMuted, mt: "2px" }}>
             {subtitle}
           </Typography>
         </Box>
         <IconButton
           size="small"
           onClick={onClose}
-          sx={{ color: C.textMuted, p: "2px", "&:hover": { color: C.text } }}
+          sx={{ color: c.textMuted, p: "2px", "&:hover": { color: c.text } }}
         >
           <CloseIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Box>
 
-      {/* Items */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {items.map((item, i) => (
           <Box
@@ -53,20 +50,19 @@ export const KitSection = ({ title, subtitle, items, onClose }) => {
               display: "flex",
               alignItems: "center",
               gap: "12px",
-              background: C.cardInner,
-              border: `1px solid ${C.border}`,
+              background: c.cardInner ?? c.surfaceSoft ?? c.card,
+              border: `1px solid ${c.border}`,
               borderRadius: "10px",
               p: "10px 12px",
             }}
           >
-            {/* Icon bubble */}
             <Box
               sx={{
                 width: 36,
                 height: 36,
                 borderRadius: "10px",
-                background: C.iconBg,
-                border: `1px solid ${C.border}`,
+                background: c.iconBg ?? c.surfaceSoft ?? c.card,
+                border: `1px solid ${c.border}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -77,12 +73,11 @@ export const KitSection = ({ title, subtitle, items, onClose }) => {
               {item.icon}
             </Box>
 
-            {/* Name */}
             <Typography
               sx={{
                 fontSize: "12px",
                 fontWeight: 500,
-                color: C.text,
+                color: c.text,
                 lineHeight: 1.4,
               }}
             >

@@ -12,20 +12,21 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SyncIcon from "@mui/icons-material/Sync";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import { AlertsIcon } from "../../assets/Assets";
+import { useThemeMode } from "../../context/ThemeContext";
 
-const SIDEBAR_BG = "#0B1D35";
-const CARD_BG = "#102543";
-const INNER_CARD_BG = "#0D213D";
-const PRIMARY_BLUE = "#015DFF";
-const ACTIVE_COLOR = "#4DA3FF";
+const PRIMARY_BLUE  = "#015DFF";
+const ACTIVE_COLOR  = "#4DA3FF";
 
 const SearchKit = () => {
+  const { tokens, darkMode } = useThemeMode();
+
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        background: SIDEBAR_BG,
+        background: tokens.pageBg,
         p: { xs: 2, sm: 3, md: 4 },
+        transition: "background 0.3s",
       }}
     >
       {/* Top Section */}
@@ -64,9 +65,11 @@ const SearchKit = () => {
             icon={<SyncIcon sx={{ color: `${ACTIVE_COLOR} !important` }} />}
             label="Last Synced Today 12:00 PM"
             sx={{
-              background: "rgba(77,163,255,0.15)",
-              color: "#BFD8FF",
-              border: "1px solid rgba(77,163,255,0.25)",
+              background: darkMode ? "rgba(77,163,255,0.15)" : "rgba(1,93,255,0.08)",
+              color: darkMode ? "#BFD8FF" : tokens.actionIconColor,
+              border: darkMode
+                ? "1px solid rgba(77,163,255,0.25)"
+                : "1px solid rgba(1,93,255,0.2)",
               borderRadius: "30px",
               height: 42,
               fontWeight: 500,
@@ -127,8 +130,9 @@ const SearchKit = () => {
         sx={{
           fontSize: { xs: "24px", md: "30px" },
           fontWeight: 600,
-          color: "#FFFFFF",
+          color: tokens.textPrimary,
           mb: 1,
+          transition: "color 0.3s",
         }}
       >
         Case Outcome & Final Report
@@ -136,10 +140,11 @@ const SearchKit = () => {
 
       <Typography
         sx={{
-          color: "#AFC2D8",
+          color: tokens.textSecondary,
           fontSize: { xs: "14px", md: "16px" },
           mb: 4,
           maxWidth: "900px",
+          transition: "color 0.3s",
         }}
       >
         Choose the option that best describes what happened. This will become
@@ -197,27 +202,30 @@ const SearchKit = () => {
       <Paper
         elevation={0}
         sx={{
-          background: CARD_BG,
+          background: tokens.cardBg,
           borderRadius: "20px",
           p: 3,
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: `1px solid ${tokens.borderColor}`,
+          transition: "background 0.3s, border 0.3s",
         }}
       >
         {/* Card Header */}
         <Box
           sx={{
-            background: INNER_CARD_BG,
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: tokens.inputBg,
+            border: `1px solid ${tokens.borderColor}`,
             borderRadius: "12px",
             p: 1.5,
             mb: 2,
+            transition: "background 0.3s",
           }}
         >
           <Typography
             sx={{
               fontWeight: 600,
               fontSize: "16px",
-              color: "#FFFFFF",
+              color: tokens.textPrimary,
+              transition: "color 0.3s",
             }}
           >
             Case Summary for John Smith
@@ -227,17 +235,18 @@ const SearchKit = () => {
         {/* Content Area */}
         <Box
           sx={{
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: `1px solid ${tokens.borderColor}`,
             borderRadius: "12px",
             minHeight: { xs: 100, sm: 120, md: 180 },
-            background: INNER_CARD_BG,
+            background: tokens.inputBg,
             p: 3,
+            transition: "background 0.3s",
           }}
         ></Box>
         <Typography
           sx={{
             mt: 4,
-            color: ACTIVE_COLOR,
+            color: darkMode ? ACTIVE_COLOR : tokens.actionIconColor,
             fontSize: "16px",
             fontWeight: 500,
             mb: 2,
@@ -245,10 +254,9 @@ const SearchKit = () => {
         >
           AI Summary of the Event
         </Typography>
-
         <Typography
           sx={{
-            color: ACTIVE_COLOR,
+            color: darkMode ? ACTIVE_COLOR : tokens.actionIconColor,
             fontSize: "16px",
             fontWeight: 500,
             mb: 1,
