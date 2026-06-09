@@ -191,8 +191,8 @@ function Action3({ onClose }) {
       {/* Top Bar */}
       <Box
         sx={{
-          background: "#0f1e36",
-          borderBottom: "1px solid #1e3a5f",
+          //   background: "#0f1e36",
+          //   borderBottom: "1px solid #1e3a5f",
           p: "10px 20px",
           display: "flex",
           alignItems: "center",
@@ -208,7 +208,7 @@ function Action3({ onClose }) {
             justifyContent: "center",
             gap: "6px",
             width: "184px",
-            height: "40px",
+            height: "30px",
             px: "16px",
             background: "#293831",
             borderRadius: "27px",
@@ -256,6 +256,7 @@ function Action3({ onClose }) {
             Last synced {time}
           </Typography>
         </Box>
+
         <Box sx={{ ml: "auto" }}>
           <Button
             variant="contained"
@@ -562,7 +563,7 @@ function Action3({ onClose }) {
         {/* Right Panel */}
         <Box
           sx={{
-            width: { xs: "100%", md: "301px" },
+            width: { xs: "100%", md: "350px" },
             background: "#0a1628",
             borderLeft: { md: "1px solid #1e3a5f" },
             borderTop: { xs: "1px solid #1e3a5f", md: "none" },
@@ -574,187 +575,197 @@ function Action3({ onClose }) {
             gap: 3,
           }}
         >
-          {/* ECG Measurements Card */}
+          {/* ✅ NEW wrapper box with #0f1e36 background */}
           <Box
             sx={{
-              background: "#21324B",
-              borderRadius: "16px",
-              p: "24px 16px",
+              background: "#0f1e36",
+              minHeight: "100vh",
+              p: "16px",
               display: "flex",
               flexDirection: "column",
               gap: 2,
             }}
           >
-            {/* Header */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography
+            {/* ECG Measurements Card */}
+            <Box
+              sx={{
+                background: "#21324B",
+                borderRadius: "16px",
+                p: "24px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              {/* Header */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "16px",
+                    lineHeight: "19px",
+                    letterSpacing: "0.005em",
+                    color: "#D2D6DB",
+                  }}
+                >
+                  ECG Measurements
+                </Typography>
+              </Box>
+
+              {/* Measurements Grid */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {Array.from({ length: 6 }, (_, rowIdx) => {
+                  const left = MEASUREMENTS[rowIdx * 2];
+                  const right = MEASUREMENTS[rowIdx * 2 + 1];
+                  return (
+                    <Box
+                      key={rowIdx}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 300,
+                            color: "#D2D6DB",
+                          }}
+                        >
+                          {left.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: "#D2D6DB",
+                          }}
+                        >
+                          {left.value}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 300,
+                            color: "#D2D6DB",
+                          }}
+                        >
+                          {right.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: "#D2D6DB",
+                          }}
+                        >
+                          {right.value}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* AI Assist Card */}
+            <Box
+              sx={{
+                background: "#21324B",
+                borderRadius: "8px",
+                p: "16px 20px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                textAlign: "left",
+                gap: 1.5,
+              }}
+            >
+              {/* Header */}
+              <Box
                 sx={{
-                  fontWeight: 800,
-                  fontSize: "16px",
-                  lineHeight: "19px",
-                  letterSpacing: "0.005em",
-                  color: "#D2D6DB",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: 1,
+                  width: "100%",
                 }}
               >
-                ECG Measurements
-              </Typography>
-            </Box>
+                <AIAssistIcon />
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "16px",
+                    lineHeight: "19px",
+                    letterSpacing: "0.005em",
+                    color: "#D2D6DB",
+                    textAlign: "left",
+                  }}
+                >
+                  AI Assist
+                </Typography>
+              </Box>
 
-            {/* Measurements Grid */}
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {Array.from({ length: 6 }, (_, rowIdx) => {
-                const left = MEASUREMENTS[rowIdx * 2];
-                const right = MEASUREMENTS[rowIdx * 2 + 1];
-                return (
+              {/* Alert Cards */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 1.5,
+                  width: "100%",
+                }}
+              >
+                {AI_ALERTS.map((alert, idx) => (
                   <Box
-                    key={rowIdx}
+                    key={idx}
                     sx={{
+                      background: alert.bg,
+                      borderRadius: "16px",
+                      p: 1.5,
+                      width: "100%",
                       display: "flex",
-                      justifyContent: "space-between",
+                      flexDirection: "column",
                       alignItems: "flex-start",
+                      textAlign: "left",
+                      gap: 0.5,
                     }}
                   >
-                    <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
-                      <Typography
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 300,
-                          color: "#D2D6DB",
-                        }}
-                      >
-                        {left.label}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 700,
-                          color: "#D2D6DB",
-                        }}
-                      >
-                        {left.value}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
-                      <Typography
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 300,
-                          color: "#D2D6DB",
-                        }}
-                      >
-                        {right.label}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: "14px",
-                          fontWeight: 700,
-                          color: "#D2D6DB",
-                        }}
-                      >
-                        {right.value}
-                      </Typography>
-                    </Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "12px",
+                        lineHeight: "15px",
+                        color: alert.titleColor,
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      {alert.title}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontWeight: 400,
+                        fontSize: "10px",
+                        lineHeight: "16px",
+                        letterSpacing: "0.01em",
+                        color: alert.descColor,
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      {alert.desc}
+                    </Typography>
                   </Box>
-                );
-              })}
+                ))}
+              </Box>
             </Box>
-          </Box>
-
-          {/* AI Assist Card */}
-<Box
-  sx={{
-    background: "#21324B",
-    borderRadius: "8px",
-    p: "16px 20px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    textAlign: "left",
-    gap: 1.5,
-  }}
->
-  {/* Header */}
-  <Box
-    sx={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "flex-start",
-      gap: 1,
-      width: "100%",
-    }}
-  >
-    <AIAssistIcon />
-
-    <Typography
-      sx={{
-        fontWeight: 800,
-        fontSize: "16px",
-        lineHeight: "19px",
-        letterSpacing: "0.005em",
-        color: "#D2D6DB",
-        textAlign: "left",
-      }}
-    >
-      AI Assist
-    </Typography>
-  </Box>
-
-  {/* Alert Cards */}
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-start",
-      gap: 1.5,
-      width: "100%",
-    }}
-  >
-    {AI_ALERTS.map((alert, idx) => (
-      <Box
-        key={idx}
-        sx={{
-          background: alert.bg,
-          borderRadius: "16px",
-          p: 1.5,
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          textAlign: "left",
-          gap: 0.5,
-        }}
-      >
-        <Typography
-          sx={{
-            fontWeight: 700,
-            fontSize: "12px",
-            lineHeight: "15px",
-            color: alert.titleColor,
-            textAlign: "left",
-            width: "100%",
-          }}
-        >
-          {alert.title}
-        </Typography>
-
-        <Typography
-          sx={{
-            fontWeight: 400,
-            fontSize: "10px",
-            lineHeight: "16px",
-            letterSpacing: "0.01em",
-            color: alert.descColor,
-            textAlign: "left",
-            width: "100%",
-          }}
-        >
-          {alert.desc}
-        </Typography>
-      </Box>
-  
-              ))}
-            </Box>
-          </Box>
+          </Box>{" "}
+          {/* ✅ End of wrapper box */}
         </Box>
       </Box>
     </Box>
