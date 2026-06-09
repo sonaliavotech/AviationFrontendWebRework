@@ -21,38 +21,38 @@ import {
   Fade,
 } from "@mui/material";
 import { ExpandMore, ExpandLess, Close, LightMode, DarkMode } from "@mui/icons-material";
-import kitIconDark  from "../../assets/kit-icon1.png";
-import Medicine  from "../../assets/Medicine.png";
+import kitIconDark from "../../assets/kit-icon1.png";
+import Medicine from "../../assets/Medicine.png";
 import kitIconLight from "../../assets/kit-icon2.png";
 import { Calculate, Mic, SearchIcon, PillIcon } from "../../assets/Assets";
 import OutlinedInput from "@mui/material/OutlinedInput";
 
 
 const darkTheme = {
-  pageBg:         "#0B1D35",
-  sectionBg:      "#051429",
-  cardBg:         "#111a28",
-  inputBg:        "#21324B",
-  tableBg:        "#0B1D35",
-  tableHeadBg:    "#0B1D35",
-  modalBg:        "#0B1D35",
-  modalInnerBg:   "#0f1e33",
-  previewBg:      "#13223c",
-  previewImgBg:   "#0a121e",
-  border:         "#1F3047",
-  borderSoft:     "#1a3060",
-  borderRow:      "#0f2040",
-  borderModal:    "#334A68",
-  textPrimary:    "#f6faff",
-  textSecondary:  "#FFFFFF",
-  textMuted:      "#8F9098",
-  textUsage:      "#c8d8f0",
-  nameHover:      "#4d9fff",
-  toggleBg:       "#21324B",
-  toggleKnobBg:   "#015DFF",
-  toggleIcon:     "#FFFFFF",
-  chipBg:         "#292C41",
-  chipText:       "#F16154",
+  pageBg: "#0B1D35",
+  sectionBg: "#051429",
+  cardBg: "#111a28",
+  inputBg: "#21324B",
+  tableBg: "#0B1D35",
+  tableHeadBg: "#0B1D35",
+  modalBg: "#0B1D35",
+  modalInnerBg: "#0f1e33",
+  previewBg: "#13223c",
+  previewImgBg: "#0a121e",
+  border: "#1F3047",
+  borderSoft: "#1a3060",
+  borderRow: "#0f2040",
+  borderModal: "#334A68",
+  textPrimary: "#f6faff",
+  textSecondary: "#FFFFFF",
+  textMuted: "#8F9098",
+  textUsage: "#c8d8f0",
+  nameHover: "#4d9fff",
+  toggleBg: "#21324B",
+  toggleKnobBg: "#015DFF",
+  toggleIcon: "#FFFFFF",
+  chipBg: "#292C41",
+  chipText: "#F16154",
 };
 
 // ── Multiple modules data ──
@@ -166,11 +166,11 @@ const ModuleAccordion = ({ module, search, onMedicineClick }) => {
             mx: "16px",
             mb: "16px",
             width: "calc(100% - 32px)",
-            overflow: "auto",
-            maxHeight: "400px",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            "&::-webkit-scrollbar": { display: "none" },
+            // overflow: "hidden",    
+            // // maxHeight: "none",
+            // scrollbarWidth: "none",
+            // msOverflowStyle: "none",
+            // "&::-webkit-scrollbar": { display: "none" },
           }}
         >
           <Table size="small">
@@ -282,7 +282,15 @@ const FindMedicineInKit = () => {
   };
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", backgroundColor: darkTheme.pageBg, p: { xs: 2, sm: 3, md: 4 }, overflowY: "auto", boxSizing: "border-box" }}>
+    <Box
+      sx={{
+        width: "100%",
+        minHeight: "100vh",
+        backgroundColor: darkTheme.pageBg,
+        p: { xs: 2, sm: 3, md: 4 },
+        boxSizing: "border-box",
+      }}
+    >
 
       {/* Header row - removed toggle, only title remains */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
@@ -386,12 +394,17 @@ const FindMedicineInKit = () => {
         <Box
           sx={{
             width: { xs: "100%", sm: "347px" },
-            height: { xs: "347px", sm: "675px" },
+            height: { xs: "347px", sm: "510px" },
+            mt: { sm: -19 },
             background: darkTheme.sectionBg,
             border: `1px solid ${darkTheme.border}`,
             borderRadius: "16px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, position: "relative", overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            position: "relative",
+            overflow: "hidden",
           }}
         >
           {/* Always use dark kit icon since dark mode only */}

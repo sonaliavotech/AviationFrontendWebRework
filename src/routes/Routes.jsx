@@ -4,7 +4,7 @@ import { Box } from "@mui/material";
 
 import Sidebar from "../componants/Sidebar";
 import ProtectedRoute from "./ProtectedRoutes";
-import SearchKit from "../pages/SearchKit/SearchKit"
+import SearchKit from "../pages/FindMedicineinKit/FindMedicineinKit"
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/AllEvents/casedetails/CaseDetails";
 import { useThemeMode, getTheme } from "../context/ThemeContext";
