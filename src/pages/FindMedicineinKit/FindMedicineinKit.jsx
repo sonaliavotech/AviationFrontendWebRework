@@ -22,12 +22,46 @@ import {
 } from "@mui/material";
 import { ExpandMore, ExpandLess, Close } from "@mui/icons-material";
 import kitIconDark from "../../assets/kit-icon1.png";
-import Medicine from "../../assets/Medicine.png";
-import kitIconLight from "../../assets/kit-icon2.png";
 import { Calculate, Mic, SearchIcon, PillIcon } from "../../assets/Assets";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import { getTheme, useThemeMode } from "../../context/ThemeContext";
+import kitIconLight from "../../assets/kit-icon2.png";
+import adrenaline_ampoule_1000 from "../../assets/medicineKit/adrenaline_ampoule_1000.png";
+import ambu_bag from "../../assets/medicineKit/ambu_bag.jpg";
+import amiodarone_150mg from "../../assets/medicineKit/amiodarone_150mg.jpg";
+import atropine_600mcg from "../../assets/medicineKit/atropine_600mcg.jpg";
+import bp_stethoscope from "../../assets/medicineKit/bp_stethoscope.jpg";
+import epinephrine_auto_injector from "../../assets/medicineKit/epinephrine_auto_injector.webp";
+import guedel_airway from "../../assets/medicineKit/guedel_airway.jpg";
+import life_vac_choking_kit from "../../assets/medicineKit/life_vac_choking_kit.webp";
+import manual_suction_laerdal_v_vac from "../../assets/medicineKit/manual_suction_laerdal_v_vac.jpg";
+import metoclopramide_10mg from "../../assets/medicineKit/metoclopramide_10mg.webp";
+import nasopharyngeal_airway from "../../assets/medicineKit/nasopharyngeal_airway.jpg";
+import promethazine_hcl_50mg from "../../assets/medicineKit/promethazine_hcl_50mg.webp";
+import salbutamol_ventolin_inhaler from "../../assets/medicineKit/salbutamol_ventolin_inhaler.jpg";
+import sodium_chloride_posi_flush_10ml from "../../assets/medicineKit/sodium_chloride_posi_flush_10ml.jpg";
+import solu_cortef_100mg_2ml from "../../assets/medicineKit/solu_cortef_100mg_2ml.webp";
+import spacer_disposable from "../../assets/medicineKit/spacer_disposable.jpg";
 
+const medicineImages = {
+  "Atropine ampoule 600 mcg/ml": atropine_600mcg,
+  "Adrenaline (Epinephrine) 1:1000 ampoule": adrenaline_ampoule_1000,
+  "Epipen OR NEFFY": epinephrine_auto_injector,
+  "Amiodarone Ampoule": amiodarone_150mg,
+  "Hydrocortisone sodium succinate 250 mg": solu_cortef_100mg_2ml,
+  " iphenhydramine 50mgml": promethazine_hcl_50mg,
+  "Salbutamol (Albuterol) inhaler": salbutamol_ventolin_inhaler,
+
+  "INJ Metoclopramide 10mg": metoclopramide_10mg,
+
+  "Oropharyngeal airway (sizes 0-4)": guedel_airway,
+  "Nasopharyngeal airway size 6 & 7": nasopharyngeal_airway,
+  "Bag Valve Mask (adult & paediatric)": ambu_bag,
+  "Suction catheter (yankauer)": manual_suction_laerdal_v_vac,
+
+  "Blood pressure cuff (adult / paediatric)": bp_stethoscope,
+  "Normal Saline 0.9% 500ml bag": sodium_chloride_posi_flush_10ml,
+};
 const getMedicineKitTheme = (darkMode) => {
   const base = getTheme(darkMode);
 
@@ -85,9 +119,10 @@ const modules = [
       {
         name: "Atropine ampoule 600 mcg/ml",
         usage: "Slow heart rate / Cardiac arrest",
+
       },
-      { name: "Adrenaline (Epinephrine) 1:1000 ampoule", usage: "Anaphylaxis" },
-      { name: "Epipen OR NEFFY", usage: "Anaphylaxis", outOfStock: true },
+      { name: "Adrenaline (Epinephrine) 1:1000 ampoule", usage: "Anaphylaxis", },
+      { name: "Epipen OR NEFFY", usage: "Anaphylaxis", outOfStock: true, },
       { name: "Midozalam ( Buccal or intranasal )", usage: "Seizure" },
       {
         name: "Amiodarone Ampoule",
@@ -304,7 +339,10 @@ const ModuleAccordion = ({ module, search, onMedicineClick, theme }) => {
                         component="span"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onMedicineClick(medicine);
+                          onMedicineClick({
+                            ...medicine,
+                            image: medicineImages[medicine.name] || null,
+                          });
                         }}
                         sx={{
                           color: theme.textPrimary,
@@ -469,7 +507,7 @@ const FindMedicineInKit = () => {
                 p: "8px 0",
                 textTransform: "none",
                 fontFamily: "Inter, sans-serif",
-                fontWeight: activeTab === index ? 700 : 500,
+                // fontWeight: activeTab === index ? 700 : 500,
                 fontSize: "15px",
                 letterSpacing: "-0.03em",
                 color: theme.textPrimary,
@@ -679,17 +717,44 @@ const FindMedicineInKit = () => {
                 overflow: "hidden",
               }}
             >
-              <Box
-                component="img"
-                src={previewMedicine?.image || Medicine}
-                alt={previewMedicine?.name}
-                sx={{
-                  maxHeight: "280px",
-                  maxWidth: "80%",
-                  objectFit: "contain",
-                  opacity: 1,
-                }}
-              />
+              {previewMedicine?.image ? (
+                <Box
+                  component="img"
+                  src={previewMedicine.image}
+                  alt={previewMedicine.name}
+                  sx={{
+                    maxHeight: "280px",
+                    maxWidth: "80%",
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: "28px",
+                      fontWeight: 700,
+                      color: "#015DFF",
+                      mb: 1,
+                    }}
+                  >
+                    Coming Soon
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: "14px",
+                      color: theme.textMuted,
+                    }}
+                  >
+                    Image for this medicine is not available yet.
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Box>
         </Fade>
