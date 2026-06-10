@@ -16,6 +16,7 @@ const SignIn = lazy(() => import("../componants/SignIn"));
 const FindMedicineinKit = lazy(
   () => import("../pages/FindMedicineinKit/FindMedicineinKit"),
 );
+const FAQs = lazy(() => import("../pages/FAQs/FAQs"));
 
 const MainLayout = ({ children }) => {
   const isAuthenticated = !!localStorage.getItem("token");
@@ -101,6 +102,15 @@ const CustomRoutes = () => {
           element={
             <MainLayout>
               <FindMedicineinKit />
+            </MainLayout>
+          }
+        />
+
+        <Route
+          path="/faqs"
+          element={
+            <MainLayout>
+              <FAQs />
             </MainLayout>
           }
         />

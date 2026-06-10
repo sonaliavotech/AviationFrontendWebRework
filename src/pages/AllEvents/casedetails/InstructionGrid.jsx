@@ -1,6 +1,9 @@
 import { Box, Typography } from "@mui/material";
+import { buildInstructionTheme } from "../../../theme/appStyles";
 
-export const InstructionGrid = ({ instructions }) => {
+export const InstructionGrid = ({ instructions, darkMode = true, c }) => {
+  const theme = buildInstructionTheme(darkMode, c);
+
   return (
     <Box
       sx={{
@@ -21,14 +24,14 @@ export const InstructionGrid = ({ instructions }) => {
             display: "flex",
             alignItems: "center",
             gap: 2.5,
-            background: "#102746",
+            background: theme.cardBg,
             borderRadius: "12px",
             p: 1.5,
-            border: "1px solid #1d3a63",
+            border: `1px solid ${theme.cardBorder}`,
             minHeight: "72px",
             transition: "all 0.3s ease",
             "&:hover": {
-              borderColor: "#1f6fff",
+              borderColor: theme.hoverBorder,
               transform: "translateY(-2px)",
             },
           }}
@@ -38,12 +41,12 @@ export const InstructionGrid = ({ instructions }) => {
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: "#16345c",
+              background: theme.iconBg,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              color: "#4ea1ff",
+              color: theme.iconColor,
               fontSize: "20px",
             }}
           >
@@ -63,7 +66,7 @@ export const InstructionGrid = ({ instructions }) => {
               sx={{
                 fontSize: "14px",
                 fontWeight: 600,
-                color: "#ffffff",
+                color: theme.title,
                 lineHeight: 1.2,
               }}
             >
@@ -73,7 +76,7 @@ export const InstructionGrid = ({ instructions }) => {
             <Typography
               sx={{
                 fontSize: "12px",
-                color: "#8ab4d8",
+                color: theme.description,
                 lineHeight: 1.4,
               }}
             >

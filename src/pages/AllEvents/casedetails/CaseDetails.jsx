@@ -15,7 +15,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ChatIcon from "@mui/icons-material/Chat";
 
-import { InstructionGrid } from "./InstructionGrid";
+import { getVitalsSidebarTheme } from "../../../theme/appStyles";
 import { KitSection } from "./KitSection";
 import {
   HeartRateIcon, BloodPressureIcon, OxygenIcon,
@@ -94,45 +94,69 @@ const getVariant = (key, val) => {
   return "normal";
 };
 
-// ── Card style tokens ─────────────────────────────────────────────────────────
-const CARD_NML = "#112240";
-const CARD_DNG = "#1f1018";
-const CARD_WRN = "#1c1a08";
+const createVitalCardStyles = (vitalTheme) => {
+  const bgOf = (v) =>
+    v === "danger" ? vitalTheme.cardDng : v === "warning" ? vitalTheme.cardWrn : vitalTheme.cardNml;
+  const labelOf = (v) =>
+    v === "danger" ? vitalTheme.labelDng : v === "warning" ? vitalTheme.labelWrn : vitalTheme.labelNml;
+  const valueOf = (v) =>
+    v === "danger" ? vitalTheme.textDng : v === "warning" ? vitalTheme.textWrn : vitalTheme.textWhite;
+  const iconOf = (v) =>
+    v === "danger"
+      ? vitalTheme.iconDng
+      : v === "warning"
+        ? vitalTheme.iconWrn
+        : v === "blue"
+          ? vitalTheme.iconBlu
+          : vitalTheme.iconNml;
+  const borderOf = (v) => {
+    if (v === "danger") {
+      return {
+        borderLeft: `3px solid ${vitalTheme.borderDng}`,
+        borderTop: `1px solid ${vitalTheme.borderDngR}`,
+        borderRight: `1px solid ${vitalTheme.borderDngR}`,
+        borderBottom: `1px solid ${vitalTheme.borderDngR}`,
+      };
+    }
+    if (v === "warning") {
+      return {
+        borderLeft: `3px solid ${vitalTheme.borderWrn}`,
+        borderTop: `1px solid ${vitalTheme.borderWrnR}`,
+        borderRight: `1px solid ${vitalTheme.borderWrnR}`,
+        borderBottom: `1px solid ${vitalTheme.borderWrnR}`,
+      };
+    }
+    if (v === "blue") {
+      return {
+        borderLeft: `3px solid ${vitalTheme.borderBlu}`,
+        borderTop: `1px solid ${vitalTheme.borderBluR}`,
+        borderRight: `1px solid ${vitalTheme.borderBluR}`,
+        borderBottom: `1px solid ${vitalTheme.borderBluR}`,
+      };
+    }
+    return {
+      borderLeft: `3px solid ${vitalTheme.borderNmlL}`,
+      borderTop: `1px solid ${vitalTheme.borderNmlR}`,
+      borderRight: `1px solid ${vitalTheme.borderNmlR}`,
+      borderBottom: `1px solid ${vitalTheme.borderNmlR}`,
+    };
+  };
 
-const BORDER_DNG   = "#c13a3a";
-const BORDER_DNG_R = "#2e1a1a";
-const BORDER_WRN   = "#c07820";
-const BORDER_WRN_R = "#2a2510";
-const BORDER_BLU   = "#2060cc";
-const BORDER_BLU_R = "#1c3455";
-const BORDER_NML_L = "#ffffff33";
-const BORDER_NML_R = "#ffffff18";
-
-const TEXT_WHITE = "#ffffff";
-const TEXT_DNG   = "#f05050";
-const TEXT_WRN   = "#e09030";
-const LABEL_NML  = "#5a7da0";
-const LABEL_DNG  = "#9a6060";
-const LABEL_WRN  = "#9a7830";
-const ICON_NML   = "#2a4a6a";
-const ICON_DNG   = "#9a3030";
-const ICON_WRN   = "#9a6010";
-const ICON_BLU   = "#2a6acc";
-
-const bgOf    = v => v === "danger" ? CARD_DNG  : v === "warning" ? CARD_WRN  : CARD_NML;
-const labelOf = v => v === "danger" ? LABEL_DNG : v === "warning" ? LABEL_WRN : LABEL_NML;
-const valueOf = v => v === "danger" ? TEXT_DNG  : v === "warning" ? TEXT_WRN  : TEXT_WHITE;
-const iconOf  = v => v === "danger" ? ICON_DNG  : v === "warning" ? ICON_WRN  : v === "blue" ? ICON_BLU : ICON_NML;
-
-const borderOf = (v) => {
-  if (v === "danger")  return { borderLeft: `3px solid ${BORDER_DNG}`, borderTop: `1px solid ${BORDER_DNG_R}`, borderRight: `1px solid ${BORDER_DNG_R}`, borderBottom: `1px solid ${BORDER_DNG_R}` };
-  if (v === "warning") return { borderLeft: `3px solid ${BORDER_WRN}`, borderTop: `1px solid ${BORDER_WRN_R}`, borderRight: `1px solid ${BORDER_WRN_R}`, borderBottom: `1px solid ${BORDER_WRN_R}` };
-  if (v === "blue")    return { borderLeft: `3px solid ${BORDER_BLU}`, borderTop: `1px solid ${BORDER_BLU_R}`, borderRight: `1px solid ${BORDER_BLU_R}`, borderBottom: `1px solid ${BORDER_BLU_R}` };
-  return { borderLeft: `3px solid ${BORDER_NML_L}`, borderTop: `1px solid ${BORDER_NML_R}`, borderRight: `1px solid ${BORDER_NML_R}`, borderBottom: `1px solid ${BORDER_NML_R}` };
+  return { bgOf, labelOf, valueOf, iconOf, borderOf };
 };
 
 // ── VitalCard (matches PatientVitalsSidebar exactly) ─────────────────────────
-const VitalCard = ({ label, display, numericValue, thresholdKey, forceVariant, icon: Icon, children }) => {
+const VitalCard = ({
+  label,
+  display,
+  numericValue,
+  thresholdKey,
+  forceVariant,
+  icon: Icon,
+  children,
+  vitalTheme,
+}) => {
+  const { bgOf, labelOf, valueOf, iconOf, borderOf } = createVitalCardStyles(vitalTheme);
   const v = forceVariant ?? getVariant(thresholdKey, numericValue);
   return (
     <Box sx={{
@@ -245,11 +269,12 @@ export const CaseDetails = () => {
     () => (darkMode ? DARK_C : buildLightC(appTheme)),
     [darkMode, appTheme],
   );
+  const vitalTheme = useMemo(() => getVitalsSidebarTheme(darkMode), [darkMode]);
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
   const isTablet = useMediaQuery(muiTheme.breakpoints.down("lg"));
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", width: "100%", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: "hidden", color: C.text, transition: "background 0.3s, color 0.3s" }}>
+    <Box sx={{ display: "flex", height: "100vh", width: "100%", background: C.bg, overflow: "hidden", color: C.text, transition: "background 0.3s, color 0.3s" }}>
 
       {/* ── MAIN CONTENT ── */}
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", minWidth: 0 }}>
@@ -313,7 +338,7 @@ export const CaseDetails = () => {
               <Box sx={{ flex: 1, overflowY: "auto", p: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <Box sx={{ background: C.card, borderRadius: "12px", p: "12px" }}>
                   <Typography sx={{ fontSize: "13px", fontWeight: 700, color: C.text }}>Pathway A - Vasovagal</Typography>
-                  <InstructionGrid instructions={instructionsData} />
+                  <InstructionGrid instructions={instructionsData} darkMode={darkMode} c={C} />
                   <Typography sx={{ fontSize: "10px", color: C.textMuted, mt: "8px" }}>Dr. Sarah Johnson • 14/03/2026 • 14:28</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
@@ -391,7 +416,7 @@ export const CaseDetails = () => {
           <Button
             onClick={() => setShowTrends(!showTrends)}
             fullWidth
-            sx={{ background: C.surface, color: "#D2D6DB", border: `1px solid ${C.borderLight}`, borderRadius: "8px", py: "10px", fontSize: "11px", fontWeight: 600, textTransform: "none", gap: "6px", mb: "4px", "&:hover": { background: C.card } }}
+            sx={{ background: C.surface, color: C.textMuted, border: `1px solid ${C.borderLight}`, borderRadius: "8px", py: "10px", fontSize: "11px", fontWeight: 600, textTransform: "none", gap: "6px", mb: "4px", "&:hover": { background: C.card } }}
           >
             <BarChartIcon sx={{ fontSize: "16px" }} />
             {showTrends ? "Hide Trends" : "Show Vital trends"}
@@ -407,6 +432,7 @@ export const CaseDetails = () => {
               thresholdKey={thresholdKey}
               forceVariant={forceVariant}
               icon={icon}
+              vitalTheme={vitalTheme}
             />
           ))}
         </Box>

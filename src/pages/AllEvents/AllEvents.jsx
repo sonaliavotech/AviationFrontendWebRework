@@ -1901,10 +1901,33 @@ export default function AllEvents() {
                 sx: {
                   display: "flex",
                   alignItems: "center",
-                  backgroundColor: "rgba(33, 50, 75, 1)",
+                  backgroundColor: theme.popoverBg,
+                  color: theme.textPrimary,
                   borderRadius: "12px",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  border: `1px solid ${theme.borderColor}`,
                   px: 1.5,
+                  transition: "background-color 0.3s, color 0.3s, border-color 0.3s",
+                  "& .MuiPickersCalendarHeader-label": {
+                    color: theme.textPrimary,
+                  },
+                  "& .MuiDayCalendar-weekDayLabel": {
+                    color: theme.textSecondary,
+                  },
+                  "& .MuiPickersDay-root": {
+                    color: theme.textPrimary,
+                  },
+                  "& .MuiPickersDay-root.Mui-selected": {
+                    backgroundColor: darkMode ? "#4DA3FF" : "#015DFF",
+                    color: "#FFFFFF",
+                  },
+                  "& .MuiPickersDay-root.Mui-selected:hover": {
+                    backgroundColor: darkMode
+                      ? "rgba(77, 163, 255, 0.85)"
+                      : "rgba(1, 93, 255, 0.85)",
+                  },
+                  "& .MuiIconButton-root": {
+                    color: theme.textPrimary,
+                  },
                 },
               }}
             >
@@ -3183,8 +3206,10 @@ export default function AllEvents() {
               overflow: "hidden",
               width: "520px",
               maxWidth: "520px",
-              bgcolor: darkMode ? theme.modalBg : "#FFFFFF",
-              boxShadow: "0 12px 40px rgba(15, 23, 42, 0.18)",
+              bgcolor: theme.modalBg,
+              boxShadow: darkMode
+                ? "0 12px 40px rgba(0, 0, 0, 0.35)"
+                : "0 12px 40px rgba(15, 23, 42, 0.18)",
             },
           }}
         >
@@ -3196,7 +3221,7 @@ export default function AllEvents() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                borderBottom: `1px solid ${darkMode ? theme.modalDivider : "#E5E7EB"}`,
+                borderBottom: `1px solid ${theme.modalDivider}`,
               }}
             >
               <Typography
@@ -3228,7 +3253,7 @@ export default function AllEvents() {
                 sx={{
                   width: 190,
                   flexShrink: 0,
-                  bgcolor: darkMode ? "rgba(255,255,255,0.04)" : "#F3F4F6",
+                  bgcolor: darkMode ? "rgba(255,255,255,0.04)" : theme.tableHeadBg,
                   py: 2,
                   overflowY: "auto",
                 }}
@@ -3264,7 +3289,7 @@ export default function AllEvents() {
                             activeFilterCategory === category.id
                               ? darkMode
                                 ? "rgba(255,255,255,0.08)"
-                                : "#FFFFFF"
+                                : theme.cardBg
                               : "transparent",
                           transition: "background 0.2s",
                         }}
@@ -3282,7 +3307,7 @@ export default function AllEvents() {
                   py: 1.5,
                   px: 2.5,
                   overflowY: "auto",
-                  bgcolor: darkMode ? theme.modalBg : "#FFFFFF",
+                  bgcolor: theme.modalBg,
                 }}
               >
                 {(filterOptionsByCategory[activeFilterCategory] || []).length ===
@@ -3349,7 +3374,7 @@ export default function AllEvents() {
                 justifyContent: "space-between",
                 px: 3,
                 py: 2,
-                borderTop: `1px solid ${darkMode ? theme.modalDivider : "#E5E7EB"}`,
+                borderTop: `1px solid ${theme.modalDivider}`,
               }}
             >
               <Button
@@ -3433,8 +3458,6 @@ export default function AllEvents() {
                 sx={{
                   color: theme.textPrimary,
                   mt: 2,
-                  fontFamily:
-                    "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                 }}
               >
                 {assignType === "doctor" ? "Assign to Provider" : null}
@@ -3492,8 +3515,6 @@ export default function AllEvents() {
                     "& input::placeholder": {
                       color: theme.textSecondary,
                       opacity: 1,
-                      fontFamily:
-                        "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                     },
                   }}
                 />
@@ -3548,8 +3569,6 @@ export default function AllEvents() {
                           color: theme.textPrimary,
                           fontSize: "14px",
                           fontWeight: 300,
-                          fontFamily:
-                            "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                         }}
                       >
                         {doc.name}
@@ -3561,8 +3580,6 @@ export default function AllEvents() {
                           color: "#228B22",
                           mt: 0.2,
                           fontSize: "14px",
-                          fontFamily:
-                            "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
                         }}
                       >
                         {[doc.status, doc.specialty]

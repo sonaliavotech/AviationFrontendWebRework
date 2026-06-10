@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TimelineIcon from "@mui/icons-material/Timeline";
+import { useThemeMode } from "../../context/ThemeContext";
+import { getNormalVitalCardStyle, getPanelColors } from "../../theme/appStyles";
 
 import {
   HeartRateIcon,
@@ -17,7 +19,8 @@ import {
   AVPUIcon,
 } from "../../assets/Assets";
 
-function ECGWaveform() {
+function ECGWaveform({ darkMode }) {
+  const bg = darkMode ? "#112339" : "#FFFFFF";
   return (
     <svg
       viewBox="0 0 120 52"
@@ -25,7 +28,7 @@ function ECGWaveform() {
       style={{ width: "100%", height: "100%", display: "block" }}
       preserveAspectRatio="none"
     >
-      <rect width="120" height="52" fill="white" />
+      <rect width="120" height="52" fill={bg} />
 
       <polyline
         points="
@@ -77,109 +80,53 @@ function ECGWaveform() {
   );
 }
 
-const vitals = [
-  {
-    title: "Heart Rate",
-    value: "88 bpm",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <HeartRateIcon />,
-  },
-  {
-    title: "Blood Pressure",
-    value: "135/85 mmHg",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <BloodPressureIcon />,
-  },
-  {
-    title: "Oxygen",
-    value: "80%",
-    color: "#FFFFFF",
-    labelColor: "#BDA7B5",
-    bg: "#4B2B43",
-    border: "#FF4D67",
-    icon: <OxygenIcon />,
-  },
-  {
-    title: "Respiratory rate",
-    value: "24 mins.",
-    color: "#F8F8F8",
-    labelColor: "#C0B5AE",
-    bg: "#504844",
-    border: "#F5A03C",
-    icon: <RespiratoryRateIcon />,
-  },
-  {
-    title: "Temperature",
-    value: "34.5 C",
-    color: "#F8F8F8",
-    labelColor: "#C0B5AE",
-    bg: "#504844",
-    border: "#F5A03C",
-    icon: <TemperatureIcon />,
-  },
-  {
-    title: "Skin Colour",
-    value: "Normal",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <SkinColorIcon />,
-  },
-  {
-    title: "Sweating",
-    value: "Mild",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <SweatingIcon />,
-  },
-  {
-    title: "ECG",
-    value: "Sinus",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <ECGWaveform />,
-  },
-  {
-    title: "Pain Score",
-    value: "6/10",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <PainScoreIcon />,
-  },
-  {
-    title: "Blood Glucose",
-    value: "100 mg/dl",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <BloodGlucoseIcon />,
-  },
-  {
-    title: "AVPU Score",
-    value: "15",
-    color: "#F2F6FC",
-    labelColor: "#8EA3BC",
-    bg: "#183355",
-    border: "#2A527C",
-    icon: <AVPUIcon />,
-  },
-];
+const buildVitals = (darkMode) => {
+  const normal = getNormalVitalCardStyle(darkMode);
+
+  return [
+    { title: "Heart Rate", value: "88 bpm", ...normal, icon: <HeartRateIcon /> },
+    { title: "Blood Pressure", value: "135/85 mmHg", ...normal, icon: <BloodPressureIcon /> },
+    {
+      title: "Oxygen",
+      value: "80%",
+      color: darkMode ? "#FFFFFF" : "#1F2937",
+      labelColor: darkMode ? "#BDA7B5" : "#64748B",
+      bg: darkMode ? "#4B2B43" : "#FEE2E2",
+      border: "#FF4D67",
+      icon: <OxygenIcon />,
+    },
+    {
+      title: "Respiratory rate",
+      value: "24 mins.",
+      color: darkMode ? "#F8F8F8" : "#1F2937",
+      labelColor: darkMode ? "#C0B5AE" : "#64748B",
+      bg: darkMode ? "#504844" : "#FFFBEB",
+      border: "#F5A03C",
+      icon: <RespiratoryRateIcon />,
+    },
+    {
+      title: "Temperature",
+      value: "34.5 C",
+      color: darkMode ? "#F8F8F8" : "#1F2937",
+      labelColor: darkMode ? "#C0B5AE" : "#64748B",
+      bg: darkMode ? "#504844" : "#FFFBEB",
+      border: "#F5A03C",
+      icon: <TemperatureIcon />,
+    },
+    { title: "Skin Colour", value: "Normal", ...normal, icon: <SkinColorIcon /> },
+    { title: "Sweating", value: "Mild", ...normal, icon: <SweatingIcon /> },
+    { title: "ECG", value: "Sinus", ...normal, icon: <ECGWaveform darkMode={darkMode} /> },
+    { title: "Pain Score", value: "6/10", ...normal, icon: <PainScoreIcon /> },
+    { title: "Blood Glucose", value: "100 mg/dl", ...normal, icon: <BloodGlucoseIcon /> },
+    { title: "AVPU Score", value: "15", ...normal, icon: <AVPUIcon /> },
+  ];
+};
 
 function Action2({ onClose }) {
+  const { darkMode } = useThemeMode();
+  const panel = getPanelColors(darkMode);
+  const vitals = useMemo(() => buildVitals(darkMode), [darkMode]);
+
   return (
     <Box
       sx={{
@@ -188,14 +135,16 @@ function Action2({ onClose }) {
         right: 0,
         width: "300px",
         height: "100vh",
-        background: "#081B36",
-        borderLeft: "1px solid rgba(255,255,255,0.08)",
+        background: panel.panelBg,
+        borderLeft: `1px solid ${panel.panelBorder}`,
         zIndex: 9999,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden", // ← no scroll at all
+        overflow: "hidden",
         p: 1.5,
+        color: panel.textPrimary,
+        transition: "background 0.3s, border-color 0.3s, color 0.3s",
       }}
     >
       {/* HEADER */}
@@ -209,26 +158,26 @@ function Action2({ onClose }) {
         }}
       >
         <Box>
-          <Box
-            style={{
-              color: "#fff",
+          <Typography
+            sx={{
+              color: panel.textPrimary,
               fontWeight: 500,
               fontSize: "15px",
-              marginRight: "40px",
+              mr: "40px",
             }}
           >
             John Smith, 58 M
-          </Box>
-          <Box style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>
+          </Typography>
+          <Typography sx={{ color: panel.textSecondary, fontSize: "12px" }}>
             Flight AA1234 (SYD → LAX)
-          </Box>
+          </Typography>
         </Box>
 
         <IconButton
           size="small"
           onClick={onClose}
           sx={{
-            color: "#FFFFFF",
+            color: panel.textPrimary,
             marginTop: "3px",
             marginLeft: "75px",
             width: 32,
@@ -320,7 +269,9 @@ function Action2({ onClose }) {
                 justifyContent: "center",
                 background:
                   item.title === "ECG"
-                    ? "linear-gradient(180deg, #1B3558 0%, #122844 100%)"
+                    ? darkMode
+                      ? "linear-gradient(180deg, #1B3558 0%, #122844 100%)"
+                      : "linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%)"
                     : "transparent",
                 "& svg": {
                   width: item.title === "ECG" ? "100%" : 32,

@@ -1,4 +1,7 @@
 import IconButton from "@mui/material/IconButton";
+import { Box, Typography, Button } from "@mui/material";
+import { useThemeMode } from "../../context/ThemeContext";
+import { getPanelColors } from "../../theme/appStyles";
 
 import {
   AccessTimeIcon,
@@ -11,87 +14,90 @@ import {
   OxygenIcon,
 } from "../../assets/Assets";
 
-const BOX_HEIGHT = "110px"; // 🔻 reduced height
+const BOX_HEIGHT = "110px";
 
-/* ===================== GRAPH CARD ===================== */
-function GraphCard({ title, value = 62, showTrend = false }) {
+function GraphCard({ title, value = 62, showTrend = false, panel }) {
   return (
-    <div
-      style={{
-        background: "#EEF1F5",
+    <Box
+      sx={{
+        background: panel.graphCardBg,
         borderRadius: "18px",
-        marginBottom: "8px",
+        mb: "8px",
         position: "relative",
         overflow: "hidden",
         height: BOX_HEIGHT,
+        border: panel.borderColor ? `1px solid ${panel.borderColor}` : "none",
       }}
     >
-      {/* HEADER */}
-      <div
-        style={{
+      <Box
+        sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          padding: "8px 12px 0px 12px",
+          px: "12px",
+          pt: "8px",
         }}
       >
-        <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>
+        <Typography
+          component="span"
+          sx={{ fontSize: "14px", fontWeight: 700, color: panel.graphTitle }}
+        >
           {title}
-        </span>
+        </Typography>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <AccessTimeIcon />
-          <span
-            style={{
+          <Typography
+            component="span"
+            sx={{
               fontSize: "8px",
-              color: "#6B7280",
+              color: panel.graphSubtext,
               borderRadius: "10px",
               background: "rgba(107,114,128,0.08)",
-              padding: "2px 6px",
+              px: "6px",
+              py: "2px",
             }}
           >
             Last 20 min
-          </span>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
 
-      {/* TREND */}
       {showTrend && (
-        <div
-          style={{
+        <Box
+          sx={{
             display: "flex",
             alignItems: "center",
             gap: "3px",
-            marginLeft: "12px",
-            marginTop: "2px",
+            ml: "12px",
+            mt: "2px",
             color: "#2897FF",
           }}
         >
           <TrendingDownIcon style={{ color: "#2897FF" }} />
-          <span style={{ fontSize: "9px", color: "#2897FF" }}>
+          <Typography component="span" sx={{ fontSize: "9px", color: "#2897FF" }}>
             Trending Down
-          </span>
-        </div>
+          </Typography>
+        </Box>
       )}
 
-      {/* GRAPH AT BOTTOM */}
-      <div
-        style={{
+      <Box
+        sx={{
           position: "absolute",
           bottom: 0,
           left: 0,
           width: "100%",
-          height: "60px", // 🔻 reduced graph height
+          height: "60px",
         }}
       >
-        <div
-          style={{
+        <Box
+          sx={{
             position: "absolute",
             bottom: "-10px",
             left: "-10px",
             width: "115%",
             height: "60px",
-            background: "#DCE9F7",
+            background: panel.graphWave,
             borderTopLeftRadius: "50%",
             borderTopRightRadius: "50%",
           }}
@@ -110,28 +116,9 @@ function GraphCard({ title, value = 62, showTrend = false }) {
             strokeWidth="3"
             fill="none"
           />
-
-          {/* BLUE POINT */}
-          <circle
-            cx="132"
-            cy="33"
-            r="4"
-            fill="#0B84FF"
-            stroke="white"
-            strokeWidth="2"
-          />
-
-          {/* 🔵 VALUE BUBBLE ON POINT */}
+          <circle cx="132" cy="33" r="4" fill="#0B84FF" stroke="white" strokeWidth="2" />
           <g>
-            <rect
-              x="120"
-              y="5"
-              rx="10"
-              ry="10"
-              width="22"
-              height="16"
-              fill="white"
-            />
+            <rect x="120" y="5" rx="10" ry="10" width="22" height="16" fill="white" />
             <text
               x="131"
               y="17"
@@ -144,106 +131,145 @@ function GraphCard({ title, value = 62, showTrend = false }) {
             </text>
           </g>
         </svg>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
-/* ===================== MAIN PANEL ===================== */
 export default function ViewVitalTrends({ open, onClose }) {
+  const { darkMode } = useThemeMode();
+  const panel = getPanelColors(darkMode);
+
   if (!open) return null;
 
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         position: "fixed",
         top: 0,
         right: 0,
-        width: "270px", // 🔼 slightly increased width
+        width: "270px",
         height: "100vh",
-        background: "#072244",
-        padding: "16px",
+        background: panel.panelBg,
+        borderLeft: `1px solid ${panel.panelBorder}`,
+        p: "16px",
         boxSizing: "border-box",
         overflow: "hidden",
-        boxShadow: "-6px 0 32px rgba(0,0,0,0.35)",
+        boxShadow: darkMode
+          ? "-6px 0 32px rgba(0,0,0,0.35)"
+          : "-6px 0 32px rgba(15, 23, 42, 0.12)",
         zIndex: 9999,
+        transition: "background 0.3s, border-color 0.3s",
       }}
     >
-      {/* HEADER */}
-      <div
-        style={{
+      <Box
+        sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: "12px",
+          mb: "12px",
         }}
       >
-        <div>
-          <div style={{ color: "#fff", fontWeight: 500, fontSize: "15px" }}>
+        <Box>
+          <Typography
+            sx={{ color: panel.textPrimary, fontWeight: 500, fontSize: "15px" }}
+          >
             John Smith, 58 M
-          </div>
-          <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>
+          </Typography>
+          <Typography sx={{ color: panel.textSecondary, fontSize: "12px" }}>
             Flight AA1234 (SYD → LAX)
-          </div>
-        </div>
+          </Typography>
+        </Box>
 
-        <IconButton onClick={onClose} sx={{ color: "#fff" }}>
+        <IconButton onClick={onClose} sx={{ color: panel.textPrimary }}>
           <CloseIcon />
         </IconButton>
-      </div>
+      </Box>
 
-      {/* CARDS */}
-      <GraphCard title={<span style={{ display: "flex", gap: 6, alignItems: "center" }}><OxygenIcon />SpO₂</span>} value={62} showTrend />
-      <GraphCard title={<span style={{ display: "flex", gap: 6, alignItems: "center" }}><HeartRateIcon />Heart Rate</span>} value={62} />
-      <GraphCard title={<span style={{ display: "flex", gap: 6, alignItems: "center" }}><BloodPressureIcon />Blood Pressure</span>} value={62} />
+      <GraphCard
+        title={
+          <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
+            <OxygenIcon />
+            SpO₂
+          </Box>
+        }
+        value={62}
+        showTrend
+        panel={panel}
+      />
+      <GraphCard
+        title={
+          <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
+            <HeartRateIcon />
+            Heart Rate
+          </Box>
+        }
+        value={62}
+        panel={panel}
+      />
+      <GraphCard
+        title={
+          <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
+            <BloodPressureIcon />
+            Blood Pressure
+          </Box>
+        }
+        value={62}
+        panel={panel}
+      />
 
-      {/* ALERT */}
-      <div
-        style={{
-          background: "#F3D9DE",
+      <Box
+        sx={{
+          background: panel.criticalAlertBg,
           borderRadius: "18px",
-          padding: "12px",
-          marginTop: "4px",
-          marginBottom: "10px",
+          p: "12px",
+          mt: "4px",
+          mb: "10px",
           height: BOX_HEIGHT,
           boxSizing: "border-box",
           display: "flex",
           alignItems: "center",
           gap: "10px",
+          border: darkMode ? "none" : `1px solid ${panel.borderColor}`,
         }}
       >
         <ErrorIcon />
 
-        <div>
-          <div style={{ fontWeight: 700, fontSize: "14px" }}>
+        <Box>
+          <Typography
+            sx={{ fontWeight: 700, fontSize: "14px", color: panel.criticalAlertText }}
+          >
             SpO₂ &lt; 90% - Critical threshold
-          </div>
-          <div style={{ fontSize: "13px", color: "#3B3B3B" }}>
-            <b>Recommendation:</b> Increase oxygen 6–8 L/min NRM. Prepare AED.
-          </div>
-        </div>
-      </div>
+          </Typography>
+          <Typography sx={{ fontSize: "13px", color: panel.textSecondary }}>
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              Recommendation:
+            </Box>{" "}
+            Increase oxygen 6–8 L/min NRM. Prepare AED.
+          </Typography>
+        </Box>
+      </Box>
 
-      {/* BUTTON */}
-      <button
-        style={{
-          width: "100%",
+      <Button
+        fullWidth
+        sx={{
           background: "#34B26E",
-          border: "none",
           borderRadius: "12px",
-          padding: "10px 0",
+          py: "10px",
           color: "#fff",
           fontWeight: 600,
           fontSize: "13px",
+          textTransform: "none",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: "6px",
+          "&:hover": { background: "#2da260" },
         }}
       >
         <TimerIcon />
         Set Reminder
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }

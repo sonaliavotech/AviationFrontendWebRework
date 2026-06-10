@@ -13,8 +13,34 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import GroupIcon from "@mui/icons-material/Group";
+import { useThemeMode, getTheme } from "../../context/ThemeContext";
 
 function ShareReportDialog({ open, handleClose }) {
+  const { darkMode } = useThemeMode();
+  const theme = getTheme(darkMode);
+
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      background: theme.modalSurface,
+      borderRadius: "8px",
+      color: theme.textPrimary,
+      height: "40px",
+      display: "flex",
+      alignItems: "center",
+      "& fieldset": {
+        border: darkMode ? "none" : `1px solid ${theme.borderColor}`,
+      },
+    },
+    "& input": {
+      color: theme.textPrimary,
+      fontSize: "14px",
+    },
+    "& input::placeholder": {
+      color: theme.textSecondary,
+      opacity: 1,
+    },
+  };
+
   return (
     <Dialog
       open={open}
@@ -25,15 +51,16 @@ function ShareReportDialog({ open, handleClose }) {
         sx: {
           width: "350px",
           borderRadius: "16px",
-          backgroundColor: "rgba(11, 29, 53, 1)",
-          color: "#fff",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0px 10px 30px rgba(0,0,0,0.35)",
+          backgroundColor: theme.modalBg,
+          color: theme.textPrimary,
+          border: `1px solid ${theme.borderColor}`,
+          boxShadow: darkMode
+            ? "0px 10px 30px rgba(0,0,0,0.35)"
+            : "0px 10px 30px rgba(15, 23, 42, 0.12)",
           overflow: "hidden",
         },
       }}
     >
-      {/* Header */}
       <DialogTitle
         sx={{
           display: "flex",
@@ -41,21 +68,21 @@ function ShareReportDialog({ open, handleClose }) {
           alignItems: "center",
           fontWeight: 600,
           fontSize: "18px",
-          color: "#FFFFFF",
-          backgroundColor: "rgba(11, 29, 53, 1)",
+          color: theme.textPrimary,
+          backgroundColor: theme.modalHeaderBg,
           pb: 1,
         }}
       >
         Share template
-        <IconButton onClick={handleClose} sx={{ color: "#6E7B91" }}>
+        <IconButton onClick={handleClose} sx={{ color: theme.textSecondary }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent
         sx={{
-          backgroundColor: "rgba(11, 29, 53, 1)",
-          color: "#fff",
+          backgroundColor: theme.modalBg,
+          color: theme.textPrimary,
           p: 3,
         }}
       >
@@ -63,12 +90,10 @@ function ShareReportDialog({ open, handleClose }) {
           sx={{
             display: "flex",
             flexDirection: "column",
-            backgroundColor: "rgba(11, 29, 53, 1)",
             gap: 3,
             mt: 1,
           }}
         >
-          {/* Row 1 */}
           <Box
             sx={{
               display: "flex",
@@ -84,30 +109,14 @@ function ShareReportDialog({ open, handleClose }) {
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PersonAddIcon sx={{ color: "#1976d2", fontSize: 20 }} />
+                      <PersonAddIcon
+                        sx={{ color: theme.actionIconColor, fontSize: 20 }}
+                      />
                     </InputAdornment>
                   ),
                 },
               }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  background: "#243B63",
-                  borderRadius: "8px",
-                  color: "#fff",
-                  height: "40px",
-                  display: "flex",
-                  alignItems: "center",
-                  "& fieldset": { border: "none" },
-                },
-                "& input": {
-                  color: "#fff",
-                  fontSize: "14px",
-                },
-                "& input::placeholder": {
-                  color: "#fff",
-                  opacity: 1,
-                },
-              }}
+              sx={inputSx}
             />
             <Button
               variant="contained"
@@ -115,29 +124,22 @@ function ShareReportDialog({ open, handleClose }) {
                 minWidth: { xs: "100%", sm: 90 },
                 borderRadius: "10px",
                 textTransform: "none",
-                background: "#1565FF",
+                background: "#015DFF",
+                "&:hover": { background: "#0147c7" },
               }}
             >
               Share
             </Button>
           </Box>
 
-          {/* OR Divider */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
-            <Box sx={{ flex: 1, height: "1px", background: "#2D4267" }} />
-            <Typography sx={{ fontSize: "13px", color: "#6E7B91" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ flex: 1, height: "1px", background: theme.divider }} />
+            <Typography sx={{ fontSize: "13px", color: theme.textSecondary }}>
               OR
             </Typography>
-            <Box sx={{ flex: 1, height: "1px", background: "#2D4267" }} />
+            <Box sx={{ flex: 1, height: "1px", background: theme.divider }} />
           </Box>
 
-          {/* Row 2 */}
           <Box
             sx={{
               display: "flex",
@@ -153,30 +155,14 @@ function ShareReportDialog({ open, handleClose }) {
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <GroupIcon sx={{ color: "#1976d2", fontSize: 20 }} />
+                      <GroupIcon
+                        sx={{ color: theme.actionIconColor, fontSize: 20 }}
+                      />
                     </InputAdornment>
                   ),
                 },
               }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  background: "#243B63",
-                  borderRadius: "8px",
-                  color: "#fff",
-                  height: "40px",
-                  display: "flex",
-                  alignItems: "center",
-                  "& fieldset": { border: "none" },
-                },
-                "& input": {
-                  color: "#fff",
-                  fontSize: "14px",
-                },
-                "& input::placeholder": {
-                  color: "#fff",
-                  opacity: 1,
-                },
-              }}
+              sx={inputSx}
             />
 
             <Button
@@ -185,7 +171,8 @@ function ShareReportDialog({ open, handleClose }) {
                 minWidth: { xs: "100%", sm: 90 },
                 borderRadius: "10px",
                 textTransform: "none",
-                background: "#1565FF",
+                background: "#015DFF",
+                "&:hover": { background: "#0147c7" },
               }}
             >
               Save

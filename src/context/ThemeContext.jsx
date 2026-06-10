@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useMemo, useLayoutEffect } from "react";
 import { createTheme, ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { APP_FONT_FAMILY } from "../theme/appStyles";
+
+export { APP_FONT_FAMILY };
 
 // ─── Raw token maps (still available for components that need specific values) ─
 export const DARK = {
@@ -100,6 +103,7 @@ const applyCssVariables = (tokens) => {
   root.style.setProperty("--sidebar-border", tokens.sidebarBorder);
   root.style.setProperty("--sidebar-inactive", tokens.sidebarInactive);
   root.style.setProperty("--sidebar-active", tokens.sidebarActive);
+  root.style.setProperty("--app-font-family", APP_FONT_FAMILY);
   root.style.setProperty("--page-bg", tokens.pageBg);
   root.style.setProperty("--text-primary", tokens.textPrimary);
 };
@@ -124,6 +128,9 @@ export const ThemeProvider = ({ children }) => {
   const muiTheme = useMemo(
     () =>
       createTheme({
+        typography: {
+          fontFamily: APP_FONT_FAMILY,
+        },
         palette: {
           mode: darkMode ? "dark" : "light",
           background: {
@@ -138,6 +145,20 @@ export const ThemeProvider = ({ children }) => {
           divider: tokens.divider,
         },
         components: {
+          MuiCssBaseline: {
+            styleOverrides: {
+              body: {
+                fontFamily: APP_FONT_FAMILY,
+              },
+            },
+          },
+          MuiTypography: {
+            styleOverrides: {
+              root: {
+                fontFamily: APP_FONT_FAMILY,
+              },
+            },
+          },
           // Every Box/Paper inherits correct background
           MuiPaper: {
             styleOverrides: {
@@ -231,6 +252,16 @@ export const ThemeProvider = ({ children }) => {
               outlinedPrimary: {
                 borderColor: tokens.btnOutlineBorder,
                 color: tokens.btnOutlineText,
+              },
+            },
+          },
+          MuiDialog: {
+            styleOverrides: {
+              paper: {
+                backgroundImage: "none",
+                backgroundColor: tokens.modalBg,
+                color: tokens.textPrimary,
+                transition: "background-color 0.3s ease, color 0.3s ease",
               },
             },
           },

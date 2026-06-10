@@ -2,32 +2,36 @@ import React from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorIcon from "@mui/icons-material/Error";
+import { useThemeMode } from "../../context/ThemeContext";
+import { getPanelColors } from "../../theme/appStyles";
 
 export default function NotificationPanel({ open, onClose }) {
+  const { darkMode } = useThemeMode();
+  const panel = getPanelColors(darkMode);
+
   if (!open) return null;
 
   const Card = () => (
     <Box
       sx={{
-        background: "#FFDDE2",
+        background: panel.alertCardBg,
         borderRadius: "16px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "12px",
-        marginBottom: "10px", // transparent gap between cards
+        marginBottom: "10px",
+        border: darkMode ? "none" : `1px solid ${panel.borderColor}`,
       }}
     >
-      {/* LEFT ICON */}
       <ErrorIcon sx={{ color: "#FF5A67", fontSize: 28 }} />
 
-      {/* TEXT */}
       <Box sx={{ flex: 1, ml: "10px" }}>
         <Typography
           sx={{
             fontSize: "13px",
             fontWeight: 700,
-            color: "#111",
+            color: panel.alertTitle,
           }}
         >
           Alert Headline
@@ -36,16 +40,15 @@ export default function NotificationPanel({ open, onClose }) {
         <Typography
           sx={{
             fontSize: "13px",
-            color: "#555",
+            color: panel.alertDesc,
           }}
         >
           Description. Lorem ipsum dolor sit amet.
         </Typography>
       </Box>
 
-      {/* CLOSE */}
       <IconButton size="small">
-        <CloseIcon sx={{ fontSize: 18, color: "#444" }} />
+        <CloseIcon sx={{ fontSize: 18, color: panel.alertClose }} />
       </IconButton>
     </Box>
   );
@@ -58,14 +61,16 @@ export default function NotificationPanel({ open, onClose }) {
         top: 0,
         width: "320px",
         height: "100vh",
-        background: "#0B1F36",
+        background: panel.panelBg,
+        borderLeft: `1px solid ${panel.panelBorder}`,
         zIndex: 9999,
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden", // removes unwanted bottom section
+        overflow: "hidden",
+        color: panel.textPrimary,
+        transition: "background 0.3s, border-color 0.3s, color 0.3s",
       }}
     >
-      {/* HEADER */}
       <Box
         sx={{
           display: "flex",
@@ -77,7 +82,7 @@ export default function NotificationPanel({ open, onClose }) {
       >
         <Typography
           sx={{
-            color: "#fff",
+            color: panel.textPrimary,
             fontSize: "16px",
             fontWeight: 600,
           }}
@@ -85,30 +90,26 @@ export default function NotificationPanel({ open, onClose }) {
           Notification
         </Typography>
 
-        <IconButton onClick={onClose} sx={{ color: "#fff" }}>
+        <IconButton onClick={onClose} sx={{ color: panel.textPrimary }}>
           <CloseIcon />
         </IconButton>
       </Box>
 
-      {/* BODY */}
       <Box
         sx={{
           flex: 1,
           overflowY: "auto",
           px: "16px",
-          pb: "16px", // prevents unwanted bottom action section
-          "&::-webkit-scrollbar": {
-            display: "none",
-          },
+          pb: "16px",
+          "&::-webkit-scrollbar": { display: "none" },
           scrollbarWidth: "none",
         }}
       >
-        {/* TODAY CHIP */}
         <Box
           sx={{
             display: "inline-block",
-            background: "#1F3A5B",
-            color: "#fff",
+            background: panel.chipBg,
+            color: panel.textPrimary,
             fontSize: "10px",
             padding: "4px 10px",
             borderRadius: "20px",
@@ -118,25 +119,22 @@ export default function NotificationPanel({ open, onClose }) {
           TODAY
         </Box>
 
-        {/* TODAY NOTIFICATIONS */}
         <Card />
         <Card />
         <Card />
 
-        {/* DATE LABEL */}
         <Typography
           sx={{
             mt: 1,
             mb: 1,
             fontSize: "10px",
-            color: "#9FB3C8",
+            color: panel.mutedText,
             fontWeight: 500,
           }}
         >
           12 MARCH 2026
         </Typography>
 
-        {/* OLD NOTIFICATIONS */}
         <Card />
         <Card />
         <Card />

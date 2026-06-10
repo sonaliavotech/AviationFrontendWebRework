@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { Box, Typography, Button, IconButton, Paper } from "@mui/material";
+import { useThemeMode } from "../../context/ThemeContext";
 import {
-  Box,
-  Typography,
-  Button,
-  IconButton,
-  Paper,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
+  APP_FONT_FAMILY,
+  getAiAlertStyles,
+  getEcgTheme,
+  getPanelColors,
+} from "../../theme/appStyles";
 
 import {
   EcgBg,
@@ -56,46 +55,37 @@ const MEASUREMENTS = [
   { label: "Δ-wave", value: "None" },
 ];
 
-const AI_ALERTS = [
+const AI_ALERT_CONTENT = [
   {
     title: "Inferior STEMI pattern — leads II, III, aVF",
     desc: "ST elevation ≥2mm with reciprocal depression in aVL",
-    bg: "#FFE2E5",
-    titleColor: "#1F2024",
-    descColor: "#494A50",
   },
   {
     title: "QTc prolongation — 468 ms",
     desc: "Risk of Torsades. Avoid QT-prolonging medications",
-    bg: "#FFF4E4",
-    titleColor: "#1F2024",
-    descColor: "#494A50",
   },
   {
     title: "Right axis deviation (+105°)",
     desc: "May suggest RV strain or posterior involvement",
-    bg: "#FFF4E4",
-    titleColor: "#1F2024",
-    descColor: "#494A50",
   },
   {
     title: "T-wave inversion in aVL, V1",
     desc: "Reciprocal changes consistent with inferior event",
-    bg: "#EAF2FF",
-    titleColor: "#1F2024",
-    descColor: "#494A50",
   },
   {
     title: "No ventricular ectopics detected",
     desc: "QRS morphology normal. No bundle branch block",
-    bg: "#E7F4E8",
-    titleColor: "#1F2024",
-    descColor: "#494A50",
   },
 ];
 
 // ECG Wave Component - Pure SVG with dynamic IDs for patterns
-const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
+const ECGWave = ({
+  data,
+  height = 80,
+  color = "#ef4444",
+  id = "wave",
+  ecg,
+}) => {
   const width = 660;
   const mid = height / 2;
   const scale = height / 80;
@@ -122,7 +112,7 @@ const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
               y1="0"
               x2="82.5"
               y2={height}
-              stroke="#1e3a5f"
+              stroke={ecg.gridStroke}
               strokeWidth="0.5"
             />
           </pattern>
@@ -137,12 +127,12 @@ const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
               y1="20"
               x2={width}
               y2="20"
-              stroke="#1e3a5f"
+              stroke={ecg.gridStroke}
               strokeWidth="0.5"
             />
           </pattern>
         </defs>
-        <rect width={width} height={height} fill="#0d1f35" />
+        <rect width={width} height={height} fill={ecg.bg} />
         <rect width={width} height={height} fill={`url(#grid-v-${id})`} />
         <rect width={width} height={height} fill={`url(#grid-h-${id})`} />
         <polyline
@@ -157,7 +147,7 @@ const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
             key={s}
             x={(s / 8) * width + 2}
             y={height - 3}
-            fill="#4a7fa5"
+            fill={ecg.labelColor}
             fontSize="8"
           >
             {s}s
@@ -169,24 +159,39 @@ const ECGWave = ({ data, height = 80, color = "#ef4444", id = "wave" }) => {
 };
 
 function Action3({ onClose }) {
-  const theme = useTheme();
-  const isMd = useMediaQuery(theme.breakpoints.down("md"));
+  const { darkMode } = useThemeMode();
+  const panel = getPanelColors(darkMode);
+  const ecg = getEcgTheme(darkMode);
+  const aiAlerts = useMemo(
+    () =>
+      AI_ALERT_CONTENT.map((alert, idx) => ({
+        ...alert,
+        ...getAiAlertStyles(darkMode)[idx],
+      })),
+    [darkMode],
+  );
+  const connectedPill = darkMode
+    ? { bg: "#293831", text: "#F2F2F7" }
+    : { bg: "#DCFCE7", text: "#166534" };
   const [time] = useState("Today 12:00 PM");
 
   return (
     <Box
-  sx={{
-    position: "fixed",
-    inset: 0,
-    width: "100%",
-    background: "#0a1628",
-    fontFamily: "'Inter', sans-serif",
-    color: "#D2D6DB",
-    zIndex: 9999,
-    overflowY: "auto",
-    overflowX: "hidden",
-  }}
->
+      sx={{
+        position: "fixed",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: { xs: "80px", sm: "90px", md: "100px" },
+        background: panel.panelBg,
+        fontFamily: APP_FONT_FAMILY,
+        color: panel.textPrimary,
+        zIndex: 9999,
+        overflowY: "auto",
+        overflowX: "hidden",
+        transition: "background 0.3s, color 0.3s",
+      }}
+    >
       {/* Top Bar */}
       <Box
         sx={{
@@ -209,9 +214,10 @@ function Action3({ onClose }) {
             width: "184px",
             height: "30px",
             px: "16px",
-            background: "#293831",
+            background: connectedPill.bg,
             borderRadius: "27px",
             flexShrink: 0,
+            transition: "background 0.3s",
           }}
         >
           <Box
@@ -233,7 +239,7 @@ function Action3({ onClose }) {
           <Typography
             sx={{
               fontSize: "14px",
-              color: "#F2F2F7",
+              color: connectedPill.text,
               whiteSpace: "nowrap",
             }}
           >
@@ -248,7 +254,7 @@ function Action3({ onClose }) {
           <Typography
             sx={{
               fontSize: "14px",
-              color: "#D2D6DB",
+              color: panel.textSecondary,
               whiteSpace: "nowrap",
             }}
           >
@@ -305,7 +311,7 @@ function Action3({ onClose }) {
                   fontWeight: 700,
                   fontSize: "20px",
                   lineHeight: "140%",
-                  color: "#D2D6DB",
+                  color: panel.textPrimary,
                 }}
               >
                 John Smith, 58 M
@@ -315,7 +321,7 @@ function Action3({ onClose }) {
                   fontWeight: 400,
                   fontSize: "12px",
                   lineHeight: "140%",
-                  color: "#D2D6DB",
+                  color: panel.textSecondary,
                 }}
               >
                 Flight AA1234, SYD → LAX
@@ -402,7 +408,7 @@ function Action3({ onClose }) {
                   fontWeight: 700,
                   fontSize: "20px",
                   lineHeight: "100%",
-                  color: "#D2D6DB",
+                  color: panel.textPrimary,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -413,7 +419,7 @@ function Action3({ onClose }) {
                 width="20"
                 height="20"
                 viewBox="0 0 24 24"
-                fill="#D2D6DB"
+                sx={{ fill: panel.textPrimary }}
               >
                 <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.193 4.068 1 7.5 1c1.973 0 3.866.9 5.133 2.398C13.634 1.9 15.527 1 17.5 1c3.432 0 6.5 2.193 6.5 6.191 0 4.105-5.37 8.863-11 14.402z" />
               </Box>
@@ -422,7 +428,7 @@ function Action3({ onClose }) {
                   fontWeight: 700,
                   fontSize: "20px",
                   lineHeight: "100%",
-                  color: "#D2D6DB",
+                  color: panel.textPrimary,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -444,14 +450,14 @@ function Action3({ onClose }) {
                   fontWeight: 500,
                   fontSize: "16px",
                   lineHeight: "130%",
-                  color: "#718096",
+                  color: panel.textSecondary,
                 }}
               >
                 This ECG does not show signs of atrial fibrillation.
               </Typography>
               <Typography
                 sx={{
-                  color: "#475569",
+                  color: panel.mutedText,
                   fontSize: "11px",
                   whiteSpace: "nowrap",
                 }}
@@ -468,8 +474,10 @@ function Action3({ onClose }) {
               height: "135px",
               overflow: "hidden",
               borderRadius: "12px",
-              border: "1px solid #1F3047",
+              border: `1px solid ${panel.panelBorderStrong}`,
+              background: panel.cardBg,
               mb: 3,
+              transition: "background 0.3s, border-color 0.3s",
             }}
           >
             <Box
@@ -498,7 +506,7 @@ function Action3({ onClose }) {
               }}
             >
               <Typography
-                sx={{ fontSize: 15, fontWeight: 700, color: "#D2D6DB" }}
+                sx={{ fontSize: 15, fontWeight: 700, color: panel.textPrimary }}
               >
                 12-Lead Overview
               </Typography>
@@ -507,7 +515,7 @@ function Action3({ onClose }) {
                   display: "flex",
                   gap: 1.5,
                   fontSize: 11,
-                  color: "#64748b",
+                  color: panel.mutedText,
                   flexWrap: "wrap",
                 }}
               >
@@ -539,9 +547,10 @@ function Action3({ onClose }) {
                 sx={{
                   borderRadius: "8px",
                   overflow: "hidden",
-                  border: "1px solid #1e3a5f",
+                  border: `1px solid ${ecg.gridStroke}`,
                   mb: 1,
-                  background: "#0d1f35",
+                  background: ecg.bg,
+                  transition: "background 0.3s, border-color 0.3s",
                 }}
               >
                 <Box
@@ -559,218 +568,221 @@ function Action3({ onClose }) {
           </Box>
         </Box>
 
-{/* Right Panel */}
-<Box
-  sx={{
-    width: { xs: "100%", md: "350px" },
-    background: "#0a1628",
-    p: "20px 16px",
-    height: "auto",
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: 3,
-  }}
->
-  {/* Main wrapper background */}
-  <Box
-    sx={{
-      background: "#0f1e36",
-      minHeight: "140vh", // increased height here
-      p: "16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: 2,
-      borderRadius: "12px",
-    }}
-  >
-    {/* ECG Measurements Card */}
-    <Box
-      sx={{
-        background: "#21324B",
-        borderRadius: "16px",
-        p: "24px 16px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography
+        {/* Right Panel */}
+        <Box
           sx={{
-            fontWeight: 800,
-            fontSize: "16px",
-            lineHeight: "19px",
-            letterSpacing: "0.005em",
-            color: "#D2D6DB",
+            width: { xs: "100%", md: "350px" },
+            background: panel.panelBg,
+            p: "20px 16px",
+            height: "auto",
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            transition: "background 0.3s",
           }}
         >
-          ECG Measurements
-        </Typography>
-      </Box>
-
-      {/* Measurements Grid */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        {Array.from({ length: 6 }, (_, rowIdx) => {
-          const left = MEASUREMENTS[rowIdx * 2];
-          const right = MEASUREMENTS[rowIdx * 2 + 1];
-
-          return (
-            <Box
-              key={rowIdx}
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 300,
-                    color: "#D2D6DB",
-                  }}
-                >
-                  {left.label}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    color: "#D2D6DB",
-                  }}
-                >
-                  {left.value}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 300,
-                    color: "#D2D6DB",
-                  }}
-                >
-                  {right.label}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    color: "#D2D6DB",
-                  }}
-                >
-                  {right.value}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
-    </Box>
-
-    {/* AI Assist Card */}
-    <Box
-      sx={{
-        background: "#21324B",
-        borderRadius: "8px",
-        p: "16px 20px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        textAlign: "left",
-        gap: 1.5,
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          gap: 1,
-          width: "100%",
-        }}
-      >
-        <AIAssistIcon />
-
-        <Typography
-          sx={{
-            fontWeight: 800,
-            fontSize: "16px",
-            lineHeight: "19px",
-            letterSpacing: "0.005em",
-            color: "#D2D6DB",
-            textAlign: "left",
-          }}
-        >
-          AI Assist
-        </Typography>
-      </Box>
-
-      {/* Alert Cards */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          gap: 1.5,
-          width: "100%",
-        }}
-      >
-        {AI_ALERTS.map((alert, idx) => (
+          {/* Main wrapper background */}
           <Box
-            key={idx}
             sx={{
-              background: alert.bg,
-              borderRadius: "16px",
-              p: 1.5,
-              width: "100%",
+              background: panel.panelSurface,
+              minHeight: "140vh",
+              p: "16px",
               display: "flex",
               flexDirection: "column",
-              alignItems: "flex-start",
-              textAlign: "left",
-              gap: 0.5,
+              gap: 2,
+              borderRadius: "12px",
+              transition: "background 0.3s",
             }}
           >
-            <Typography
+            {/* ECG Measurements Card */}
+            <Box
               sx={{
-                fontWeight: 700,
-                fontSize: "12px",
-                lineHeight: "15px",
-                color: alert.titleColor,
-                textAlign: "left",
-                width: "100%",
+                background: panel.chipBg,
+                borderRadius: "16px",
+                p: "24px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                transition: "background 0.3s",
               }}
             >
-              {alert.title}
-            </Typography>
+              {/* Header */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "16px",
+                    lineHeight: "19px",
+                    letterSpacing: "0.005em",
+                    color: panel.textPrimary,
+                  }}
+                >
+                  ECG Measurements
+                </Typography>
+              </Box>
 
-            <Typography
+              {/* Measurements Grid */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {Array.from({ length: 6 }, (_, rowIdx) => {
+                  const left = MEASUREMENTS[rowIdx * 2];
+                  const right = MEASUREMENTS[rowIdx * 2 + 1];
+
+                  return (
+                    <Box
+                      key={rowIdx}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 300,
+                            color: panel.textSecondary,
+                          }}
+                        >
+                          {left.label}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: panel.textPrimary,
+                          }}
+                        >
+                          {left.value}
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ display: "flex", gap: 1, width: "120px" }}>
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 300,
+                            color: panel.textSecondary,
+                          }}
+                        >
+                          {right.label}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: panel.textPrimary,
+                          }}
+                        >
+                          {right.value}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* AI Assist Card */}
+            <Box
               sx={{
-                fontWeight: 400,
-                fontSize: "10px",
-                lineHeight: "16px",
-                letterSpacing: "0.01em",
-                color: alert.descColor,
+                background: panel.chipBg,
+                borderRadius: "8px",
+                p: "16px 20px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
                 textAlign: "left",
-                width: "100%",
+                gap: 1.5,
+                transition: "background 0.3s",
               }}
             >
-              {alert.desc}
-            </Typography>
+              {/* Header */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <AIAssistIcon />
+
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "16px",
+                    lineHeight: "19px",
+                    letterSpacing: "0.005em",
+                    color: panel.textPrimary,
+                    textAlign: "left",
+                  }}
+                >
+                  AI Assist
+                </Typography>
+              </Box>
+
+              {/* Alert Cards */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 1.5,
+                  width: "100%",
+                }}
+              >
+                {aiAlerts.map((alert, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      background: alert.bg,
+                      borderRadius: "16px",
+                      p: 1.5,
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      textAlign: "left",
+                      gap: 0.5,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "12px",
+                        lineHeight: "15px",
+                        color: alert.titleColor,
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      {alert.title}
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        fontWeight: 400,
+                        fontSize: "10px",
+                        lineHeight: "16px",
+                        letterSpacing: "0.01em",
+                        color: alert.descColor,
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      {alert.desc}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
           </Box>
-        ))}
-      </Box>
-    </Box>
-  </Box>
-</Box>
-
+        </Box>
       </Box>
     </Box>
   );
