@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { getCaseSummary, generateAiSummary } from "../../services/api";
 import {
   Box,
   Button,
@@ -13,19 +15,49 @@ import SyncIcon from "@mui/icons-material/Sync";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import { AlertsIcon } from "../../assets/Assets";
 import { useThemeMode } from "../../context/ThemeContext";
+import LoadingSpinner from "../../componants/LoadingSpinner";
 
 const PRIMARY_BLUE  = "#015DFF";
 const ACTIVE_COLOR  = "#4DA3FF";
 
 const SearchKit = () => {
+  const location = useLocation();
+  const incidentId = location.state?.incidentId;
+  const patient = location.state?.patient;
   const { tokens, darkMode } = useThemeMode();
+  const [caseData, setCaseData] = useState(null);
+  const [aiSummary, setAiSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!incidentId) return;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getCaseSummary(incidentId);
+        setCaseData(data);
+        const summary = await generateAiSummary(data);
+        setAiSummary(summary);
+      } catch (err) {
+        console.error("OUTCOME SCREEN ERROR =>", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [incidentId]);
+
+  const patientName = caseData?.patientName || patient?.name || "Patient";
 
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: { xs: "100dvh", md: "100vh" },
         background: tokens.pageBg,
         p: { xs: 2, sm: 3, md: 4 },
+        boxSizing: "border-box",
         transition: "background 0.3s",
       }}
     >
@@ -228,7 +260,7 @@ const SearchKit = () => {
               transition: "color 0.3s",
             }}
           >
-            Case Summary for John Smith
+            Case Summary for {patientName}
           </Typography>
         </Box>
 
@@ -241,8 +273,24 @@ const SearchKit = () => {
             background: tokens.inputBg,
             p: 3,
             transition: "background 0.3s",
+            color: tokens.textPrimary,
+            fontSize: "14px",
+            lineHeight: 1.7,
+            whiteSpace: "pre-wrap",
           }}
-        ></Box>
+        >
+          {loading ? (
+            <LoadingSpinner
+              variant="section"
+              size="md"
+              message="Loading case summary..."
+              sx={{ py: 3 }}
+            />
+          ) : (
+            caseData?.summary ||
+            "Select a case from All Events → View report to load data."
+          )}
+        </Box>
         <Typography
           sx={{
             mt: 4,
@@ -254,6 +302,29 @@ const SearchKit = () => {
         >
           AI Summary of the Event
         </Typography>
+        <Box
+          sx={{
+            border: `1px solid ${tokens.borderColor}`,
+            borderRadius: "12px",
+            background: tokens.inputBg,
+            p: 2,
+            mb: 3,
+            color: tokens.textPrimary,
+            fontSize: "14px",
+            lineHeight: 1.7,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {loading ? (
+            <LoadingSpinner
+              size="sm"
+              variant="inline"
+              message="Generating AI summary..."
+            />
+          ) : (
+            aiSummary || "—"
+          )}
+        </Box>
         <Typography
           sx={{
             color: darkMode ? ACTIVE_COLOR : tokens.actionIconColor,
@@ -264,6 +335,16 @@ const SearchKit = () => {
         >
           Patient Vitals
         </Typography>
+        {caseData?.vitals && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, color: tokens.textSecondary, fontSize: "13px" }}>
+            {caseData.vitals.heartRate != null && <span>HR: {caseData.vitals.heartRate} bpm</span>}
+            {caseData.vitals.oxygen != null && <span>SpO₂: {caseData.vitals.oxygen}%</span>}
+            {caseData.vitals.bpSystolic != null && (
+              <span>BP: {caseData.vitals.bpSystolic}/{caseData.vitals.bpDiastolic}</span>
+            )}
+            {caseData.vitals.temperature != null && <span>Temp: {caseData.vitals.temperature}°C</span>}
+          </Box>
+        )}
       </Paper>
     </Box>
   );

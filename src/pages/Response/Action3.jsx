@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { getEcgFiles } from "../../services/api";
 import { Box, Typography, Button, IconButton, Paper } from "@mui/material";
 import { useThemeMode } from "../../context/ThemeContext";
 import {
@@ -158,10 +159,19 @@ const ECGWave = ({
   );
 };
 
-function Action3({ onClose }) {
+function Action3({ onClose, incidentId }) {
   const { darkMode } = useThemeMode();
   const panel = getPanelColors(darkMode);
   const ecg = getEcgTheme(darkMode);
+  const [ecgFiles, setEcgFiles] = useState([]);
+
+  useEffect(() => {
+    if (!incidentId) return;
+    getEcgFiles(incidentId)
+      .then(setEcgFiles)
+      .catch((err) => console.error("ECG FETCH ERROR =>", err));
+  }, [incidentId]);
+
   const aiAlerts = useMemo(
     () =>
       AI_ALERT_CONTENT.map((alert, idx) => ({
@@ -205,7 +215,7 @@ function Action3({ onClose }) {
         }}
       >
         {/* Device Connected Pill */}
-        <Box
+        {/* <Box
           sx={{
             display: "flex",
             alignItems: "center",
@@ -236,7 +246,7 @@ function Action3({ onClose }) {
             />
           </Box>
 
-          <Typography
+           <Typography
             sx={{
               fontSize: "14px",
               color: connectedPill.text,
@@ -244,11 +254,11 @@ function Action3({ onClose }) {
             }}
           >
             Device Connected
-          </Typography>
-        </Box>
+          </Typography> 
+        </Box> */}
 
         {/* Last Synced Pill */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        {/* <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <SyncIcon />
 
           <Typography
@@ -260,7 +270,7 @@ function Action3({ onClose }) {
           >
             Last synced {time}
           </Typography>
-        </Box>
+        </Box> */}
 
         <Box sx={{ ml: "auto" }}>
           <Button

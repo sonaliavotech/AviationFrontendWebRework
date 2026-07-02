@@ -40,3 +40,13 @@ html, body, #root {
 [data-theme="dark"] ::-webkit-scrollbar-track {
   background: rgba(11, 29, 53, 0.8);
 }
+
+@keyframes tiaSpinnerRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes tiaSpinnerPulse {
+  0%, 100% { transform: scale(0.88); opacity: 0.75; }
+  50% { transform: scale(1); opacity: 1; }
+}

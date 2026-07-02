@@ -88,6 +88,20 @@ import ViewReport from "./ViewReport";
 import ViewVitalTrends from "./ViewVitalTrends";
 import Action2 from "../Response/Action2";
 import Action3 from "../Response/Action3";
+import {
+  getMedicalIncidents,
+  getPhysicians,
+  assignPhysician,
+  createCaseLog,
+  mapIncidentToTableRow,
+  mapPhysicianFromApi,
+} from "../../services/api";
+import LoadingSpinner from "../../componants/LoadingSpinner";
+import {
+  getPhysicianSession,
+  mapPhysicianToWebUser,
+} from "../../utils/physicianSession";
+import AviationChatSocket from "../../services/AviationChatSocket";
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -385,8 +399,7 @@ const staticPatientData = [
     updated_at: "2026-06-02T11:00:00Z",
     created_at: "2026-06-01T14:00:00Z",
     duration: "Just now",
-  }
-
+  },
 ];
 
 // Static provider options for assign modal
@@ -481,7 +494,7 @@ const INITIAL_TABLE_FILTERS = {
 };
 
 const FILTER_CATEGORIES = [
-  { id: "roundingStatus", label: "Rounding status", section: "Sort by" },
+  // { id: "roundingStatus", label: "Rounding status", section: "Sort by" },
   { id: "physician", label: "Physician", section: "Filter by" },
   { id: "crew", label: "Crew", section: "Filter by" },
   { id: "status", label: "Status", section: "Filter by" },
@@ -544,7 +557,7 @@ export default function AllEvents() {
   const [calendarAnchorEl, setCalendarAnchorEl] = useState(null);
   const [menuRowId, setMenuRowId] = useState(null);
   const location = useLocation();
-  const [loadingPatients] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(true);
   const [patientError] = useState("");
   const [selectedIdsForBulkAdd, setSelectedIdsForBulkAdd] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -553,8 +566,7 @@ export default function AllEvents() {
     severity: "success",
   });
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const [activeFilterCategory, setActiveFilterCategory] =
-    useState("roundingStatus");
+  const [activeFilterCategory, setActiveFilterCategory] = useState("physician");
   const [appliedTableFilters, setAppliedTableFilters] = useState(
     INITIAL_TABLE_FILTERS,
   );
@@ -673,7 +685,7 @@ export default function AllEvents() {
   const [transcribeModalOpen, setTranscribeModalOpen] = useState(false);
   const [currentTranscribePatient, setCurrentTranscribePatient] =
     useState(null);
-  const [rows, setRows] = useState(staticPatientData);
+  const [rows, setRows] = useState([]);
   const [patientSearch, setPatientSearch] = useState("");
   const [selectionModel, setSelectionModel] = useState(new Set());
   const [order, setOrder] = useState("asc");
@@ -685,6 +697,27 @@ export default function AllEvents() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
+  const fetchIncidents = async ({ showError = false, silent = false } = {}) => {
+    try {
+      if (!silent) setLoadingPatients(true);
+      const incidents = await getMedicalIncidents();
+      setRows(incidents.map(mapIncidentToTableRow));
+    } catch (error) {
+      console.error("FETCH INCIDENTS ERROR =>", error);
+      if (showError) {
+        showSnackbar("Failed to load events", "error");
+      }
+    } finally {
+      if (!silent) setLoadingPatients(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIncidents({ showError: true });
+    const interval = setInterval(() => fetchIncidents({ silent: true }), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleCopyPatients = () => {
     navigate("/copy-patients", {
       state: {
@@ -693,13 +726,28 @@ export default function AllEvents() {
     });
   };
 
-  // Static user for UI
-  const user = {
-    id: "user_1",
-    name: "John Smith",
-    roles: ["PROVIDER"],
-    role: "PROVIDER",
+  const readStoredUser = () => {
+    const session = getPhysicianSession();
+    if (session) return mapPhysicianToWebUser(session);
+    try {
+      const raw = localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   };
+
+  const [user, setUser] = useState(readStoredUser);
+
+  useEffect(() => {
+    const session = getPhysicianSession();
+    if (!session) return;
+    const webUser = mapPhysicianToWebUser(session);
+    if (webUser) setUser(webUser);
+    if (session.id) {
+      AviationChatSocket.connect(session.id);
+    }
+  }, []);
 
   const hasPermission = () => true; // Mock permission function
   const canAddPatient = true;
@@ -727,9 +775,12 @@ export default function AllEvents() {
 
   const getAvatarInitials = (name) => {
     if (!name) return "CT";
-    const parts = String(name).trim().split(/\s+/);
+    const cleaned = String(name)
+      .trim()
+      .replace(/^dr\.?\s+/i, "");
+    const parts = cleaned.split(/\s+/).filter(Boolean);
     const first = parts[0]?.[0] || "";
-    const second = parts[1]?.[0] || "";
+    const second = parts[1]?.[0] || parts[0]?.[1] || "";
     return `${first}${second}`.toUpperCase() || "CT";
   };
 
@@ -767,7 +818,7 @@ export default function AllEvents() {
   const providerSubtitle = specializationText
     ? `MD • ${specializationText}`
     : "Clinical Team • On Duty";
-  const providerInitials = getAvatarInitials(providerDisplayName);
+  const providerInitials = getAvatarInitials(user?.name || providerDisplayName);
 
   console.log("selectionModel :", selectionModel);
 
@@ -789,7 +840,7 @@ export default function AllEvents() {
       .format("YYYY-MM-DD");
 
     return rows.filter((row) => {
-      const dosStr = toDateOnly(row.dos);
+      const dosStr = toDateOnly(row.dos || row.incidentStartAt);
       return dosStr === selectedDateStr;
     });
   }, [rows, selectedDate]);
@@ -830,6 +881,7 @@ export default function AllEvents() {
         row.status,
         row.location,
         row.physician,
+        row.crew,
         row.resident,
         row.visitType,
       ]
@@ -847,12 +899,16 @@ export default function AllEvents() {
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b));
 
-    const physicians = uniqueValues(searchFilteredRows.map((row) => row.physician));
-    const crews = uniqueValues(searchFilteredRows.map((row) => row.resident));
+    const physicians = uniqueValues(
+      searchFilteredRows.map((row) => row.physician),
+    );
+    const crews = uniqueValues(
+      searchFilteredRows.map((row) => row.crew || row.resident),
+    );
     const statuses = uniqueValues(searchFilteredRows.map((row) => row.status));
 
     return {
-      roundingStatus: ROUNDING_STATUS_OPTIONS,
+      // roundingStatus: ROUNDING_STATUS_OPTIONS,
       physician: [
         ...physicians.map((name) => ({ value: name, label: name })),
         { value: "__unassigned__", label: "Unassigned" },
@@ -864,7 +920,7 @@ export default function AllEvents() {
 
   const handleOpenFilterModal = () => {
     setPendingTableFilters(appliedTableFilters);
-    setActiveFilterCategory("roundingStatus");
+    setActiveFilterCategory("physician");
     setFilterModalOpen(true);
   };
 
@@ -940,7 +996,7 @@ export default function AllEvents() {
     }
 
     if (filters.crew?.length > 0) {
-      const crewName = String(row.resident || "").trim();
+      const crewName = String(row.crew || row.resident || "").trim();
       if (!crewName || !filters.crew.includes(crewName)) {
         return false;
       }
@@ -981,32 +1037,36 @@ export default function AllEvents() {
   }, [displayRows, order, orderBy]);
 
   const handleExportPatients = () => {
-    if (!displayRows || displayRows.length === 0) {
-      alert("No patient data to export");
+    const rowsToExport =
+      selectionModel.size > 0
+        ? sortedRows.filter((row) => selectionModel.has(row.id))
+        : sortedRows;
+
+    if (!rowsToExport.length) {
+      showSnackbar("No events to export", "warning");
       return;
     }
 
-    const exportData = displayRows.map((row, index) => ({
+    const exportData = rowsToExport.map((row, index) => ({
       "Sr No": index + 1,
-      Room: row.room || "",
-      Bed: row.bed || "",
       Name: row.name || "",
       Age: row.age || "",
       Gender: row.gender || "",
-      MRN: row.mrn || "",
-      status: row.status || "",
-      Location: row.location || "",
-      Physician: row.physician || "",
-      Resident: row.resident || "",
-      VisitStatus: row.visitStatus || "",
-      VisitType: row.visitType || "",
-      DOS: row.dos || "",
-      FIN: row.fin || "",
+      "Patient ID": row.mrn || "",
+      Duration: row.duration || "",
+      Status: row.status || "",
+      Route: row.location || "",
+      Flight: row.flightNumber || row.room || "",
+      Seat: row.seat || row.bed || "",
+      Physician: row.physician || "Unassigned",
+      Crew: row.crew || row.resident || "",
+      "Case ID": row.caseId || "",
+      "Chief Complaint": row.chiefComplaint || "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Patients");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Events");
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
@@ -1014,97 +1074,48 @@ export default function AllEvents() {
     const fileData = new Blob([excelBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-    saveAs(fileData, `Patient_List_${dayjs().format("YYYY-MM-DD_HH-mm")}.xlsx`);
+    saveAs(
+      fileData,
+      `Aviation_Events_${dayjs().format("YYYY-MM-DD_HH-mm")}.xlsx`,
+    );
+    showSnackbar(`Exported ${rowsToExport.length} event(s)`, "success");
   };
 
-  function parseAnyDate(value) {
-    if (!value) return null;
-    return toDateOnly(value);
-  }
-
-  function isSameCalendarDay(dateA, dateB) {
-    if (!dateA || !dateB) return false;
-
-    const a =
-      typeof dateA === "string"
-        ? dateA
-        : dayjs(dateA).tz(APP_TIMEZONE).format("YYYY-MM-DD");
-
-    const b = dayjs(dateB).tz(APP_TIMEZONE).format("YYYY-MM-DD");
-
-    return a === b;
-  }
-
-  const normalizeProviderName = (value) =>
-    String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/^dr\.?\s*/i, "")
-      .replace(/\s+/g, " ");
-
   const dashboardStats = React.useMemo(() => {
-    const appointmentsToday = rows.filter((row) =>
-      isSameCalendarDay(parseAnyDate(row.dos), selectedDate),
-    ).length;
+    const scopedRows = dateFilteredRows;
 
-    const patientsToSee = rows.filter((row) => !isRowSeen(row)).length;
+    const eventsToday = scopedRows.length;
 
-    const currentProviderIds = new Set(
-      [user?.id, user?.providerId, user?.provider_id, providerProfile?.id]
-        .map((value) => String(value || "").trim())
-        .filter(Boolean),
-    );
-    const currentProviderNames = new Set(
-      [user?.name, providerProfile?.name, providerDisplayName, rawName]
-        .map((value) => normalizeProviderName(value))
-        .filter(Boolean),
-    );
+    const patientsToSee = scopedRows.filter((row) => !isRowSeen(row)).length;
 
-    const ownedRows = rows.filter((row) => {
-      const rowProviderId = String(
-        row.providerId || row.provider?.id || row.provider_id || "",
-      ).trim();
-      if (rowProviderId && currentProviderIds.has(rowProviderId)) {
-        return true;
-      }
-
-      const rowPhysician = normalizeProviderName(row.physician);
-      return rowPhysician && currentProviderNames.has(rowPhysician);
-    });
-
-    const ownedPatientsCount = ownedRows.length;
-    const unassignedOwnedCount = ownedRows.filter(
-      (row) => !String(row.resident || "").trim(),
-    ).length;
-    const patientsToAssign = rows.filter(
+    const patientsToAssign = scopedRows.filter(
       (row) => !String(row.providerId || "").trim(),
     ).length;
 
-    const pendingNotes = rows.filter((row) => {
-      const status = String(row.noteStatus || "")
-        .trim()
-        .toLowerCase();
-      return status === "draft" || status === "pending" || status === "";
+    const patientsAssigned = scopedRows.filter((row) =>
+      String(row.providerId || "").trim(),
+    ).length;
+
+    const criticalCases = scopedRows.filter(
+      (row) => String(row.status || "").toLowerCase() === "critical",
+    ).length;
+
+    const openCases = scopedRows.filter((row) => {
+      const status = String(row.status || "").toLowerCase();
+      return status !== "closed" && status !== "archived";
     }).length;
 
     return {
-      appointmentsToday,
+      eventsToday,
       patientsToSee,
+      patientsToSeeDisplay:
+        eventsToday > 0 ? `${patientsToSee}/${eventsToday}` : "0/0",
       patientsToAssign,
-      pendingNotes,
+      patientsAssigned,
+      criticalCases,
+      openCases,
     };
-  }, [
-    rows,
-    selectedDate,
-    user?.id,
-    user?.name,
-    user?.providerId,
-    user?.provider_id,
-    providerProfile?.id,
-    providerProfile?.name,
-    providerDisplayName,
-    rawName,
-  ]);
+  }, [dateFilteredRows]);
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
@@ -1140,10 +1151,63 @@ export default function AllEvents() {
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
-  const [providerOptions] = useState(staticProviderOptions);
+  const [providerOptions, setProviderOptions] = useState([]);
   const [openEncounterModal, setOpenEncounterModal] = useState(false);
   const [openSelectReasonModal, setOpenSelectReasonModal] = useState(false);
   const [assignType, setAssignType] = useState("doctor");
+
+  useEffect(() => {
+    if (!openAssignModal || assignType !== "doctor") return;
+
+    const fetchDoctors = async () => {
+      try {
+        const data = await getPhysicians();
+        setProviderOptions((data || []).map(mapPhysicianFromApi));
+      } catch (error) {
+        console.error("FETCH PHYSICIANS ERROR =>", error);
+        showSnackbar("Failed to load physicians", "error");
+      }
+    };
+
+    fetchDoctors();
+  }, [openAssignModal, assignType]);
+
+  useEffect(() => {
+    if (!openAssignModal || assignType !== "doctor" || !selectedRow) return;
+
+    const assignedName = String(selectedRow.physician || "").trim();
+    const assignedId = String(selectedRow.providerId || "").trim();
+
+    if (!assignedName && !assignedId) {
+      setSelectedDoctor("");
+      setSelectedDoctorId("");
+      return;
+    }
+
+    const matchById = assignedId
+      ? providerOptions.find((doc) => doc.id === assignedId)
+      : null;
+    const matchByName =
+      !matchById && assignedName
+        ? providerOptions.find(
+            (doc) =>
+              doc.name.trim().toLowerCase() === assignedName.toLowerCase(),
+          )
+        : null;
+    const match = matchById || matchByName;
+
+    if (match) {
+      setSelectedDoctor(match.name);
+      setSelectedDoctorId(match.id);
+    } else if (assignedId) {
+      setSelectedDoctor(assignedName || "");
+      setSelectedDoctorId(assignedId);
+    } else {
+      setSelectedDoctor(assignedName);
+      setSelectedDoctorId("");
+    }
+  }, [openAssignModal, assignType, selectedRow, providerOptions]);
+
   const [selectedLocation] = useState("");
   const [patientTab, setPatientTab] = useState("all");
   const [patientCustomReasons, setPatientCustomReasons] = useState({});
@@ -1572,13 +1636,29 @@ export default function AllEvents() {
 
   // Handle menu actions
   const handleViewVitalTrends = (row) => {
+    setSelectedPatient(row);
     setOpenVitalTrends(true);
     handleMenuClose();
   };
 
   const handleViewReport = (row) => {
-    setOpenViewReport(true);
     handleMenuClose();
+    navigate("/search-kit", {
+      state: { incidentId: row.incidentId || row.id, patient: row },
+    });
+  };
+
+  const handleOpenCaseDetails = (row) => {
+    navigate("/CaseDetails", {
+      state: {
+        incidentId: row.incidentId || row.id,
+        patient: row,
+        physicianAssigned: row.physicianStatus === "named",
+        crewId: row.crewId,
+        crewName: row.crew,
+        roomId: row.chatRoomId || null,
+      },
+    });
   };
 
   const handleShareReport = (row) => {
@@ -1594,6 +1674,18 @@ export default function AllEvents() {
 
   const [openAction2, setOpenAction2] = useState(false);
   const [openAction3, setOpenAction3] = useState(false);
+
+  const isInitialLoad = loadingPatients && rows.length === 0;
+
+  if (isInitialLoad) {
+    return (
+      <LoadingSpinner
+        variant="fullscreen"
+        size="lg"
+        message="Loading events..."
+      />
+    );
+  }
 
   return (
     <>
@@ -1644,14 +1736,24 @@ export default function AllEvents() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(4, minmax(0, 1fr))",
+                lg: "repeat(5, minmax(0, 1fr))",
+              },
               gap: 1.5,
               width: "100%",
               mb: 2,
             }}
           >
             {/* Doctor Card */}
-            <Box sx={{ minWidth: 0, height: "80px" }}>
+            <Box
+              sx={{
+                minWidth: 0,
+                height: "80px",
+                gridColumn: { xs: "1 / -1", sm: "1 / -1", lg: "auto" },
+              }}
+            >
               <Box
                 sx={{
                   background: "rgba(40, 151, 255, 1)",
@@ -1723,18 +1825,26 @@ export default function AllEvents() {
 
             {/* Stat Cards */}
             {[
-              { value: "XX", label: "Events today", icon: EventCardIcon },
               {
-                value: "XX/XX",
+                value: String(dashboardStats.eventsToday),
+                label: "Events today",
+                icon: EventCardIcon,
+              },
+              {
+                value: dashboardStats.patientsToSeeDisplay,
                 label: "Patients to see",
                 icon: PatientCardIcon,
               },
               {
-                value: "XX",
+                value: String(dashboardStats.patientsToAssign),
                 label: "Patients to assign",
                 icon: PatientAssignCardIcon,
               },
-              { value: "XX", label: "Critical Cases", icon: CriticalCasesIcon },
+              {
+                value: String(dashboardStats.criticalCases),
+                label: "Critical Cases",
+                icon: CriticalCasesIcon,
+              },
             ].map((item, i) => (
               <Box key={i} sx={{ minWidth: 0, height: "80px" }}>
                 <Box
@@ -1809,7 +1919,7 @@ export default function AllEvents() {
             }}
           >
             {/* Date Picker */}
-            <Box
+            {/* <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -1888,10 +1998,10 @@ export default function AllEvents() {
                   setSelectedDate(next);
                 }}
               />
-            </Box>
+            </Box> */}
 
             {/* Calendar Popover */}
-            <Popover
+            {/* <Popover
               open={Boolean(calendarAnchorEl)}
               anchorEl={calendarAnchorEl}
               onClose={() => setCalendarAnchorEl(null)}
@@ -1949,21 +2059,23 @@ export default function AllEvents() {
                   }}
                 />
               </LocalizationProvider>
-            </Popover>
+            </Popover> */}
 
             {/* Search Bar */}
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
-
                 backgroundColor: theme.searchBg,
                 borderRadius: "10px",
                 border: `1px solid ${theme.searchBorder}`,
                 px: 1.5,
                 height: "40px",
                 gap: 1,
-                width: "350px",
+                flex: { xs: "1 1 100%", lg: "0 0 350px" },
+                width: { xs: "100%", lg: "350px" },
+                minWidth: 0,
+                maxWidth: { xs: "100%", lg: "350px" },
                 transition: "background 0.3s, border 0.3s",
               }}
             >
@@ -1990,7 +2102,10 @@ export default function AllEvents() {
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                ml: "auto",
+                ml: { xs: 0, lg: "auto" },
+                width: { xs: "100%", lg: "auto" },
+                justifyContent: { xs: "flex-start", lg: "flex-end" },
+                flexWrap: "wrap",
               }}
             >
               <Button
@@ -2057,12 +2172,6 @@ export default function AllEvents() {
               transition: "background 0.3s, border 0.3s",
             }}
           >
-            {loadingPatients && (
-              <Typography sx={{ p: 2, color: theme.textSecondary }}>
-                Loading patients...
-              </Typography>
-            )}
-
             {patientError && (
               <Typography sx={{ p: 2, color: "red" }}>
                 {patientError}
@@ -2328,11 +2437,7 @@ export default function AllEvents() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {isSidelistFilterActive ? (
-                          <>Reasons</>
-                        ) : (
-                          <> Actions</>
-                        )}
+                        {isSidelistFilterActive ? <>Reasons</> : <> Actions</>}
                       </TableCell>
                     )}
                   </TableRow>
@@ -2503,7 +2608,12 @@ export default function AllEvents() {
                               <Box
                                 fontWeight={600}
                                 fontSize={12}
-                                sx={{ display: "inline-block" }}
+                                sx={{
+                                  display: "inline-block",
+                                  cursor: "pointer",
+                                  "&:hover": { color: theme.actionIconColor },
+                                }}
+                                onClick={() => handleOpenCaseDetails(row)}
                               >
                                 {row.name}
                                 <Typography
@@ -2618,8 +2728,11 @@ export default function AllEvents() {
                                   if (!canAssignProvider) return;
                                   if (!isEditing("physician")) {
                                     setSelectedRow(row);
-                                    setOpenAssignModal(true);
                                     setAssignType("doctor");
+                                    setAssignSearch("");
+                                    setSelectedDoctor("");
+                                    setSelectedDoctorId("");
+                                    setOpenAssignModal(true);
                                   }
                                 }}
                                 onBlur={(e) => {
@@ -2758,7 +2871,7 @@ export default function AllEvents() {
                               >
                                 {isEditing("resident") ? (
                                   editValue
-                                ) : row.resident ? (
+                                ) : row.crew || row.resident ? (
                                   <Box
                                     sx={{
                                       display: "inline-block",
@@ -2771,7 +2884,7 @@ export default function AllEvents() {
                                       ...crewValueStyles,
                                     }}
                                   >
-                                    {row.resident}
+                                    {row.crew || row.resident}
                                   </Box>
                                 ) : (
                                   <Box
@@ -2920,24 +3033,13 @@ export default function AllEvents() {
                                       sx={actionIconButtonSx}
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        setSelectedPatient(row);
                                         setOpenAction2(true);
                                       }}
                                     >
                                       <ActionIcon2 />
                                     </IconButton>
                                   </Tooltip>
-                                  {openAction2 && (
-                                    <Action2
-                                      onClose={() => setOpenAction2(false)}
-                                    />
-                                  )}
-
-                                  {openAction3 && (
-                                    <Action3
-                                      onClose={() => setOpenAction3(false)}
-                                    />
-                                  )}
-
                                   {canEditFacesheet && (
                                     <Tooltip
                                       // title="Facesheet"
@@ -2963,6 +3065,7 @@ export default function AllEvents() {
                                         }}
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          setSelectedPatient(row);
                                           setOpenAction3(true);
                                         }}
                                       >
@@ -3179,14 +3282,32 @@ export default function AllEvents() {
           </MenuItem>
         </Menu>
 
+        {openAction2 && (
+          <Action2
+            onClose={() => setOpenAction2(false)}
+            incidentId={selectedPatient?.incidentId || selectedPatient?.id}
+            patient={selectedPatient}
+          />
+        )}
+
+        {openAction3 && (
+          <Action3
+            onClose={() => setOpenAction3(false)}
+            incidentId={selectedPatient?.incidentId || selectedPatient?.id}
+          />
+        )}
+
         <ViewVitalTrends
           open={openVitalTrends}
           onClose={() => setOpenVitalTrends(false)}
+          patient={selectedPatient}
         />
 
         <ViewReport
           open={openViewReport}
           onClose={() => setOpenViewReport(false)}
+          incidentId={selectedPatient?.incidentId || selectedPatient?.id}
+          patient={selectedPatient}
         />
 
         <ShareReportDialog
@@ -3204,8 +3325,9 @@ export default function AllEvents() {
             "& .MuiPaper-root": {
               borderRadius: "16px !important",
               overflow: "hidden",
-              width: "520px",
-              maxWidth: "520px",
+              width: { xs: "calc(100% - 24px)", sm: "520px" },
+              maxWidth: { xs: "100%", sm: "520px" },
+              m: { xs: 1.5, sm: "auto" },
               bgcolor: theme.modalBg,
               boxShadow: darkMode
                 ? "0 12px 40px rgba(0, 0, 0, 0.35)"
@@ -3245,60 +3367,76 @@ export default function AllEvents() {
             <Box
               sx={{
                 display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
                 minHeight: 300,
-                maxHeight: "52vh",
+                maxHeight: { xs: "65vh", sm: "52vh" },
               }}
             >
               <Box
                 sx={{
-                  width: 190,
+                  width: { xs: "100%", sm: 190 },
                   flexShrink: 0,
-                  bgcolor: darkMode ? "rgba(255,255,255,0.04)" : theme.tableHeadBg,
-                  py: 2,
-                  overflowY: "auto",
+                  bgcolor: darkMode
+                    ? "rgba(255,255,255,0.04)"
+                    : theme.tableHeadBg,
+                  py: { xs: 1, sm: 2 },
+                  overflowX: { xs: "auto", sm: "hidden" },
+                  overflowY: { xs: "hidden", sm: "auto" },
+                  display: "flex",
+                  flexDirection: { xs: "row", sm: "column" },
+                  gap: { xs: 0.5, sm: 0 },
+                  WebkitOverflowScrolling: "touch",
                 }}
               >
-                {["Sort by", "Filter by"].map((section) => (
-                  <Box key={section} sx={{ mb: 1.5 }}>
-                    <Typography
-                      sx={{
-                        px: 2,
-                        mb: 0.75,
-                        fontSize: "12px",
-                        fontWeight: 500,
-                        color: theme.textSecondary,
-                      }}
-                    >
-                      {section}
-                    </Typography>
-                    {FILTER_CATEGORIES.filter(
+                {["Sort by", "Filter by"]
+                  .filter((section) =>
+                    FILTER_CATEGORIES.some(
                       (category) => category.section === section,
-                    ).map((category) => (
-                      <Box
-                        key={category.id}
-                        onClick={() => setActiveFilterCategory(category.id)}
+                    ),
+                  )
+                  .map((section) => (
+                    <Box key={section} sx={{ mb: 1.5 }}>
+                      <Typography
                         sx={{
                           px: 2,
-                          py: 1.25,
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight:
-                            activeFilterCategory === category.id ? 700 : 500,
-                          color: theme.textPrimary,
-                          bgcolor:
-                            activeFilterCategory === category.id
-                              ? darkMode
-                                ? "rgba(255,255,255,0.08)"
-                                : theme.cardBg
-                              : "transparent",
-                          transition: "background 0.2s",
+                          mb: 0.75,
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          color: theme.textSecondary,
                         }}
                       >
-                        {category.label}
-                      </Box>
-                    ))}
-                  </Box>
-                ))}
+                        {section}
+                      </Typography>
+                      {FILTER_CATEGORIES.filter(
+                        (category) => category.section === section,
+                      ).map((category) => (
+                        <Box
+                          key={category.id}
+                          onClick={() => setActiveFilterCategory(category.id)}
+                          sx={{
+                            px: 2,
+                            py: 1.25,
+                            cursor: "pointer",
+                            fontSize: "14px",
+                            fontWeight:
+                              activeFilterCategory === category.id ? 700 : 500,
+                            color: theme.textPrimary,
+                            whiteSpace: { xs: "nowrap", sm: "normal" },
+                            flexShrink: { xs: 0, sm: 1 },
+                            bgcolor:
+                              activeFilterCategory === category.id
+                                ? darkMode
+                                  ? "rgba(255,255,255,0.08)"
+                                  : theme.cardBg
+                                : "transparent",
+                            transition: "background 0.2s",
+                          }}
+                        >
+                          {category.label}
+                        </Box>
+                      ))}
+                    </Box>
+                  ))}
               </Box>
 
               <Box
@@ -3310,8 +3448,8 @@ export default function AllEvents() {
                   bgcolor: theme.modalBg,
                 }}
               >
-                {(filterOptionsByCategory[activeFilterCategory] || []).length ===
-                0 ? (
+                {(filterOptionsByCategory[activeFilterCategory] || [])
+                  .length === 0 ? (
                   <Typography
                     sx={{
                       py: 2,
@@ -3343,9 +3481,9 @@ export default function AllEvents() {
                           {option.label}
                         </Typography>
                         <Checkbox
-                          checked={(pendingTableFilters[activeFilterCategory] || []).includes(
-                            option.value,
-                          )}
+                          checked={(
+                            pendingTableFilters[activeFilterCategory] || []
+                          ).includes(option.value)}
                           onChange={() =>
                             togglePendingFilter(
                               activeFilterCategory,
@@ -3354,7 +3492,9 @@ export default function AllEvents() {
                           }
                           sx={{
                             p: 0.5,
-                            color: darkMode ? "rgba(148,163,184,0.8)" : "#CBD5E1",
+                            color: darkMode
+                              ? "rgba(148,163,184,0.8)"
+                              : "#CBD5E1",
                             "&.Mui-checked": {
                               color: darkMode ? "#4DA3FF" : "#2563EB",
                             },
@@ -3433,8 +3573,9 @@ export default function AllEvents() {
             "& .MuiPaper-root": {
               borderRadius: "20px !important",
               overflow: "hidden",
-              width: "500px",
-              maxWidth: "460px",
+              width: { xs: "calc(100% - 24px)", sm: "500px" },
+              maxWidth: { xs: "100%", sm: "460px" },
+              m: { xs: 1.5, sm: "auto" },
               bgcolor: theme.modalHeaderBg,
             },
           }}
@@ -3465,9 +3606,14 @@ export default function AllEvents() {
               <IconButton
                 size="small"
                 onClick={() => setOpenAssignModal(false)}
+                disableRipple
+                sx={{
+                  mt: 2,
+                  "&:hover": { backgroundColor: "transparent" },
+                }}
               >
                 <CloseIcon
-                  sx={{ fontSize: 20, color: theme.textPrimary, mt: 2 }}
+                  sx={{ fontSize: 20, color: theme.textPrimary }}
                 />
               </IconButton>
             </Box>
@@ -3644,34 +3790,70 @@ export default function AllEvents() {
                 onClick={async () => {
                   if (!selectedDoctor || !selectedDoctorId) return;
 
-                  const selectedIds =
-                    selectionModel.size > 0
-                      ? Array.from(selectionModel)
-                      : selectedRow
-                        ? [selectedRow.id]
-                        : [];
+                  const isBulkAssign = selectionModel.size > 1;
+                  const targetRows = isBulkAssign
+                    ? sortedRows.filter((row) => selectionModel.has(row.id))
+                    : selectedRow
+                      ? [selectedRow]
+                      : [];
 
-                  if (selectedIds.length === 0) return;
+                  if (targetRows.length === 0) return;
 
-                  setRows((prev) =>
-                    prev.map((row) => {
-                      if (!selectedIds.includes(row.id)) return row;
-                      if (assignType === "resident") {
-                        return {
-                          ...row,
-                          resident: selectedDoctor,
-                          residentId: selectedDoctorId,
-                        };
-                      }
-                      return {
-                        ...row,
-                        physician: selectedDoctor,
-                        providerId: selectedDoctorId,
-                      };
-                    }),
-                  );
+                  const specialty =
+                    providerOptions.find((d) => d.id === selectedDoctorId)
+                      ?.specialty || "";
+
+                  try {
+                    const results = await Promise.allSettled(
+                      targetRows.map(async (row) => {
+                        await assignPhysician(row.id, selectedDoctorId);
+                        await createCaseLog(row.incidentId || row.id, {
+                          eventType: "PHYSICIAN_ASSIGNED",
+                          eventTitle: "Physician Assigned",
+                          description: `${selectedDoctor} assigned to the case.`,
+                          performedBy: selectedDoctorId,
+                          metadata: {
+                            physicianId: selectedDoctorId,
+                            physicianName: selectedDoctor,
+                            specialty,
+                          },
+                        });
+                      }),
+                    );
+
+                    const successCount = results.filter(
+                      (result) => result.status === "fulfilled",
+                    ).length;
+                    const failCount = results.length - successCount;
+
+                    await fetchIncidents();
+
+                    if (failCount === 0) {
+                      showSnackbar(
+                        isBulkAssign
+                          ? `Physician assigned to ${successCount} patient(s) successfully`
+                          : "Physician assigned successfully",
+                        "success",
+                      );
+                    } else if (successCount > 0) {
+                      showSnackbar(
+                        `Physician assigned to ${successCount} of ${results.length} patient(s). ${failCount} failed.`,
+                        "warning",
+                      );
+                    } else {
+                      showSnackbar("Failed to assign physician", "error");
+                    }
+
+                    if (isBulkAssign) {
+                      setSelectionModel(new Set());
+                    }
+                  } catch (error) {
+                    console.error("ASSIGN PHYSICIAN ERROR =>", error);
+                    showSnackbar("Failed to assign physician", "error");
+                  }
 
                   setOpenAssignModal(false);
+                  setSelectedRow(null);
                   setSelectedDoctor("");
                   setSelectedDoctorId("");
                   setAssignSearch("");

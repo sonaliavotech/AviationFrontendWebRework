@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { getCaseSummary, mapVitalsToPatientData } from "../../services/api";
 import { Box, Typography, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TimelineIcon from "@mui/icons-material/Timeline";
@@ -122,10 +123,57 @@ const buildVitals = (darkMode) => {
   ];
 };
 
-function Action2({ onClose }) {
+function Action2({ onClose, incidentId, patient }) {
   const { darkMode } = useThemeMode();
   const panel = getPanelColors(darkMode);
-  const vitals = useMemo(() => buildVitals(darkMode), [darkMode]);
+  const baseVitals = useMemo(() => buildVitals(darkMode), [darkMode]);
+  const [header, setHeader] = useState({ name: "—", flight: "—" });
+  const [vitals, setVitals] = useState(baseVitals);
+
+  useEffect(() => {
+    setVitals(baseVitals);
+  }, [baseVitals]);
+
+  useEffect(() => {
+    if (!incidentId) return;
+
+    let cancelled = false;
+
+    getCaseSummary(incidentId)
+      .then((data) => {
+        if (cancelled || !data) return;
+        const mapped = mapVitalsToPatientData(data, patient);
+        const gender = mapped.patient.gender || "";
+        setHeader({
+          name: `${mapped.patient.name}, ${mapped.patient.age} ${gender}`,
+          flight: `Flight ${mapped.patient.flight} (${mapped.patient.origin} → ${mapped.patient.destination})`,
+        });
+        const valueMap = {
+          "Heart Rate": mapped.vitals.heartRate.display,
+          "Blood Pressure": mapped.vitals.bloodPressure.display,
+          Oxygen: mapped.vitals.oxygen.display,
+          "Respiratory rate": mapped.vitals.respiratoryRate.display,
+          Temperature: mapped.vitals.temperature.display,
+          "Skin Colour": mapped.vitals.skinColour.display,
+          Sweating: mapped.vitals.sweating.display,
+          ECG: mapped.vitals.ecg.display,
+          "Pain Score": mapped.vitals.painScore.display,
+          "Blood Glucose": mapped.vitals.bloodGlucose.display,
+          "AVPU Score": mapped.vitals.avpu.display,
+        };
+        setVitals(
+          baseVitals.map((item) => ({
+            ...item,
+            value: valueMap[item.title] || item.value,
+          })),
+        );
+      })
+      .catch((err) => console.error("ACTION2 VITALS ERROR =>", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [incidentId, patient, baseVitals]);
 
   return (
     <Box
@@ -133,8 +181,9 @@ function Action2({ onClose }) {
         position: "fixed",
         top: 0,
         right: 0,
-        width: "300px",
-        height: "100vh",
+        left: { xs: "80px", sm: "auto" },
+        width: { xs: "calc(100% - 80px)", sm: "300px" },
+        height: { xs: "100dvh", sm: "100vh" },
         background: panel.panelBg,
         borderLeft: `1px solid ${panel.panelBorder}`,
         zIndex: 9999,
@@ -166,10 +215,10 @@ function Action2({ onClose }) {
               mr: "40px",
             }}
           >
-            John Smith, 58 M
+            {header.name}
           </Typography>
           <Typography sx={{ color: panel.textSecondary, fontSize: "12px" }}>
-            Flight AA1234 (SYD → LAX)
+            {header.flight}
           </Typography>
         </Box>
 

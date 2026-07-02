@@ -1,0 +1,353 @@
+{
+  "info": {
+    "_postman_id": "736d23fe-bd33-4800-9bf8-489111b7b106",
+    "name": "tia-aviation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53611666",
+    "_collection_link": "https://go.postman.co/collection/53611666-736d23fe-bd33-4800-9bf8-489111b7b106?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "new-incident",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"fullName\": \"Ella\",\r\n    \"seatRow\": \"15\",\r\n    \"seatLetter\": \"A\",\r\n    \"flightNumber\": \"AA1234\",\r\n    \"gender\": \"male\",\r\n    \"approxAge\": 45,\r\n    \"status\": \"critical\",\r\n    \"travellingAlone\": true,\r\n    \"medicalHistoryKnown\": false,\r\n    \"medicalVolunteerType\": \"none\",\r\n    \"medicalVolunteerName\": null,\r\n    \"crewName\": \"Lisa\",\r\n    \"incidentStartedAt\": \"\",\r\n    \"vitals\": {\r\n        \"heartRate\": 82,\r\n        \"bpSystolic\": 120,\r\n        \"bpDiastolic\": 80,\r\n        \"oxygen\": 98,\r\n        \"respiratoryRate\": 16,\r\n        \"temperature\": 36.8,\r\n        \"skinColor\": \"pale\",\r\n        \"sweating\": \"mild\",\r\n        \"ecg\": \"afib\",\r\n        \"painScore\": 2,\r\n        \"bloodGlucoseMgdl\": 110.5,\r\n        \"avpuScore\": 15\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/new-incident",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "new-incident"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "assign-physician",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"physicianId\": \"79c78751-d5c6-4d56-ba37-192050bf0e21\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/medical-incidents/:incidentId/assign-physician?incidentId=515caaa8-749c-4fca-a968-30d0618ae8e5",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "medical-incidents",
+            ":incidentId",
+            "assign-physician"
+          ],
+          "query": [
+            {
+              "key": "incidentId",
+              "value": "515caaa8-749c-4fca-a968-30d0618ae8e5",
+              "type": "text"
+            }
+          ],
+          "variable": [
+            {
+              "key": "incidentId",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "physicians",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/physicians",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "physicians"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "incident-outcome",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"outcome\": \"stabilised_onboard\",\r\n  \"groundSupportContacted\": true,\r\n  \"groundSupportContactTime\": \"2026-05-29T12:30:00Z\",\r\n  \"airportMedicalNotified\": true,\r\n  \"diversionAdvised\": false,\r\n  \"pilotDecision\": \"continue\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/2b981307-b0fd-4360-af9d-185eda41ca99/incident-outcome",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "2b981307-b0fd-4360-af9d-185eda41ca99",
+            "incident-outcome"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "vitals",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"heartRate\": 82,\r\n  \"bpSystolic\": 120,\r\n  \"bpDiastolic\": 80,\r\n  \"oxygen\": 98,\r\n  \"respiratoryRate\": 16,\r\n  \"temperature\": 36.8,\r\n  \"skinColor\": \"pale\",\r\n  \"sweating\": \"mild\",\r\n  \"ecg\": \"afib\",\r\n  \"painScore\": 2,\r\n  \"bloodGlucoseMgdl\": 110.5,\r\n  \"avpuScore\": 15\r\n}\r\n ",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/vitals",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "vitals"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "new-incidents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/new-incidents",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "new-incidents"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "chief-complaint",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"chiefComplaint\": \"suddenly_weak_sweaty_confused\" \r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/515caaa8-749c-4fca-a968-30d0618ae8e5/chief-complaint",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "515caaa8-749c-4fca-a968-30d0618ae8e5",
+            "chief-complaint"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "vitals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://192.168.1.38:5000/api/vitals/04e8b92a-e332-49b0-bccd-f7d128f51127",
+          "protocol": "http",
+          "host": [
+            "192",
+            "168",
+            "1",
+            "38"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "vitals",
+            "04e8b92a-e332-49b0-bccd-f7d128f51127"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "case-summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://192.168.1.38:5000/api/a704ec8e-ae22-4ca5-80b5-2688192357fc",
+          "protocol": "http",
+          "host": [
+            "192",
+            "168",
+            "1",
+            "38"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "a704ec8e-ae22-4ca5-80b5-2688192357fc"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "case-logs",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventType\": \"PHYSICIAN_ASSIGNED\",\n  \"eventTitle\": \"Physician Assigned\",\n  \"description\": \"Dr. John Smith assigned to the case.\",\n  \"performedBy\": \"02735540-fe32-42b6-ba93-71555cfb8b0b\",\n  \"metadata\": {\n    \"physicianName\": \"Dr. John Smith\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://192.168.1.38:5000/api/case-logs/9145c7c6-a2fd-4eaf-8e1a-77e0092774e5",
+          "protocol": "http",
+          "host": [
+            "192",
+            "168",
+            "1",
+            "38"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "case-logs",
+            "9145c7c6-a2fd-4eaf-8e1a-77e0092774e5"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "case-logs",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventType\": \"PHYSICIAN_ASSIGNED\",\n  \"eventTitle\": \"Physician Assigned\",\n  \"description\": \"Dr. John Smith assigned to the case.\",\n  \"performedBy\": \"02735540-fe32-42b6-ba93-71555cfb8b0b\",\n  \"metadata\": {\n    \"physicianName\": \"Dr. John Smith\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://192.168.1.38:5000/api/case-logs/9145c7c6-a2fd-4eaf-8e1a-77e0092774e5",
+          "protocol": "http",
+          "host": [
+            "192",
+            "168",
+            "1",
+            "38"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "case-logs",
+            "9145c7c6-a2fd-4eaf-8e1a-77e0092774e5"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "ai-summary",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\n    \"data\": {\n\n        \"incidentId\": \"807318db-ea9d-4df0-836d-72993cd1dc32\",\n\n        \"caseId\": \"6e2fcb1d-52dc-4b80-a1c6-721c1d2df32d\",\n\n        \"patientName\": \"John Smith\",\n\n        \"patientAge\": 34,\n\n        \"flight\": \"AI202\",\n\n        \"route\": \"DEL → BOM\",\n\n        \"aircraft\": \"Boeing 737\",\n\n        \"seat\": \"15A \",\n\n        \"status\": \"closed\",\n\n        \"physician\": \" \",\n\n        \"dateTime\": \"2026-06-01T12:32:24.702Z\",\n\n        \"duration\": \"19h 3m\",\n\n        \"chiefComplaint\": \"suddenly_weak_sweaty_confused\",\n\n        \"assessmentSteps\": [\n\n            {\n\n                \"groupName\": \"Seizure Airway Management\",\n\n                \"title\": \"Insert Airway Device if Breathing Obstructed\"\n\n            },\n\n            {\n\n                \"groupName\": \"Epilepsy History\",\n\n                \"title\": \"Assess for Prolonged Seizure\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Oxygen Therapy\",\n\n                \"title\": \"Administer Oxygen Therapy\"\n\n            },\n\n            {\n\n                \"groupName\": \"IV Access\",\n\n                \"title\": \"Assess Epilepsy History\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Assessment\",\n\n                \"title\": \"Assess Seizure Duration\"\n\n            },\n\n            {\n\n                \"groupName\": \"Neurological & Metabolic Assessment\",\n\n                \"title\": \"Establish IV Cannula Access\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Initial Stabilization\",\n\n                \"title\": \"Place Patient in Recovery Position\"\n\n            },\n\n            {\n\n                \"groupName\": \"Vasovagal Management\",\n\n                \"title\": \"Lay Passenger on Floor\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Assess Danger\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Assess Response\"\n\n            },\n\n            {\n\n                \"groupName\": \"Vasovagal Management\",\n\n                \"title\": \"Elevate Legs\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Initial Stabilization\",\n\n                \"title\": \"Protect Head and Limbs\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Airway Management\",\n\n                \"title\": \"Remove Airway if Gagging Occurs\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Oxygen Therapy\",\n\n                \"title\": \"Maintain Oxygen Saturation Target\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Assessment\",\n\n                \"title\": \"Assess Seizure History\"\n\n            },\n\n            {\n\n                \"groupName\": \"IV Access\",\n\n                \"title\": \"Record Last Medication Details\"\n\n            },\n\n            {\n\n                \"groupName\": \"Epilepsy History\",\n\n                \"title\": \"Prepare Midazolam\"\n\n            },\n\n            {\n\n                \"groupName\": \"Vasovagal Management\",\n\n                \"title\": \"Administer Oxygen\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Initiate Telecare Escalation\"\n\n            },\n\n            {\n\n                \"groupName\": \"Epilepsy History\",\n\n                \"title\": \"Continue Telecare Guidance\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Initial Stabilization\",\n\n                \"title\": \"Pregnant Patient Positioning\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Assessment\",\n\n                \"title\": \"Assess Pre-Ictal Events\"\n\n            },\n\n            {\n\n                \"groupName\": \"Seizure Assessment\",\n\n                \"title\": \"Assess Ictal Events\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Assess Airway\"\n\n            },\n\n            {\n\n                \"groupName\": \"Vasovagal Management\",\n\n                \"title\": \"Monitor Airway\"\n\n            },\n\n            {\n\n                \"groupName\": \"Vasovagal Management\",\n\n                \"title\": \"Monitor Improvement Over 15 Minutes\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Assess Breathing\"\n\n            },\n\n            {\n\n                \"groupName\": \"DRS ABC Assessment\",\n\n                \"title\": \"Assess Circulation\"\n\n            }\n\n        ],\n\n        \"timeline\": [\n\n            {\n\n                \"id\": \"17685767-dbd5-43f4-a60e-5f0f7e277cd4\",\n\n                \"eventType\": \"SYMPTOMS_REPORTED\",\n\n                \"title\": \"Symptoms Reported\",\n\n                \"description\": \"Crew reported symptoms of sudden sweating, weakness and confusion. Pathway A selected.\",\n\n                \"metadata\": {\n\n                    \"pathway\": \"PATHWAY_A\",\n\n                    \"symptoms\": [\n\n                        \"Suddenly Sweaty\",\n\n                        \"Weak\",\n\n                        \"Confused\"\n\n                    ]\n\n                },\n\n                \"createdAt\": \"2026-06-01T12:32:36.212Z\"\n\n            },\n\n            {\n\n                \"id\": \"4abb8bf1-69aa-4da4-8974-4fbc17697238\",\n\n                \"eventType\": \"ASSESSMENT_STARTED\",\n\n                \"title\": \"Assessment Started\",\n\n                \"description\": \"Pathway A assessment initiated.\",\n\n                \"metadata\": {\n\n                    \"pathway\": \"PATHWAY_A\"\n\n                },\n\n                \"createdAt\": \"2026-06-01T12:32:40.995Z\"\n\n            },\n\n            {\n\n                \"id\": \"ab21bd2e-c0b1-42af-95b9-f860b9d102e7\",\n\n                \"eventType\": \"CONDITION_IDENTIFIED\",\n\n                \"title\": \"Condition Identified\",\n\n                \"description\": \"Vasovagal episode identified based on assessment findings.\",\n\n                \"metadata\": {\n\n                    \"condition\": \"VASOVAGAL\"\n\n                },\n\n                \"createdAt\": \"2026-06-01T12:32:56.505Z\"\n\n            }\n\n        ],\n\n        \"vitals\": {\n\n            \"heartRate\": 88,\n\n            \"bpSystolic\": 135,\n\n            \"bpDiastolic\": 85,\n\n            \"oxygen\": \"80.00\",\n\n            \"respiratoryRate\": 24,\n\n            \"temperature\": \"34.50\",\n\n            \"bloodGlucose\": \"6.00\",\n\n            \"painScore\": 6,\n\n            \"avpuScore\": 15,\n\n            \"skinColor\": \"pale\",\n\n            \"sweating\": \"mild\",\n\n            \"ecg\": \"afib\",\n\n            \"recordedAt\": \"2026-06-01T12:32:25.014Z\"\n\n        }\n\n    }\n\n}\n ",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://aisum.databin.in/case-summary",
+          "protocol": "https",
+          "host": [
+            "aisum",
+            "databin",
+            "in"
+          ],
+          "path": [
+            "case-summary"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

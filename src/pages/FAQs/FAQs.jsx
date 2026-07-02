@@ -12,7 +12,7 @@ const FAQs = () => {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: { xs: "100dvh", md: "100vh" },
         background: theme.pageBg,
         fontFamily: APP_FONT_FAMILY,
         display: "flex",
@@ -21,6 +21,7 @@ const FAQs = () => {
         justifyContent: "center",
         px: { xs: 2, sm: 3, md: 4 },
         py: 4,
+        boxSizing: "border-box",
         transition: "background 0.3s",
       }}
     >

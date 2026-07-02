@@ -11,6 +11,8 @@ import * as AppAssets from "../assets/Assets";
 import logoDark from "../assets/logo1.png";
 import logoLight from "../assets/logo2.png";
 import { useThemeMode } from "../context/ThemeContext";
+import { clearPhysicianSession } from "../utils/physicianSession";
+import AviationChatSocket from "../services/AviationChatSocket";
 import NotificationPanel from "../pages/AllEvents/Alert";
 
 const ITEM_SIZE = 64;
@@ -33,7 +35,7 @@ const Sidebar = ({ onAiClick }) => {
     {
       label: "Search Kit",
       Icon: AppAssets.SearchKitIcon,
-      path: "/search-kit",
+      path: "/find-medicine",
       hoverable: true,
     },
     {
@@ -75,9 +77,8 @@ const Sidebar = ({ onAiClick }) => {
     }
 
     if (path === "/sign-in") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("role");
+      AviationChatSocket.disconnect();
+      clearPhysicianSession();
     }
 
     navigate(path);
@@ -201,7 +202,7 @@ const Sidebar = ({ onAiClick }) => {
           alignItems: "center",
           borderRight: "1px solid",
           borderColor: "var(--sidebar-border)",
-          minHeight: "100vh",
+          minHeight: { xs: "100dvh", md: "100vh" },
           boxSizing: "border-box",
           overflowY: "auto",
           pt: "16px",

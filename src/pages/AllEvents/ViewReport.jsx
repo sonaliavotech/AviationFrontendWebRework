@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { getCaseSummary, mapVitalsToPatientData } from "../../services/api";
 import { Box, Typography, IconButton, Slide } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useThemeMode } from "../../context/ThemeContext";
@@ -255,4 +256,34 @@ const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VIT
   );
 };
 
-export default PatientVitalsSidebar;
+function ViewReport({ open = false, onClose, incidentId, patient }) {
+  const [patientData, setPatientData] = useState(DEFAULT_VITALS);
+
+  useEffect(() => {
+    if (!open || !incidentId) return;
+
+    let cancelled = false;
+
+    getCaseSummary(incidentId)
+      .then((data) => {
+        if (!cancelled && data) {
+          setPatientData(mapVitalsToPatientData(data, patient));
+        }
+      })
+      .catch((err) => console.error("VIEW REPORT FETCH ERROR =>", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, incidentId, patient]);
+
+  return (
+    <PatientVitalsSidebar
+      open={open}
+      onClose={onClose}
+      patientData={patientData}
+    />
+  );
+}
+
+export default ViewReport;

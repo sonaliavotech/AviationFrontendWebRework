@@ -136,7 +136,13 @@ function GraphCard({ title, value = 62, showTrend = false, panel }) {
   );
 }
 
-export default function ViewVitalTrends({ open, onClose }) {
+export default function ViewVitalTrends({ open, onClose, patient }) {
+  const patientLabel = patient
+    ? `${patient.name}, ${patient.age?.replace("y", "") || "—"} ${patient.gender?.charAt(0)?.toUpperCase() || ""}`
+    : "—";
+  const flightLabel = patient
+    ? `Flight ${patient.room || patient.flightNumber || "—"} (${patient.location || "—"})`
+    : "—";
   const { darkMode } = useThemeMode();
   const panel = getPanelColors(darkMode);
 
@@ -148,8 +154,9 @@ export default function ViewVitalTrends({ open, onClose }) {
         position: "fixed",
         top: 0,
         right: 0,
-        width: "270px",
-        height: "100vh",
+        left: { xs: "80px", sm: "auto" },
+        width: { xs: "calc(100% - 80px)", sm: "270px" },
+        height: { xs: "100dvh", sm: "100vh" },
         background: panel.panelBg,
         borderLeft: `1px solid ${panel.panelBorder}`,
         p: "16px",
@@ -174,10 +181,10 @@ export default function ViewVitalTrends({ open, onClose }) {
           <Typography
             sx={{ color: panel.textPrimary, fontWeight: 500, fontSize: "15px" }}
           >
-            John Smith, 58 M
+            {patientLabel}
           </Typography>
           <Typography sx={{ color: panel.textSecondary, fontSize: "12px" }}>
-            Flight AA1234 (SYD → LAX)
+            {flightLabel}
           </Typography>
         </Box>
 

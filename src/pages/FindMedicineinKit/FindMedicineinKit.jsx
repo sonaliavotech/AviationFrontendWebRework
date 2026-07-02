@@ -281,6 +281,8 @@ const ModuleAccordion = ({ module, search, onMedicineClick, theme }) => {
             mx: "16px",
             mb: "16px",
             width: "calc(100% - 32px)",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           <Table size="small">
@@ -439,7 +441,7 @@ const FindMedicineInKit = () => {
     <Box
       sx={{
         width: "100%",
-        minHeight: "100vh",
+        minHeight: { xs: "100dvh", md: "100vh" },
         backgroundColor: theme.pageBg,
         p: { xs: 2, sm: 3, md: 4 },
         boxSizing: "border-box",
@@ -480,7 +482,7 @@ const FindMedicineInKit = () => {
           value={activeTab}
           onChange={(e, v) => setActiveTab(v)}
           sx={{
-            width: "273.33px",
+            width: { xs: "100%", sm: "273.33px" },
             height: "48px",
             minHeight: "48px",
             backgroundColor: theme.inputBg,
@@ -498,7 +500,9 @@ const FindMedicineInKit = () => {
               label={label}
               disableRipple
               sx={{
-                width: "132.67px",
+                flex: 1,
+                width: { xs: "auto", sm: "132.67px" },
+                minWidth: { xs: 0, sm: "132.67px" },
                 height: "40px",
                 minHeight: "40px",
                 borderRadius: "9999px",
@@ -538,7 +542,7 @@ const FindMedicineInKit = () => {
             </InputAdornment>
           }
           sx={{
-            width: "200px",
+            width: { xs: "100%", sm: "200px" },
             height: "48px",
             background: theme.inputBg,
             borderRadius: "24px",
@@ -563,9 +567,9 @@ const FindMedicineInKit = () => {
           startIcon={<Calculate />}
           onClick={() => setDosageOpen(true)}
           sx={{
-            width: "169px",
+            width: { xs: "100%", sm: "169px" },
             height: "48px",
-            minWidth: "169px",
+            minWidth: { xs: 0, sm: "169px" },
             background: "#015DFF",
             borderRadius: "12px",
             textTransform: "none",
@@ -585,9 +589,10 @@ const FindMedicineInKit = () => {
           display: "flex",
           gap: 3,
           flexDirection: { xs: "column", lg: "row" },
+          alignItems: { xs: "stretch", lg: "flex-start" },
         }}
       >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
           {modules.map((module) => (
             <ModuleAccordion
               key={module.id}
@@ -601,9 +606,9 @@ const FindMedicineInKit = () => {
 
         <Box
           sx={{
-            width: { xs: "100%", sm: "347px" },
-            height: { xs: "347px", sm: "510px" },
-            mt: { sm: -19 },
+            width: { xs: "100%", lg: "347px" },
+            height: { xs: "347px", lg: "510px" },
+            mt: { xs: 1, lg: 0 },
             background: theme.sectionBg,
             border: `1px solid ${theme.border}`,
             borderRadius: "16px",
@@ -611,7 +616,7 @@ const FindMedicineInKit = () => {
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            position: "relative",
+            alignSelf: { xs: "center", lg: "flex-start" },
             overflow: "hidden",
             transition: "background-color 0.3s, border-color 0.3s",
           }}

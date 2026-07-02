@@ -49,7 +49,8 @@ function ShareReportDialog({ open, handleClose }) {
       fullWidth
       PaperProps={{
         sx: {
-          width: "350px",
+          width: { xs: "calc(100% - 32px)", sm: "350px" },
+          maxWidth: "100%",
           borderRadius: "16px",
           backgroundColor: theme.modalBg,
           color: theme.textPrimary,
