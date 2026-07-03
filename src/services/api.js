@@ -8,11 +8,17 @@
  * AI:    https://aisum.databin.in/case-summary  (separate service)
  */
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://api.tiatele.databin.in/api";
+// ============================================
+// Import from appConfig
+// ============================================
+import { API_BASE_URL as APP_API_BASE_URL, AI_SUMMARY_URL as APP_AI_SUMMARY_URL } from "../config/appConfig";
 
-const AI_SUMMARY_URL =
-  import.meta.env.VITE_AI_SUMMARY_URL || "https://aisum.databin.in/case-summary";
+// ============================================
+// Use imported values with fallback
+// ============================================
+// const API_BASE_URL = APP_API_BASE_URL|| "https://api.tiatele.databin.in/api";
+const API_BASE_URL = APP_API_BASE_URL;
+const AI_SUMMARY_URL = APP_AI_SUMMARY_URL || "https://aisum.databin.in/case-summary";
 
 async function request(url, options = {}) {
   const res = await fetch(url, {

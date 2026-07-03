@@ -46,6 +46,12 @@ import {
   formatMedicineLine,
 } from "./caseDetailUtils";
 
+// Import Call Components
+import { useAviationCall } from "../../hooks/useAviationCall";
+import IncomingCallScreen from "../../componants/calls/IncomingCallScreen";
+import JitsiCall from "../../componants/JitsiCall";
+import JitsiCallWindow from "../../componants/calls/JitsiCallWindow";
+
 const DARK_C = {
   bg: "#0b1d35",
   surface: "#0f2040",
@@ -522,10 +528,13 @@ export const CaseDetails = () => {
   const incidentId = location.state?.incidentId;
   const tablePatient = location.state?.patient;
 
+  // State for case data
   const [eventData, setEventData] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(false);
   const [ecgFiles, setEcgFiles] = useState([]);
   const [loadingEcg, setLoadingEcg] = useState(false);
+
+  // UI state
   const [showTrends, setShowTrends] = useState(false);
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
@@ -533,6 +542,12 @@ export const CaseDetails = () => {
   const [recommendedMedicines, setRecommendedMedicines] = useState([]);
   const [mobilePanel, setMobilePanel] = useState("summary");
 
+  // Call state
+  const [showJitsi, setShowJitsi] = useState(false);
+  const [callInitiated, setCallInitiated] = useState(false);
+  const [physicianUser, setPhysicianUser] = useState(null);
+
+  // Theme and responsive
   const muiTheme = useTheme();
   const { darkMode } = useThemeMode();
   const appTheme = getTheme(darkMode);
@@ -545,6 +560,7 @@ export const CaseDetails = () => {
   const isSmallTablet = useMediaQuery(muiTheme.breakpoints.down("lg"));
   const isNarrow = useMediaQuery(muiTheme.breakpoints.down("xl"));
 
+  // Compute derived values
   const physicianAssigned = useMemo(
     () =>
       location.state?.physicianAssigned ||
@@ -587,6 +603,20 @@ export const CaseDetails = () => {
 
   const chatEnabled = physicianAssigned && !!crewUserId;
 
+  // Call hook
+  const {
+    isInCall,
+    incomingCall,
+    activeCall,
+    callStatus,
+    startCall,
+    acceptCall,
+    rejectCall,
+    hangupCall,
+    error: callError,
+  } = useAviationCall(physicianUser?.id || "physician-web-user");
+
+  // Fetch case data
   useEffect(() => {
     if (!incidentId) return;
     setLoadingEvent(true);
@@ -599,6 +629,7 @@ export const CaseDetails = () => {
       .finally(() => setLoadingEvent(false));
   }, [incidentId]);
 
+  // Fetch ECG files
   useEffect(() => {
     if (!incidentId) return;
     setLoadingEcg(true);
@@ -607,6 +638,106 @@ export const CaseDetails = () => {
       .catch((err) => console.error("ECG FETCH ERROR =>", err))
       .finally(() => setLoadingEcg(false));
   }, [incidentId]);
+
+  // Load physician user from localStorage or context
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem("physicianUser");
+      if (userStr) {
+        setPhysicianUser(JSON.parse(userStr));
+      } else {
+        // Fallback: use a default physician ID from location state
+        const physicianId = location.state?.physicianId ||
+          eventData?.physicianId ||
+          tablePatient?.physicianId;
+        if (physicianId) {
+          setPhysicianUser({ id: physicianId, name: "Physician" });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load physician user:", e);
+    }
+  }, [location.state, eventData, tablePatient]);
+
+  // Handle call error
+  useEffect(() => {
+    if (callError) {
+      console.error("Call error:", callError);
+      setCallInitiated(false);
+    }
+  }, [callError]);
+
+  // Handle Join Now click
+  const handleJoinNow = useCallback(() => {
+    if (!physicianAssigned) {
+      console.warn("Physician not assigned");
+      return;
+    }
+
+    if (!crewUserId) {
+      console.warn("No crew available");
+      return;
+    }
+
+    const callData = {
+      callId: `call_${incidentId}_${Date.now()}`,
+      roomId: prefetchedRoomId || `room_${incidentId}`,
+      fromUserId: physicianUser?.id || "physician-web-user",
+      callerName: physicianUser?.name || "Physician",
+      callerRole: "physician",
+      toUserId: crewUserId,
+      receiverRole: "crew",
+      hasVideo: true,
+      callType: "video",
+      callerId: physicianUser?.id || "physician-web-user",
+      incidentId: incidentId,
+      organizationName: "Aviation Medical",
+      participants: [
+        {
+          userId: crewUserId,
+          role: "crew"
+        }
+      ]
+    };
+
+    const success = startCall(callData);
+    if (success) {
+      setCallInitiated(true);
+      setShowJitsi(true);
+      console.log("📞 Call initiated:", callData);
+    }
+  }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall]);
+
+  // Handle incoming call accept
+  const handleAcceptCall = useCallback((data) => {
+    const success = acceptCall(data);
+    if (success) {
+      setShowJitsi(true);
+      console.log("✅ Call accepted:", data);
+    }
+  }, [acceptCall]);
+
+  // Handle incoming call reject
+  const handleRejectCall = useCallback((data) => {
+    rejectCall(data);
+    setCallInitiated(false);
+    console.log("❌ Call rejected:", data);
+  }, [rejectCall]);
+
+  // Handle hangup
+  const handleHangup = useCallback((data) => {
+    hangupCall(data);
+    setShowJitsi(false);
+    setCallInitiated(false);
+    console.log("📴 Call hung up:", data);
+  }, [hangupCall]);
+
+  // Close Jitsi window
+  const handleCloseJitsi = useCallback(() => {
+    setShowJitsi(false);
+    setCallInitiated(false);
+    console.log("🔚 Jitsi window closed");
+  }, []);
 
   const aiSummary = useMemo(() => parseAiSummary(eventData), [eventData]);
 
@@ -636,11 +767,11 @@ export const CaseDetails = () => {
         typeof m === "string"
           ? { moduleId: "", moduleTitle: "", medicineName: m, usage: "" }
           : {
-              moduleId: m?.moduleId || "",
-              moduleTitle: m?.moduleTitle || "",
-              medicineName: m?.medicineName || m?.name || m?.title || "",
-              usage: m?.usage || "",
-            },
+            moduleId: m?.moduleId || "",
+            moduleTitle: m?.moduleTitle || "",
+            medicineName: m?.medicineName || m?.name || m?.title || "",
+            usage: m?.usage || "",
+          },
       )
       .filter((m) => m.medicineName);
 
@@ -841,21 +972,8 @@ export const CaseDetails = () => {
         : 309;
   const vitalsPanelWidth = isSmallTablet ? 200 : 218;
 
-  if (!incidentId) {
-    return (
-      <Box sx={{ p: 4, textAlign: "center", color: C.textMuted }}>
-        <Typography>No incident selected.</Typography>
-        <Button
-          onClick={() => navigate("/all-events")}
-          sx={{ mt: 2, textTransform: "none" }}
-        >
-          Back to All Events
-        </Button>
-      </Box>
-    );
-  }
-
-  return (
+  // Render main content function to avoid duplication
+  const renderMainContent = () => (
     <Box
       sx={{
         display: "flex",
@@ -879,7 +997,7 @@ export const CaseDetails = () => {
           overflow: "hidden",
         }}
       >
-        {/* Header — matches tab CaseDetailScreen */}
+        {/* Header */}
         <Box
           sx={{
             display: "flex",
@@ -959,23 +1077,27 @@ export const CaseDetails = () => {
 
             <Button
               startIcon={<VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
-              disabled={!physicianAssigned}
+              disabled={!physicianAssigned || !crewUserId}
+              onClick={handleJoinNow}
               sx={{
-                background: physicianAssigned
+                background: physicianAssigned && crewUserId
                   ? "#0A5FFF"
                   : darkMode
                     ? "#1E293B"
                     : "#E2E8F0",
-                color: physicianAssigned ? "#fff" : C.textMuted,
+                color: physicianAssigned && crewUserId ? "#fff" : C.textMuted,
                 borderRadius: "8px",
                 px: { xs: "10px", sm: "14px" },
                 height: { xs: 36, md: 38 },
                 fontSize: { xs: "11px", md: "12px" },
                 fontWeight: 600,
                 textTransform: "none",
-                opacity: physicianAssigned ? 1 : 0.6,
+                opacity: physicianAssigned && crewUserId ? 1 : 0.6,
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
+                "&:hover": {
+                  background: physicianAssigned && crewUserId ? "#0047cc" : undefined,
+                },
               }}
             >
               <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
@@ -1018,7 +1140,7 @@ export const CaseDetails = () => {
               minHeight: 0,
             }}
           >
-            {/* Summary — always on desktop; mobile tab */}
+            {/* Summary */}
             <Box
               sx={{
                 flex: 1,
@@ -1065,7 +1187,7 @@ export const CaseDetails = () => {
               )}
             </Box>
 
-            {/* Medicine kit — desktop sidebar; mobile Kit tab */}
+            {/* Medicine kit */}
             <Box
               sx={{
                 width: { xs: "100%", md: medicinePanelWidth },
@@ -1091,7 +1213,7 @@ export const CaseDetails = () => {
               {renderMedicinePanel()}
             </Box>
 
-            {/* Vitals — mobile tab only (desktop = right sidebar) */}
+            {/* Vitals */}
             <Box
               sx={{
                 display: {
@@ -1115,7 +1237,7 @@ export const CaseDetails = () => {
         </Box>
       </Box>
 
-      {/* Right — vitals sidebar (tablet/desktop) */}
+      {/* Right — vitals sidebar */}
       <Box
         sx={{
           width: vitalsPanelWidth,
@@ -1141,7 +1263,7 @@ export const CaseDetails = () => {
       {/* Mobile fullscreen chat overlay */}
       {isMobile && chatVisible && <CaseDetailsChatPanel {...chatPanelProps} />}
 
-      {/* Vital trends overlay (wide screens) */}
+      {/* Vital trends overlay */}
       {showTrends && (
         <Box
           sx={{
@@ -1277,6 +1399,105 @@ export const CaseDetails = () => {
       )}
     </Box>
   );
+
+  // ============================================
+  // RENDER LOGIC WITH CALL OVERLAYS
+  // ============================================
+
+  // If there's an incoming call, show the incoming call screen
+  if (callStatus === "ringing" && incomingCall) {
+    return (
+      <>
+        {renderMainContent()}
+        <IncomingCallScreen
+          callData={incomingCall}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+          onHangup={handleHangup}
+          isRinging={true}
+        />
+      </>
+    );
+  }
+
+  // If call is in progress and Jitsi is open
+  if (showJitsi && activeCall) {
+    return (
+      <>
+        {renderMainContent()}
+        <JitsiCall
+          broadcastId={activeCall.roomId || activeCall.callId || `call_${incidentId}`}
+          callData={{
+            ...activeCall,
+            callerName: activeCall.callerName || "Physician",
+            callerRole: activeCall.callerRole || "physician",
+            toUserId: crewUserId,
+          }}
+          setIsChatOpen={(isOpen) => console.log("Chat open:", isOpen)}
+          onOnlyParticipantTimeout={() => {
+            console.log("Only participant remaining");
+          }}
+          onRemoteParticipantAvailable={() => {
+            console.log("Remote participant joined");
+          }}
+          onEndCall={handleHangup}
+          onClose={handleCloseJitsi}
+          domain="tiajitsistg.tiatech.net"
+          darkMode={darkMode}
+        />
+      </>
+    );
+  }
+
+  // If user is in call but Jitsi is not yet open (connecting state)
+  if (callStatus === "connecting" && activeCall) {
+    return (
+      <>
+        {renderMainContent()}
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ textAlign: "center", color: "#fff" }}>
+            <LoadingSpinner
+              variant="inline"
+              size="lg"
+              message="Connecting to call..."
+            />
+            <Button
+              onClick={() => {
+                hangupCall({ callId: activeCall.callId });
+                setShowJitsi(false);
+                setCallInitiated(false);
+              }}
+              sx={{
+                mt: 3,
+                color: "#EF4444",
+                borderColor: "#EF4444",
+                "&:hover": { borderColor: "#DC2626", color: "#DC2626" },
+              }}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+          </Box>
+        </Box>
+      </>
+    );
+  }
+
+  // Default: render main content only
+  return renderMainContent();
 };
 
 export default CaseDetails;
