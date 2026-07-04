@@ -14,7 +14,8 @@ import {
   resolveChatFileDisplayType,
 } from "../utils/aviationChatFiles";
 import { confirmDeleteMessages } from "../utils/aviationChatUi";
-import { formatMessageTime, mapApiMessage } from "../utils/chatMessageMapper";
+import { formatMessageTime, mapApiMessage, normalizeChatPayload } from "../utils/chatMessageMapper";
+import { buildVoiceMessageLabel } from "../utils/aviationVoiceMessage";
 import { getPhysicianSession } from "../utils/physicianSession";
 
 export function useAviationCaseChat({
@@ -45,6 +46,7 @@ export function useAviationCaseChat({
   const myUserIdRef = useRef(null);
   const otherUserIdRef = useRef(null);
   const optimisticIdRef = useRef(null);
+  const sendingRef = useRef(false);
   const typingTimerRef = useRef(null);
 
   const draft = message || "";
@@ -60,14 +62,45 @@ export function useAviationCaseChat({
 
   const appendMessage = useCallback(
     (incomingMsg) => {
+      if (!incomingMsg?.id) return;
       setMessages((prev) => {
-        if (prev.some((m) => m.id === incomingMsg.id)) return prev;
+        if (prev.some((m) => String(m.id) === String(incomingMsg.id))) return prev;
         return [...prev, incomingMsg];
       });
       scrollToEnd();
     },
     [scrollToEnd],
   );
+
+  const upsertConfirmedMessage = useCallback(
+    (data) => {
+      const mapped = mapApiMessage(data, myUserIdRef.current);
+      if (!mapped?.id) return;
+      mapped.status = "sent";
+
+      setMessages((prev) => {
+        const withoutTemps = mapped.isMine
+          ? prev.filter((m) => !String(m.id).startsWith("temp-"))
+          : prev.filter((m) => m.id !== optimisticIdRef.current);
+        optimisticIdRef.current = null;
+
+        const exists = withoutTemps.some((m) => String(m.id) === String(mapped.id));
+        if (exists) {
+          return withoutTemps.map((m) =>
+            String(m.id) === String(mapped.id) ? { ...m, ...mapped, status: "sent" } : m,
+          );
+        }
+        return [...withoutTemps, mapped];
+      });
+      scrollToEnd();
+    },
+    [scrollToEnd],
+  );
+
+  const messageRoomId = (data) => {
+    const normalized = normalizeChatPayload(data);
+    return normalized?.room_id ?? data?.roomId ?? data?.room_id;
+  };
 
   const updateMessageStatus = useCallback((messageId, updater) => {
     setMessages((prev) =>
@@ -100,10 +133,15 @@ export function useAviationCaseChat({
 
   const handleIncomingMessage = useCallback(
     (data) => {
-      if (!data || String(data.room_id) !== String(roomRef.current)) return;
-      if (String(data.sender_id) === String(myUserIdRef.current)) return;
+      const roomId = messageRoomId(data);
+      if (!data || String(roomId) !== String(roomRef.current)) return;
+
+      const normalized = normalizeChatPayload(data);
+      const senderId = normalized?.sender_id;
+      if (senderId != null && String(senderId) === String(myUserIdRef.current)) return;
 
       const mapped = mapApiMessage(data, myUserIdRef.current);
+      if (!mapped?.id || mapped.isMine) return;
       appendMessage(mapped);
 
       if (!mapped.isMine && data.id && roomRef.current) {
@@ -124,28 +162,11 @@ export function useAviationCaseChat({
 
   const handleMessageSent = useCallback(
     (data) => {
-      if (!data || String(data.room_id) !== String(roomRef.current)) return;
-
-      const mapped = mapApiMessage(data, myUserIdRef.current);
-      mapped.status = "sent";
-
-      setMessages((prev) => {
-        let next = optimisticIdRef.current
-          ? prev.filter((m) => m.id !== optimisticIdRef.current)
-          : prev;
-        optimisticIdRef.current = null;
-
-        const exists = next.some((m) => m.id === mapped.id);
-        if (exists) {
-          return next.map((m) =>
-            m.id === mapped.id ? { ...m, ...mapped, status: "sent" } : m,
-          );
-        }
-        return [...next, mapped];
-      });
-      scrollToEnd();
+      const roomId = messageRoomId(data);
+      if (!data || String(roomId) !== String(roomRef.current)) return;
+      upsertConfirmedMessage(data);
     },
-    [scrollToEnd],
+    [upsertConfirmedMessage],
   );
 
   const handleMessageDelivered = useCallback(
@@ -327,6 +348,37 @@ export function useAviationCaseChat({
     }
 
     let cancelled = false;
+    let listenersAttached = false;
+
+    const attachListeners = () => {
+      if (listenersAttached) return;
+      AviationChatSocket.onNewMessage(handleIncomingMessage);
+      AviationChatSocket.onMessageSent(handleMessageSent);
+      AviationChatSocket.onMessageDelivered(handleMessageDelivered);
+      AviationChatSocket.onMessageSeen(handleMessageSeen);
+      AviationChatSocket.onMessageDeleted(handleMessageDeleted);
+      AviationChatSocket.onMessageHidden(handleMessageHidden);
+      AviationChatSocket.onUserTyping(handleUserTyping);
+      AviationChatSocket.onUserStopTyping(handleUserStopTyping);
+      AviationChatSocket.onUserStatus(handleUserStatus);
+      AviationChatSocket.onError(handleSocketError);
+      listenersAttached = true;
+    };
+
+    const detachListeners = () => {
+      if (!listenersAttached) return;
+      AviationChatSocket.offNewMessage(handleIncomingMessage);
+      AviationChatSocket.offMessageSent(handleMessageSent);
+      AviationChatSocket.offMessageDelivered(handleMessageDelivered);
+      AviationChatSocket.offMessageSeen(handleMessageSeen);
+      AviationChatSocket.offMessageDeleted(handleMessageDeleted);
+      AviationChatSocket.offMessageHidden(handleMessageHidden);
+      AviationChatSocket.offUserTyping(handleUserTyping);
+      AviationChatSocket.offUserStopTyping(handleUserStopTyping);
+      AviationChatSocket.offUserStatus(handleUserStatus);
+      AviationChatSocket.offError(handleSocketError);
+      listenersAttached = false;
+    };
 
     const setupChat = async () => {
       setLoading(true);
@@ -350,6 +402,10 @@ export function useAviationCaseChat({
         myUserIdRef.current = String(userId);
         AviationChatSocket.connect(userId);
         await AviationChatSocket.whenReady();
+
+        if (cancelled) return;
+
+        attachListeners();
 
         let room = null;
         if (prefetchedRoomId) {
@@ -377,8 +433,6 @@ export function useAviationCaseChat({
         setOtherUserOnline(!!crewMember?.is_online);
         setSocketConnected(true);
 
-        AviationChatSocket.joinRoom(roomId);
-
         const [history] = await Promise.all([
           getAviationMessages(roomId, 1, 50, userId),
           AviationChatSocket.joinRoomAsync(roomId),
@@ -386,7 +440,11 @@ export function useAviationCaseChat({
 
         if (cancelled) return;
 
-        setMessages(history.map((msg) => mapApiMessage(msg, userId)));
+        setMessages(
+          history
+            .map((msg) => mapApiMessage(msg, userId))
+            .filter(Boolean),
+        );
         emitSeen({ roomId, userId });
         onChatOpened?.();
       } catch (err) {
@@ -405,16 +463,6 @@ export function useAviationCaseChat({
       }
     };
 
-    AviationChatSocket.onNewMessage(handleIncomingMessage);
-    AviationChatSocket.onMessageSent(handleMessageSent);
-    AviationChatSocket.onMessageDelivered(handleMessageDelivered);
-    AviationChatSocket.onMessageSeen(handleMessageSeen);
-    AviationChatSocket.onMessageDeleted(handleMessageDeleted);
-    AviationChatSocket.onMessageHidden(handleMessageHidden);
-    AviationChatSocket.onUserTyping(handleUserTyping);
-    AviationChatSocket.onUserStopTyping(handleUserStopTyping);
-    AviationChatSocket.onUserStatus(handleUserStatus);
-    AviationChatSocket.onError(handleSocketError);
     setupChat();
 
     const syncConnected = () => {
@@ -424,20 +472,11 @@ export function useAviationCaseChat({
 
     return () => {
       cancelled = true;
+      detachListeners();
       if (roomRef.current) {
         AviationChatSocket.leaveRoom(roomRef.current);
         roomRef.current = null;
       }
-      AviationChatSocket.offNewMessage(handleIncomingMessage);
-      AviationChatSocket.offMessageSent(handleMessageSent);
-      AviationChatSocket.offMessageDelivered(handleMessageDelivered);
-      AviationChatSocket.offMessageSeen(handleMessageSeen);
-      AviationChatSocket.offMessageDeleted(handleMessageDeleted);
-      AviationChatSocket.offMessageHidden(handleMessageHidden);
-      AviationChatSocket.offUserTyping(handleUserTyping);
-      AviationChatSocket.offUserStopTyping(handleUserStopTyping);
-      AviationChatSocket.offUserStatus(handleUserStatus);
-      AviationChatSocket.offError(handleSocketError);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, [
@@ -462,8 +501,16 @@ export function useAviationCaseChat({
   const handleSend = useCallback(async () => {
     const trimmed = String(draft || "").trim();
     const attachment = pendingFile;
-    if ((!trimmed && !attachment) || !roomRef.current || sending || uploading) return;
+    if (
+      (!trimmed && !attachment) ||
+      !roomRef.current ||
+      sendingRef.current ||
+      uploading
+    ) {
+      return;
+    }
 
+    sendingRef.current = true;
     setSending(true);
     setChatError(null);
     AviationChatSocket.emitStopTyping(roomRef.current);
@@ -557,10 +604,96 @@ export function useAviationCaseChat({
       }
       setChatError(err?.message || "Failed to send message.");
     } finally {
+      sendingRef.current = false;
       setUploading(false);
       setSending(false);
     }
-  }, [appendMessage, draft, pendingFile, sending, setDraft, uploading]);
+  }, [appendMessage, draft, pendingFile, setDraft, uploading]);
+
+  const handleSendVoice = useCallback(
+    async ({ file, durationMs, localPreview }) => {
+      if (!file || !roomRef.current || sendingRef.current || uploading) return;
+
+      sendingRef.current = true;
+      setSending(true);
+      setUploading(true);
+      setChatError(null);
+      AviationChatSocket.emitStopTyping(roomRef.current);
+
+      const optimisticId = `temp-${Date.now()}`;
+      optimisticIdRef.current = optimisticId;
+      const label = buildVoiceMessageLabel(durationMs);
+
+      appendMessage({
+        id: optimisticId,
+        type: "audio",
+        text: label,
+        sender: "You",
+        timestamp: formatMessageTime(new Date().toISOString()),
+        isMine: true,
+        showAvatar: true,
+        fileUrl: localPreview,
+        fileName: file.name,
+        fileMimeType: file.type,
+        voiceDurationMs: durationMs,
+        status: "sent",
+      });
+
+      try {
+        const attachment = {
+          file,
+          name: file.name,
+          type: file.type || "audio/m4a",
+          fileType: "audio",
+          localPreview,
+          uri: localPreview,
+        };
+
+        const uploaded = await uploadAviationChatFile(attachment);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === optimisticId
+              ? {
+                  ...m,
+                  ...buildMessageFileFieldsFromUpload(uploaded, "audio"),
+                  type: "audio",
+                  voiceDurationMs: durationMs,
+                  text: label,
+                  fileName: uploaded.originalName || file.name,
+                  fileMimeType: uploaded.mimeType || "audio/m4a",
+                }
+              : m,
+          ),
+        );
+
+        const sent = AviationChatSocket.sendMessage({
+          roomId: roomRef.current,
+          message: label,
+          messageType: "audio",
+          fileUrl: uploaded.url,
+          fileName: uploaded.originalName || file.name,
+          fileSize: uploaded.size,
+          fileMimeType: uploaded.mimeType || file.type,
+          voiceDurationMs: durationMs,
+        });
+
+        if (!sent) {
+          optimisticIdRef.current = null;
+          setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+          setChatError("Not connected. Voice message not sent.");
+        }
+      } catch (err) {
+        optimisticIdRef.current = null;
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        setChatError(err?.message || "Failed to send voice message.");
+      } finally {
+        sendingRef.current = false;
+        setUploading(false);
+        setSending(false);
+      }
+    },
+    [appendMessage, uploading],
+  );
 
   const clearPendingFile = useCallback(() => {
     if (pendingFile?.localPreview) {
@@ -590,6 +723,7 @@ export function useAviationCaseChat({
     draft,
     handleDraftChange,
     handleSend,
+    handleSendVoice,
     handleDeleteOne,
     handleDeleteSelected,
     exitSelectionMode,

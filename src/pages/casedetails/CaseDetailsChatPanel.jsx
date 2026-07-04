@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,21 +11,127 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import MicIcon from "@mui/icons-material/Mic";
+import StopIcon from "@mui/icons-material/Stop";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import { useAviationCaseChat } from "../../hooks/useAviationCaseChat";
+import { useVoiceRecorder } from "../../hooks/useVoiceRecorder";
 import { getChatStatusText } from "../../utils/aviationChatUi";
 import {
   fileFromBrowserInput,
   formatFileSize,
+  formatVoiceDuration,
   getDocumentKindLabel,
   isChatDocumentMessage,
   isChatImageMessage,
+  isChatVoiceMessage,
 } from "../../utils/aviationChatFiles";
 import { openRemoteDocument } from "../../utils/aviationChatMedia";
+
+function VoiceMessagePlayer({ item, textColor, metaTextColor, accentColor }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+    setError(false);
+  }, [item.fileUrl]);
+
+  if (!item.fileUrl) {
+    return (
+      <Typography sx={{ fontSize: 12, color: textColor, fontStyle: "italic" }}>
+        Voice message unavailable
+      </Typography>
+    );
+  }
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio || error) return;
+
+    try {
+      if (playing) {
+        audio.pause();
+        setPlaying(false);
+        return;
+      }
+      await audio.play();
+      setPlaying(true);
+    } catch {
+      setError(true);
+      setPlaying(false);
+    }
+  };
+
+  const durationLabel = formatVoiceDuration(
+    playing && audioRef.current?.currentTime
+      ? Math.floor(audioRef.current.currentTime * 1000)
+      : item.voiceDurationMs,
+  );
+
+  return (
+    <Box sx={{ minWidth: { xs: 180, sm: 220 } }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlay();
+          }}
+          sx={{
+            border: `1.5px solid ${accentColor}`,
+            color: accentColor,
+            width: 34,
+            height: 34,
+          }}
+        >
+          {playing ? <PauseIcon sx={{ fontSize: 18 }} /> : <PlayArrowIcon sx={{ fontSize: 18 }} />}
+        </IconButton>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              height: 4,
+              borderRadius: 2,
+              background: "rgba(255,255,255,0.2)",
+              overflow: "hidden",
+              mb: 0.75,
+            }}
+          >
+            <Box
+              sx={{
+                height: 4,
+                width: playing ? "62%" : "35%",
+                background: accentColor,
+                borderRadius: 2,
+                transition: "width 0.3s ease",
+              }}
+            />
+          </Box>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: textColor }}>
+            {error ? "Cannot play audio" : durationLabel}
+          </Typography>
+        </Box>
+        <MicIcon sx={{ fontSize: 16, color: textColor, opacity: 0.85 }} />
+      </Box>
+      <Box
+        component="audio"
+        ref={audioRef}
+        preload="metadata"
+        src={item.fileUrl}
+        onEnded={() => setPlaying(false)}
+        onPause={() => setPlaying(false)}
+        onError={() => setError(true)}
+        sx={{ display: "none" }}
+      />
+    </Box>
+  );
+}
 
 function MessageStatusTicks({ status, darkMode }) {
   if (!status) return null;
@@ -48,7 +154,13 @@ function ChatMessageBubble({
   onPress,
   onContextMenu,
 }) {
-  const isFile = item.type !== "text";
+  const isVoice = isChatVoiceMessage(
+    item.type,
+    item.fileMimeType,
+    item.fileName,
+    item.voiceDurationMs,
+  );
+  const isFile = item.type !== "text" && !isVoice;
   const isMine = item.isMine;
   const textColor = isMine ? colors.sentText : colors.receivedText;
 
@@ -68,6 +180,15 @@ function ChatMessageBubble({
         cursor: selectionMode ? "pointer" : "default",
       }}
     >
+      {isVoice && (
+        <VoiceMessagePlayer
+          item={item}
+          textColor={textColor}
+          metaTextColor={colors.metaText}
+          accentColor={textColor}
+        />
+      )}
+
       {isFile && isChatImageMessage(item.type, item.fileMimeType, item.fileName) && item.fileUrl && (
         <Box
           component="img"
@@ -118,18 +239,22 @@ function ChatMessageBubble({
         </Box>
       )}
 
-      {(!isFile || (item.text && item.text !== item.fileName)) && (
+      {(!isFile && !isVoice) ||
+      (item.text &&
+        item.text !== item.fileName &&
+        !/^\d+:\d{2}$/.test(String(item.text).trim())) ? (
         <Typography
           sx={{
             fontSize: 13,
             lineHeight: 1.5,
             color: textColor,
             whiteSpace: "pre-wrap",
+            mt: isVoice ? 0.5 : 0,
           }}
         >
           {item.text}
         </Typography>
-      )}
+      ) : null}
 
       <Box
         sx={{
@@ -180,6 +305,7 @@ const CaseDetailsChatPanel = ({
   const fileInputRef = useRef(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuMessage, setMenuMessage] = useState(null);
+  const [recordingError, setRecordingError] = useState(null);
 
   const chat = useAviationCaseChat({
     visible,
@@ -189,6 +315,19 @@ const CaseDetailsChatPanel = ({
     prefetchedRoomId,
     message,
     setMessage,
+  });
+
+  const handleVoiceRecorded = useCallback(
+    (payload) => {
+      setRecordingError(null);
+      chat.handleSendVoice(payload);
+    },
+    [chat.handleSendVoice],
+  );
+
+  const voiceRecorder = useVoiceRecorder({
+    onRecorded: handleVoiceRecorded,
+    onError: setRecordingError,
   });
 
   const colors = darkMode
@@ -323,6 +462,62 @@ const CaseDetailsChatPanel = ({
         </Typography>
       )}
 
+      {!!recordingError && (
+        <Typography sx={{ fontSize: 12, color: "#E53935", px: 2, pt: chat.chatError ? 0 : 1 }}>
+          {recordingError}
+        </Typography>
+      )}
+
+      {(voiceRecorder.isRecording || voiceRecorder.processing) && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            px: 2,
+            py: 0.75,
+            background: darkMode ? "rgba(229,57,53,0.12)" : "#FFEBEE",
+            borderBottom: `1px solid ${colors.divider}`,
+          }}
+        >
+          {voiceRecorder.processing ? (
+            <>
+              <CircularProgress size={14} sx={{ color: "#E53935" }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#E53935" }}>
+                Preparing voice for crew…
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#E53935",
+                  animation: "pulse 1.2s ease-in-out infinite",
+                  "@keyframes pulse": {
+                    "0%, 100%": { opacity: 1 },
+                    "50%": { opacity: 0.35 },
+                  },
+                }}
+              />
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#E53935" }}>
+                Recording {formatVoiceDuration(voiceRecorder.durationMs)}
+              </Typography>
+              <Button
+                size="small"
+                onClick={voiceRecorder.cancelRecording}
+                sx={{ ml: "auto", textTransform: "none", fontSize: 11, color: colors.metaText }}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+        </Box>
+      )}
+
       <Box
         ref={chat.listRef}
         sx={{
@@ -449,17 +644,33 @@ const CaseDetailsChatPanel = ({
 
         <IconButton
           size="small"
-          disabled
+          disabled={
+            !chat.chatReady ||
+            chat.uploading ||
+            chat.loading ||
+            chat.sending ||
+            voiceRecorder.processing
+          }
+          onClick={voiceRecorder.toggleRecording}
           sx={{
-            border: `1px solid ${colors.iconBorder}`,
-            color: colors.iconColor,
+            border: `1px solid ${voiceRecorder.isRecording ? "#E53935" : colors.iconBorder}`,
+            color: voiceRecorder.isRecording ? "#E53935" : colors.iconColor,
+            background: voiceRecorder.isRecording
+              ? darkMode
+                ? "rgba(229,57,53,0.15)"
+                : "#FFEBEE"
+              : "transparent",
             width: { xs: 34, sm: 38 },
             height: { xs: 34, sm: 38 },
             flexShrink: 0,
-            display: { xs: "none", sm: "inline-flex" },
+            display: "inline-flex",
           }}
         >
-          <MicIcon sx={{ fontSize: 18 }} />
+          {voiceRecorder.isRecording ? (
+            <StopIcon sx={{ fontSize: 18 }} />
+          ) : (
+            <MicIcon sx={{ fontSize: 18 }} />
+          )}
         </IconButton>
 
         <input

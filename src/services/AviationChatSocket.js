@@ -252,48 +252,54 @@ class AviationChatSocket {
     });
   }
 
+  _bind(event, callback) {
+    if (!this.socket || !callback) return;
+    this.socket.off(event, callback);
+    this.socket.on(event, callback);
+  }
+
   onNewMessage(callback) {
-    this.socket?.on("aviation_new_message", callback);
+    this._bind("aviation_new_message", callback);
   }
 
   onMessageSent(callback) {
-    this.socket?.on("aviation_message_sent", callback);
+    this._bind("aviation_message_sent", callback);
   }
 
   onMessageDelivered(callback) {
-    this.socket?.on("aviation_message_delivered", callback);
+    this._bind("aviation_message_delivered", callback);
   }
 
   onMessageSeen(callback) {
-    this.socket?.on("aviation_message_seen", callback);
+    this._bind("aviation_message_seen", callback);
   }
 
   onMessageDeleted(callback) {
-    this.socket?.on("aviation_message_deleted", callback);
+    this._bind("aviation_message_deleted", callback);
   }
 
   onMessageHidden(callback) {
-    this.socket?.on("aviation_message_hidden", callback);
+    this._bind("aviation_message_hidden", callback);
   }
 
   onUserTyping(callback) {
-    this.socket?.on("aviation_user_typing", callback);
+    this._bind("aviation_user_typing", callback);
   }
 
   onUserStopTyping(callback) {
-    this.socket?.on("aviation_user_stop_typing", callback);
+    this._bind("aviation_user_stop_typing", callback);
   }
 
   onUserStatus(callback) {
-    this.socket?.on("aviation_user_status", callback);
+    this._bind("aviation_user_status", callback);
   }
 
   onChatUnread(callback) {
-    this.socket?.on("aviation_chat_unread", callback);
+    this._bind("aviation_chat_unread", callback);
   }
 
   onError(callback) {
-    this.socket?.on("aviation_error", callback);
+    this._bind("aviation_error", callback);
   }
 
   offNewMessage(callback) {

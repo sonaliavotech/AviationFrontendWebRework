@@ -42,6 +42,19 @@ export function isChatImageMessage(type, mimeType, fileName) {
   return estimateFileType(mimeType, fileName) === "image";
 }
 
+export function isChatVoiceMessage(type, mimeType, fileName, voiceDurationMs) {
+  if (voiceDurationMs != null && Number(voiceDurationMs) > 0) return true;
+  if (type === "voice" || type === "audio") return true;
+  const mime = String(mimeType || "").toLowerCase();
+  const name = String(fileName || "").toLowerCase();
+  return (
+    mime.startsWith("audio/") &&
+    (/voice/.test(name) || /\.(m4a|mp4|mp3|wav|aac|ogg|webm)$/i.test(name))
+  );
+}
+
+export { formatVoiceDuration, buildVoiceMessageLabel } from "./aviationVoiceMessage";
+
 export function resolveChatFileDisplayType(messageType, mimeType, fileName) {
   if (isChatDocumentMessage(messageType, mimeType, fileName)) {
     return "document";
