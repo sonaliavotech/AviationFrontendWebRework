@@ -8,6 +8,7 @@ import ProtectedRoute from "./ProtectedRoutes";
 import ChatWidget from "../pages/ChatWidget/ChatWidget";
 import CaseDetails from "../pages/casedetails/CaseDetails";
 import { useThemeMode, getTheme } from "../context/ThemeContext";
+import { AviationCallProvider } from "../context/AviationCallContext";
 import NotificationPanel from "../pages/AllEvents/Alert";
 import LoadingSpinner from "../componants/LoadingSpinner";
 import AllEvents from "../pages/AllEvents/AllEvents";
@@ -41,7 +42,8 @@ const MainLayout = ({ children }) => {
 
   return (
     <ProtectedRoute isAuthenticated={isAuthenticated}>
-      <Box
+      <AviationCallProvider>
+        <Box
         sx={{
           display: "flex",
           height: { xs: "100dvh", md: "100vh" },
@@ -79,6 +81,7 @@ const MainLayout = ({ children }) => {
 
         {openChat && <ChatWidget onClose={handleCloseChat} visible={visible} />}
       </Box>
+      </AviationCallProvider>
     </ProtectedRoute>
   );
 };

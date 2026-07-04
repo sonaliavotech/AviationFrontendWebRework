@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "./LoadingSpinner";
 import { physicianLogin } from "../services/api";
 import AviationChatSocket from "../services/AviationChatSocket";
+import AviationCallSocket from "../services/AviationCallSocket";
 import {
   savePhysicianSession,
   getPhysicianSession,
@@ -252,6 +253,7 @@ const SignInForm = () => {
 
       savePhysicianSession(data.user);
       AviationChatSocket.connect(userId);
+      AviationCallSocket.connect(userId);
 
       setSnackbar({
         open: true,

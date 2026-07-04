@@ -13,6 +13,7 @@ import logoLight from "../assets/logo2.png";
 import { useThemeMode } from "../context/ThemeContext";
 import { clearPhysicianSession } from "../utils/physicianSession";
 import AviationChatSocket from "../services/AviationChatSocket";
+import AviationCallSocket from "../services/AviationCallSocket";
 import NotificationPanel from "../pages/AllEvents/Alert";
 
 const ITEM_SIZE = 64;
@@ -78,6 +79,7 @@ const Sidebar = ({ onAiClick }) => {
 
     if (path === "/sign-in") {
       AviationChatSocket.disconnect();
+      AviationCallSocket.disconnect();
       clearPhysicianSession();
     }
 

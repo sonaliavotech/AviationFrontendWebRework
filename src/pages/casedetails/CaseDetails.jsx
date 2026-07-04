@@ -46,11 +46,8 @@ import {
   formatMedicineLine,
 } from "./caseDetailUtils";
 
-// Import Call Components
-import { useAviationCall } from "../../hooks/useAviationCall";
-import IncomingCallScreen from "../../componants/calls/IncomingCallScreen";
-import JitsiCall from "../../componants/JitsiCall";
-import JitsiCallWindow from "../../componants/calls/JitsiCallWindow";
+// Import Call Context
+import { useAviationCallContext } from "../../context/AviationCallContext";
 
 const DARK_C = {
   bg: "#0b1d35",
@@ -542,10 +539,9 @@ export const CaseDetails = () => {
   const [recommendedMedicines, setRecommendedMedicines] = useState([]);
   const [mobilePanel, setMobilePanel] = useState("summary");
 
-  // Call state
-  const [showJitsi, setShowJitsi] = useState(false);
-  const [callInitiated, setCallInitiated] = useState(false);
-  const [physicianUser, setPhysicianUser] = useState(null);
+  // Call state (UI overlays handled globally by AviationCallProvider)
+  const { startCall, openJitsi, physicianUser, callError } =
+    useAviationCallContext();
 
   // Theme and responsive
   const muiTheme = useTheme();
@@ -603,19 +599,6 @@ export const CaseDetails = () => {
 
   const chatEnabled = physicianAssigned && !!crewUserId;
 
-  // Call hook
-  const {
-    isInCall,
-    incomingCall,
-    activeCall,
-    callStatus,
-    startCall,
-    acceptCall,
-    rejectCall,
-    hangupCall,
-    error: callError,
-  } = useAviationCall(physicianUser?.id || "physician-web-user");
-
   // Fetch case data
   useEffect(() => {
     if (!incidentId) return;
@@ -639,31 +622,10 @@ export const CaseDetails = () => {
       .finally(() => setLoadingEcg(false));
   }, [incidentId]);
 
-  // Load physician user from localStorage or context
-  useEffect(() => {
-    try {
-      const userStr = localStorage.getItem("physicianUser");
-      if (userStr) {
-        setPhysicianUser(JSON.parse(userStr));
-      } else {
-        // Fallback: use a default physician ID from location state
-        const physicianId = location.state?.physicianId ||
-          eventData?.physicianId ||
-          tablePatient?.physicianId;
-        if (physicianId) {
-          setPhysicianUser({ id: physicianId, name: "Physician" });
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load physician user:", e);
-    }
-  }, [location.state, eventData, tablePatient]);
-
   // Handle call error
   useEffect(() => {
     if (callError) {
       console.error("Call error:", callError);
-      setCallInitiated(false);
     }
   }, [callError]);
 
@@ -702,42 +664,10 @@ export const CaseDetails = () => {
 
     const success = startCall(callData);
     if (success) {
-      setCallInitiated(true);
-      setShowJitsi(true);
+      openJitsi();
       console.log("📞 Call initiated:", callData);
     }
-  }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall]);
-
-  // Handle incoming call accept
-  const handleAcceptCall = useCallback((data) => {
-    const success = acceptCall(data);
-    if (success) {
-      setShowJitsi(true);
-      console.log("✅ Call accepted:", data);
-    }
-  }, [acceptCall]);
-
-  // Handle incoming call reject
-  const handleRejectCall = useCallback((data) => {
-    rejectCall(data);
-    setCallInitiated(false);
-    console.log("❌ Call rejected:", data);
-  }, [rejectCall]);
-
-  // Handle hangup
-  const handleHangup = useCallback((data) => {
-    hangupCall(data);
-    setShowJitsi(false);
-    setCallInitiated(false);
-    console.log("📴 Call hung up:", data);
-  }, [hangupCall]);
-
-  // Close Jitsi window
-  const handleCloseJitsi = useCallback(() => {
-    setShowJitsi(false);
-    setCallInitiated(false);
-    console.log("🔚 Jitsi window closed");
-  }, []);
+  }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall, openJitsi]);
 
   const aiSummary = useMemo(() => parseAiSummary(eventData), [eventData]);
 
@@ -1400,103 +1330,6 @@ export const CaseDetails = () => {
     </Box>
   );
 
-  // ============================================
-  // RENDER LOGIC WITH CALL OVERLAYS
-  // ============================================
-
-  // If there's an incoming call, show the incoming call screen
-  if (callStatus === "ringing" && incomingCall) {
-    return (
-      <>
-        {renderMainContent()}
-        <IncomingCallScreen
-          callData={incomingCall}
-          onAccept={handleAcceptCall}
-          onReject={handleRejectCall}
-          onHangup={handleHangup}
-          isRinging={true}
-        />
-      </>
-    );
-  }
-
-  // If call is in progress and Jitsi is open
-  if (showJitsi && activeCall) {
-    return (
-      <>
-        {renderMainContent()}
-        <JitsiCall
-          broadcastId={activeCall.roomId || activeCall.callId || `call_${incidentId}`}
-          callData={{
-            ...activeCall,
-            callerName: activeCall.callerName || "Physician",
-            callerRole: activeCall.callerRole || "physician",
-            toUserId: crewUserId,
-          }}
-          setIsChatOpen={(isOpen) => console.log("Chat open:", isOpen)}
-          onOnlyParticipantTimeout={() => {
-            console.log("Only participant remaining");
-          }}
-          onRemoteParticipantAvailable={() => {
-            console.log("Remote participant joined");
-          }}
-          onEndCall={handleHangup}
-          onClose={handleCloseJitsi}
-          domain="tiajitsistg.tiatech.net"
-          darkMode={darkMode}
-        />
-      </>
-    );
-  }
-
-  // If user is in call but Jitsi is not yet open (connecting state)
-  if (callStatus === "connecting" && activeCall) {
-    return (
-      <>
-        {renderMainContent()}
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            background: "rgba(0,0,0,0.8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Box sx={{ textAlign: "center", color: "#fff" }}>
-            <LoadingSpinner
-              variant="inline"
-              size="lg"
-              message="Connecting to call..."
-            />
-            <Button
-              onClick={() => {
-                hangupCall({ callId: activeCall.callId });
-                setShowJitsi(false);
-                setCallInitiated(false);
-              }}
-              sx={{
-                mt: 3,
-                color: "#EF4444",
-                borderColor: "#EF4444",
-                "&:hover": { borderColor: "#DC2626", color: "#DC2626" },
-              }}
-              variant="outlined"
-            >
-              Cancel
-            </Button>
-          </Box>
-        </Box>
-      </>
-    );
-  }
-
-  // Default: render main content only
   return renderMainContent();
 };
 
