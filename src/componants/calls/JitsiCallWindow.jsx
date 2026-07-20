@@ -112,149 +112,19 @@ const JitsiCallWindow = ({
         <Box
             sx={{
                 position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                inset: 0,
                 zIndex: 10000,
-                background: colors.bg,
-                display: "flex",
-                flexDirection: "column",
+                background: "#000",
             }}
         >
-            {/* Top Bar - Only End Call Button */}
-            <Paper
-                elevation={2}
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    p: "8px 16px",
-                    background: colors.surface,
-                    borderBottom: `1px solid ${colors.border}`,
-                    zIndex: 10,
-                    flexShrink: 0,
-                }}
-            >
-                <Typography
-                    sx={{
-                        fontWeight: 600,
-                        fontSize: "14px",
-                        color: colors.text,
-                    }}
-                >
-                    {callData?.callerName || "Call"} — {callData?.callerRole || "Physician"}
-                </Typography>
-
-                <Tooltip title="End call">
-                    <IconButton
-                        onClick={handleHangup}
-                        sx={{
-                            background: "#EF4444",
-                            color: "#fff",
-                            "&:hover": { background: "#DC2626" },
-                            width: 36,
-                            height: 36,
-                        }}
-                    >
-                        <CallEnd sx={{ fontSize: 20 }} />
-                    </IconButton>
-                </Tooltip>
-            </Paper>
-
-            {/* Jitsi Container - Full remaining space */}
             <Box
                 ref={containerRef}
                 id="jitsi-container"
                 sx={{
-                    flex: 1,
-                    position: "relative",
-                    overflow: "hidden",
-                    background: darkMode ? "#0B1525" : "#F1F5F9",
+                    width: "100%",
+                    height: "100%",
                 }}
             />
-
-            {/* Bottom Controls - Only Essential */}
-            <Paper
-                elevation={4}
-                sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: { xs: 2, sm: 3 },
-                    p: "10px 16px",
-                    background: darkMode ? "rgba(15, 32, 64, 0.95)" : "rgba(255,255,255,0.95)",
-                    backdropFilter: "blur(10px)",
-                    borderTop: `1px solid ${colors.border}`,
-                    flexShrink: 0,
-                    flexWrap: "wrap",
-                }}
-            >
-                <Tooltip title={isMuted ? "Unmute" : "Mute"}>
-                    <IconButton
-                        onClick={toggleAudio}
-                        sx={{
-                            width: { xs: 44, sm: 48 },
-                            height: { xs: 44, sm: 48 },
-                            background: isMuted ? "#EF4444" : colors.controlBg,
-                            color: isMuted ? "#fff" : colors.text,
-                            "&:hover": {
-                                background: isMuted ? "#DC2626" : colors.controlHover,
-                            },
-                        }}
-                    >
-                        {isMuted ? <MicOff /> : <Mic />}
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip title={isVideoOff ? "Turn on camera" : "Turn off camera"}>
-                    <IconButton
-                        onClick={toggleVideo}
-                        sx={{
-                            width: { xs: 44, sm: 48 },
-                            height: { xs: 44, sm: 48 },
-                            background: isVideoOff ? "#EF4444" : colors.controlBg,
-                            color: isVideoOff ? "#fff" : colors.text,
-                            "&:hover": {
-                                background: isVideoOff ? "#DC2626" : colors.controlHover,
-                            },
-                        }}
-                    >
-                        {isVideoOff ? <VideocamOff /> : <Videocam />}
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip title={isScreenSharing ? "Stop sharing" : "Share screen"}>
-                    <IconButton
-                        onClick={toggleScreenShare}
-                        sx={{
-                            width: { xs: 44, sm: 48 },
-                            height: { xs: 44, sm: 48 },
-                            background: isScreenSharing ? "#015DFF" : colors.controlBg,
-                            color: isScreenSharing ? "#fff" : colors.text,
-                            "&:hover": {
-                                background: isScreenSharing ? "#0047CC" : colors.controlHover,
-                            },
-                        }}
-                    >
-                        {isScreenSharing ? <StopScreenShare /> : <ScreenShare />}
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip title="End call">
-                    <IconButton
-                        onClick={handleHangup}
-                        sx={{
-                            width: { xs: 44, sm: 48 },
-                            height: { xs: 44, sm: 48 },
-                            background: "#EF4444",
-                            color: "#fff",
-                            "&:hover": { background: "#DC2626" },
-                        }}
-                    >
-                        <CallEnd />
-                    </IconButton>
-                </Tooltip>
-            </Paper>
         </Box>
     );
 };

@@ -641,9 +641,11 @@ export const CaseDetails = () => {
       return;
     }
 
+    const callId = `call_${incidentId}_${Date.now()}`;
+
     const callData = {
-      callId: `call_${incidentId}_${Date.now()}`,
-      roomId: prefetchedRoomId || `room_${incidentId}`,
+      callId,
+      roomId: callId,
       fromUserId: physicianUser?.id || "physician-web-user",
       callerName: physicianUser?.name || "Physician",
       callerRole: "physician",
@@ -664,7 +666,7 @@ export const CaseDetails = () => {
 
     const success = startCall(callData);
     if (success) {
-      openJitsi();
+      openJitsi(callData);
       console.log("📞 Call initiated:", callData);
     }
   }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall, openJitsi]);
