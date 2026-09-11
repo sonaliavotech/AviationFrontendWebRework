@@ -1,3 +1,6 @@
+// AllEventScreen
+
+
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
@@ -834,16 +837,10 @@ export default function AllEvents() {
     return dayjs(value).tz(APP_TIMEZONE).format("YYYY-MM-DD");
   };
 
+  // ⭐ CHANGED: Show ALL cases instead of filtering by selected date
   const dateFilteredRows = React.useMemo(() => {
-    const selectedDateStr = dayjs(selectedDate)
-      .tz(APP_TIMEZONE)
-      .format("YYYY-MM-DD");
-
-    return rows.filter((row) => {
-      const dosStr = toDateOnly(row.dos || row.incidentStartAt);
-      return dosStr === selectedDateStr;
-    });
-  }, [rows, selectedDate]);
+    return rows;
+  }, [rows]);
 
   const tabFilteredRows = React.useMemo(() => {
     if (activeTab === "In Patient") {
@@ -1081,8 +1078,9 @@ export default function AllEvents() {
     showSnackbar(`Exported ${rowsToExport.length} event(s)`, "success");
   };
 
+  // ⭐ CHANGED: Stats now use ALL rows instead of date-filtered rows
   const dashboardStats = React.useMemo(() => {
-    const scopedRows = dateFilteredRows;
+    const scopedRows = rows;
 
     const eventsToday = scopedRows.length;
 
@@ -1115,7 +1113,7 @@ export default function AllEvents() {
       criticalCases,
       openCases,
     };
-  }, [dateFilteredRows]);
+  }, [rows]);
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
@@ -3612,9 +3610,7 @@ export default function AllEvents() {
                   "&:hover": { backgroundColor: "transparent" },
                 }}
               >
-                <CloseIcon
-                  sx={{ fontSize: 20, color: theme.textPrimary }}
-                />
+                <CloseIcon sx={{ fontSize: 20, color: theme.textPrimary }} />
               </IconButton>
             </Box>
             <Box
