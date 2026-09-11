@@ -112,6 +112,7 @@ class AviationChatSocket {
     this.socket.on("aviation_registered", () => {
       this.registered = true;
       this._markReady();
+      this.setPhysicianStatus("available");
     });
 
     this.socket.on("aviation_joined_room", ({ roomId }) => {
@@ -250,6 +251,17 @@ class AviationChatSocket {
       messageId: messageId || null,
       userId: String(userId || this.userId),
     });
+  }
+
+  setPhysicianStatus(status) {
+    if (!this.socket || !this.userId) return false;
+    const payload = { userId: this.userId, status };
+    if (this.socket.connected && this.registered) {
+      this.socket.emit("aviation_set_status", payload);
+      return true;
+    }
+    this._pendingEmits.push({ event: "aviation_set_status", payload });
+    return false;
   }
 
   _bind(event, callback) {

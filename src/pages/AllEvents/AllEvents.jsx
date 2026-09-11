@@ -716,6 +716,7 @@ export default function AllEvents() {
     if (webUser) setUser(webUser);
     if (session.id) {
       AviationChatSocket.connect(session.id);
+      AviationChatSocket.setPhysicianStatus("available");
     }
   }, []);
 

@@ -116,15 +116,15 @@ export const DEFAULT_PHYSICIAN_PASSWORD = "";
 
 console.log("🔧 Aviation Web API Configuration");
 
-console.log("API_BASE_URL:", API_BASE_URL);
-console.log("API_HOST:", API_HOST);
+// console.log("API_BASE_URL:", API_BASE_URL);
+// console.log("API_HOST:", API_HOST);
 
-console.log("CALLING_SERVICE_URL:", CALLING_SERVICE_URL);
-console.log("SOCKET_URL:", SOCKET_URL);
+// console.log("CALLING_SERVICE_URL:", CALLING_SERVICE_URL);
+// console.log("SOCKET_URL:", SOCKET_URL);
 
-console.log("CHAT_API_URL:", CHAT_API_URL);
-console.log("AVIATION_UPLOAD_API_URL:", AVIATION_UPLOAD_API_URL);
+// console.log("CHAT_API_URL:", CHAT_API_URL);
+// console.log("AVIATION_UPLOAD_API_URL:", AVIATION_UPLOAD_API_URL);
 
-console.log("FILES_BASE_URL:", FILES_BASE_URL);
-console.log("JITSI_SERVER_URL:", JITSI_SERVER_URL);
-console.log("AI_SUMMARY_URL:", AI_SUMMARY_URL);
+// console.log("FILES_BASE_URL:", FILES_BASE_URL);
+// console.log("JITSI_SERVER_URL:", JITSI_SERVER_URL);
+// console.log("AI_SUMMARY_URL:", AI_SUMMARY_URL);
