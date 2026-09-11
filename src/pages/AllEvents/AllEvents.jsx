@@ -97,6 +97,7 @@ import {
   createCaseLog,
   mapIncidentToTableRow,
   mapPhysicianFromApi,
+  getPhysicianLiveStatus,
 } from "../../services/api";
 import LoadingSpinner from "../../componants/LoadingSpinner";
 import {
@@ -1124,7 +1125,19 @@ export default function AllEvents() {
     const fetchDoctors = async () => {
       try {
         const data = await getPhysicians();
-        setProviderOptions((data || []).map(mapPhysicianFromApi));
+        // Pull live online/available status from the calling microservice
+        const enriched = await Promise.all(
+          (data || []).map(async (doc) => {
+            let live = null;
+            try {
+              live = await getPhysicianLiveStatus(doc.id);
+            } catch {
+              /* non-fatal — fall back to offline */
+            }
+            return mapPhysicianFromApi(doc, live);
+          }),
+        );
+        setProviderOptions(enriched);
       } catch (error) {
         console.error("FETCH PHYSICIANS ERROR =>", error);
         showSnackbar("Failed to load physicians", "error");
@@ -3526,6 +3539,16 @@ export default function AllEvents() {
                   fontSize: "14px",
                 }}
                 onClick={async () => {
+                  const chosen = providerOptions.find(
+                    (d) => d.id === selectedDoctorId,
+                  );
+                  if (!chosen || chosen.isAvailable === false) {
+                    showSnackbar(
+                      "Selected physician is currently offline. Please choose an available provider.",
+                      "warning",
+                    );
+                    return;
+                  }
                   if (!selectedDoctor || !selectedDoctorId) return;
 
                   const isBulkAssign = selectionModel.size > 1;
