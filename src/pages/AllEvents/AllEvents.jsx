@@ -105,6 +105,12 @@ import {
   mapPhysicianToWebUser,
 } from "../../utils/physicianSession";
 import AviationChatSocket from "../../services/AviationChatSocket";
+import {
+  normalizePhysicianStatus,
+  PHYSICIAN_STATUS_COLORS,
+  PHYSICIAN_STATUS_SHORT_LABELS,
+  PHYSICIAN_STATUS,
+} from "../../types/physicianStatus";
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -143,6 +149,25 @@ const MyAppointmentsIcon = ({ isActive }) => (
     <polyline points="16 8 16 11 18 11" />
   </svg>
 );
+
+const PhysicianStatusDot = ({ status }) => {
+  const normalized = normalizePhysicianStatus(status);
+  const color = PHYSICIAN_STATUS_COLORS[normalized] || "#64748B";
+  const label = PHYSICIAN_STATUS_SHORT_LABELS[normalized] || "Offline";
+  return (
+    <Box
+      title={`Physician status: ${label}`}
+      sx={{
+        width: 9,
+        height: 9,
+        borderRadius: "50%",
+        backgroundColor: color,
+        display: "inline-block",
+        flexShrink: 0,
+      }}
+    />
+  );
+};
 
 // Static patient data
 const staticPatientData = [
@@ -668,11 +693,55 @@ export default function AllEvents() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
+  const fetchAssignedPhysicianLiveStatuses = async (rows) => {
+    const result = new Map();
+    const uniqueIds = [
+      ...new Set(
+        rows
+          .map((r) => r.physicianId)
+          .filter((id) => id != null)
+          .map((id) => String(id)),
+      ),
+    ];
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        try {
+          const live = await getPhysicianLiveStatus(id);
+          if (live) {
+            result.set(
+              id,
+              normalizePhysicianStatus(
+                live.status || (live.is_online ? "available" : "offline"),
+              ),
+            );
+          }
+        } catch {
+          /* non-fatal — keep null */
+        }
+      }),
+    );
+    return result;
+  };
+
   const fetchIncidents = async ({ showError = false, silent = false } = {}) => {
     try {
       if (!silent) setLoadingPatients(true);
       const incidents = await getMedicalIncidents();
-      setRows(incidents.map(mapIncidentToTableRow));
+      const baseRows = incidents.map((incident) => ({
+        ...mapIncidentToTableRow(incident),
+        physicianLiveStatus: null,
+      }));
+
+      // Enrich each assigned physician with live DB status (non-blocking).
+      // Socket events may not fire for every user, so we fetch directly.
+      const liveStatuses = await fetchAssignedPhysicianLiveStatuses(baseRows);
+      setRows(
+        baseRows.map((row) => ({
+          ...row,
+          physicianLiveStatus:
+            liveStatuses.get(String(row.physicianId || "")) || null,
+        })),
+      );
     } catch (error) {
       console.error("FETCH INCIDENTS ERROR =>", error);
       if (showError) {
@@ -686,7 +755,46 @@ export default function AllEvents() {
   useEffect(() => {
     fetchIncidents({ showError: true });
     const interval = setInterval(() => fetchIncidents({ silent: true }), 30000);
-    return () => clearInterval(interval);
+
+    const session = getPhysicianSession();
+    const currentUserId = String(
+      session?.id || user?.id || user?._id || user?.userId || "",
+    );
+    if (currentUserId) {
+      getPhysicianLiveStatus(currentUserId)
+        .then((live) => {
+          if (live) {
+            setProviderLiveStatus(
+              normalizePhysicianStatus(
+                live.status || (live.is_online ? "available" : "offline"),
+              ),
+            );
+          }
+        })
+        .catch(() => {});
+    }
+
+    const handleUserStatus = ({ userId, status, is_online }) => {
+      const normalized = normalizePhysicianStatus(
+        status || (is_online ? "available" : "offline"),
+      );
+      setRows((prev) =>
+        prev.map((row) =>
+          row.physicianId && String(row.physicianId) === String(userId)
+            ? { ...row, physicianLiveStatus: normalized }
+            : row,
+        ),
+      );
+      if (currentUserId && String(userId) === currentUserId) {
+        setProviderLiveStatus(normalized);
+      }
+    };
+
+    AviationChatSocket.onUserStatus(handleUserStatus);
+    return () => {
+      clearInterval(interval);
+      AviationChatSocket.offUserStatus(handleUserStatus);
+    };
   }, []);
 
   const handleCopyPatients = () => {
@@ -777,6 +885,13 @@ export default function AllEvents() {
       : rawName
     : "Care Team Member";
   const greetingText = getGreetingByTime();
+  const [providerLiveStatus, setProviderLiveStatus] = useState(
+    normalizePhysicianStatus(user?.status),
+  );
+  const providerStatusColor =
+    PHYSICIAN_STATUS_COLORS[providerLiveStatus] || "#64748B";
+  const providerStatusLabel =
+    PHYSICIAN_STATUS_SHORT_LABELS[providerLiveStatus] || "Offline";
 
   const specializationText =
     providerProfile?.specialty ||
@@ -1790,6 +1905,20 @@ export default function AllEvents() {
                   >
                     {providerSubtitle}
                   </Typography>
+                  <Chip
+                    size="small"
+                    label={providerStatusLabel}
+                    sx={{
+                      mt: 0.4,
+                      height: 18,
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      bgcolor: providerStatusColor,
+                      color: "#fff",
+                      borderRadius: "10px",
+                      border: `1px solid ${providerStatusColor}`,
+                    }}
+                  />
                 </Box>
               </Box>
             </Box>
@@ -2588,7 +2717,9 @@ export default function AllEvents() {
                                 ) : row.physician ? (
                                   <Box
                                     sx={{
-                                      display: "inline-block",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 0.6,
                                       px: 1.6,
                                       py: 0.8,
                                       borderRadius: "20px",
@@ -2598,6 +2729,9 @@ export default function AllEvents() {
                                       ...getPhysicianValueStyles(true),
                                     }}
                                   >
+                                    <PhysicianStatusDot
+                                      status={row.physicianLiveStatus}
+                                    />
                                     {row.physician}
                                   </Box>
                                 ) : (
