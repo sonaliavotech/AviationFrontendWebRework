@@ -1,6 +1,5 @@
 // AllEventScreen
 
-
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
@@ -370,7 +369,6 @@ const staticPatientData = [
     created_at: "2026-06-01T08:00:00Z",
     duration: "Just now",
   },
-
   {
     id: "enc_7",
     patientDbId: "pat_107",
@@ -384,7 +382,7 @@ const staticPatientData = [
     status: "Critical",
     location: "SYD → LAX",
     physician: "Alex Tobar",
-    providerId: "prov_6", // New provider ID
+    providerId: "prov_6",
     providerRole: "DOCTOR",
     resident: "Julia R",
     residentId: "",
@@ -396,9 +394,9 @@ const staticPatientData = [
     fin: "FIN12351",
     facesheet: "",
     noteStatus: "Draft",
-    is_sidelist: false, // New is_sidelist value
-    sidelist_reason: "", // New sidelist_reason value
-    is_marked: false, // New is_marked value
+    is_sidelist: false,
+    sidelist_reason: "",
+    is_marked: false,
     updated_at: "2026-06-02T11:00:00Z",
     created_at: "2026-06-01T14:00:00Z",
     duration: "Just now",
@@ -457,36 +455,6 @@ const staticProviderOptions = [
     isAdmittingPhysician: false,
     isResident: false,
   },
-  // {
-  //   id: "res_1",
-  //   name: "Julia R",
-  //   specialty: "Cabin Crew",
-  //   status: "Available",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
-  // {
-  //   id: "res_2",
-  //   name: "Mark Davis",
-  //   specialty: "Cabin Crew",
-  //   status: "Available",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
-  // {
-  //   id: "res_3",
-  //   name: "Lisa Anderson",
-  //   specialty: "Senior Crew",
-  //   status: "On Call",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
 ];
 
 const INITIAL_TABLE_FILTERS = {
@@ -497,7 +465,6 @@ const INITIAL_TABLE_FILTERS = {
 };
 
 const FILTER_CATEGORIES = [
-  // { id: "roundingStatus", label: "Rounding status", section: "Sort by" },
   { id: "physician", label: "Physician", section: "Filter by" },
   { id: "crew", label: "Crew", section: "Filter by" },
   { id: "status", label: "Status", section: "Filter by" },
@@ -752,7 +719,7 @@ export default function AllEvents() {
     }
   }, []);
 
-  const hasPermission = () => true; // Mock permission function
+  const hasPermission = () => true;
   const canAddPatient = true;
   const canEditFacesheet = true;
   const canUseNotesEditor = true;
@@ -763,7 +730,6 @@ export default function AllEvents() {
   const [providerProfile, setProviderProfile] = useState(null);
   const roleList = Array.isArray(user?.roles) ? user.roles : [];
 
-  // Check if facesheet has been modified for a row
   const isFacesheetModified = (row) => {
     if (!row?.facesheet || row?.facesheet === "") return false;
     return row.facesheet && row.facesheet.trim() !== "";
@@ -837,7 +803,6 @@ export default function AllEvents() {
     return dayjs(value).tz(APP_TIMEZONE).format("YYYY-MM-DD");
   };
 
-  // ⭐ CHANGED: Show ALL cases instead of filtering by selected date
   const dateFilteredRows = React.useMemo(() => {
     return rows;
   }, [rows]);
@@ -905,7 +870,6 @@ export default function AllEvents() {
     const statuses = uniqueValues(searchFilteredRows.map((row) => row.status));
 
     return {
-      // roundingStatus: ROUNDING_STATUS_OPTIONS,
       physician: [
         ...physicians.map((name) => ({ value: name, label: name })),
         { value: "__unassigned__", label: "Unassigned" },
@@ -1078,7 +1042,6 @@ export default function AllEvents() {
     showSnackbar(`Exported ${rowsToExport.length} event(s)`, "success");
   };
 
-  // ⭐ CHANGED: Stats now use ALL rows instead of date-filtered rows
   const dashboardStats = React.useMemo(() => {
     const scopedRows = rows;
 
@@ -1608,7 +1571,6 @@ export default function AllEvents() {
         return;
       }
 
-      // Mock note data
       const mockSummaryHtml = `<div><p>Patient presented with symptoms. Examination revealed normal findings.</p><p>RESIDENT ATTESTATION: This note has been reviewed and approved by the attending physician.</p><p>Plan: Follow up in 2 weeks.</p></div>`;
 
       const copyHtml = getCopyHtmlByMode(mockSummaryHtml, mode);
@@ -1632,7 +1594,6 @@ export default function AllEvents() {
     }
   };
 
-  // Handle menu actions
   const handleViewVitalTrends = (row) => {
     setSelectedPatient(row);
     setOpenVitalTrends(true);
@@ -1716,7 +1677,6 @@ export default function AllEvents() {
           transition: "background 0.3s, color 0.3s",
         }}
       >
-        {/* Main content area – no scrollbars */}
         <Box
           sx={{
             flex: 1,
@@ -1730,7 +1690,6 @@ export default function AllEvents() {
           }}
         >
           {/* Header Cards */}
-          {/* Row 1: Doctor card + 4 stat cards */}
           <Box
             sx={{
               display: "grid",
@@ -1905,7 +1864,7 @@ export default function AllEvents() {
             ))}
           </Box>
 
-          {/* Row 2: Date picker + Search + Filter + Export */}
+          {/* Row 2: Search + Filter + Export */}
           <Box
             sx={{
               display: "flex",
@@ -1916,149 +1875,6 @@ export default function AllEvents() {
               flexWrap: "wrap",
             }}
           >
-            {/* Date Picker */}
-            {/* <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-
-                backgroundColor: theme.inputBg,
-                borderRadius: "10px",
-                border: `1px solid ${theme.borderColor}`,
-                px: 1.5,
-                py: 0.8,
-                gap: 0.5,
-                flexShrink: 0,
-                cursor: "pointer",
-                height: "40px",
-                color: theme.textPrimary,
-                transition: "background 0.3s, border 0.3s",
-              }}
-            >
-              <ChevronLeftIcon
-                sx={{
-                  fontSize: 18,
-                  color: theme.textPrimary,
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const prev = new Date(selectedDate);
-                  prev.setDate(prev.getDate() - 1);
-                  setSelectedDate(prev);
-                }}
-              />
-
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  color: theme.iconColor,
-                  cursor: "pointer",
-                  lineHeight: 0,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCalendarAnchorEl(e.currentTarget);
-                }}
-              >
-                <CalendarTodayIcon />
-              </Box>
-
-              <Typography
-                fontSize={14}
-                fontWeight={500}
-                sx={{
-                  cursor: "pointer",
-                  userSelect: "none",
-                  color: theme.textPrimary,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCalendarAnchorEl(e.currentTarget);
-                }}
-              >
-                {selectedDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Typography>
-
-              <ChevronRightIcon
-                sx={{
-                  fontSize: 18,
-                  color: theme.textPrimary,
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next = new Date(selectedDate);
-                  next.setDate(next.getDate() + 1);
-                  setSelectedDate(next);
-                }}
-              />
-            </Box> */}
-
-            {/* Calendar Popover */}
-            {/* <Popover
-              open={Boolean(calendarAnchorEl)}
-              anchorEl={calendarAnchorEl}
-              onClose={() => setCalendarAnchorEl(null)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-              transformOrigin={{ vertical: "top", horizontal: "center" }}
-              PaperProps={{
-                sx: {
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: theme.popoverBg,
-                  color: theme.textPrimary,
-                  borderRadius: "12px",
-                  border: `1px solid ${theme.borderColor}`,
-                  px: 1.5,
-                  transition: "background-color 0.3s, color 0.3s, border-color 0.3s",
-                  "& .MuiPickersCalendarHeader-label": {
-                    color: theme.textPrimary,
-                  },
-                  "& .MuiDayCalendar-weekDayLabel": {
-                    color: theme.textSecondary,
-                  },
-                  "& .MuiPickersDay-root": {
-                    color: theme.textPrimary,
-                  },
-                  "& .MuiPickersDay-root.Mui-selected": {
-                    backgroundColor: darkMode ? "#4DA3FF" : "#015DFF",
-                    color: "#FFFFFF",
-                  },
-                  "& .MuiPickersDay-root.Mui-selected:hover": {
-                    backgroundColor: darkMode
-                      ? "rgba(77, 163, 255, 0.85)"
-                      : "rgba(1, 93, 255, 0.85)",
-                  },
-                  "& .MuiIconButton-root": {
-                    color: theme.textPrimary,
-                  },
-                },
-              }}
-            >
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DateCalendar
-                  value={dayjs(selectedDate)}
-                  onChange={(newVal) => {
-                    setSelectedDate(newVal.toDate());
-                    setCalendarAnchorEl(null);
-                  }}
-                  sx={{
-                    width: 260,
-                    "& .MuiPickersDay-root.Mui-selected": {
-                      backgroundcolor: "#4DA3FF",
-                    },
-                    "& .MuiPickersDay-root.Mui-selected:hover": {
-                      backgroundColor: "rgba(1, 93, 255, 0.85)",
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            </Popover> */}
-
             {/* Search Bar */}
             <Box
               sx={{
@@ -2112,7 +1928,6 @@ export default function AllEvents() {
                 sx={{
                   borderRadius: "10px",
                   textTransform: "none",
-
                   border: `1.5px solid ${theme.btnOutlineBorder}`,
                   color: theme.btnOutlineText,
                   backgroundColor: theme.inputBg,
@@ -2260,9 +2075,11 @@ export default function AllEvents() {
                         }}
                       />
                     </TableCell>
+
+                    {/* Name / Age */}
                     <TableCell
                       sx={{
-                        width: "7%",
+                        width: "10%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2279,25 +2096,8 @@ export default function AllEvents() {
                         </div>
                       </Box>
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        width: "12%",
-                        borderRight: "1px solid rgba(77,163,255,0.2)",
-                      }}
-                    >
-                      <Box sx={{ lineHeight: 1.3 }}>
-                        <div>Patient</div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                            fontSize: "14px",
-                          }}
-                        >
-                          ID
-                        </div>
-                      </Box>
-                    </TableCell>
+
+                    {/* Duration */}
                     <TableCell
                       sx={{
                         width: "10%",
@@ -2316,6 +2116,8 @@ export default function AllEvents() {
                         </div>
                       </Box>
                     </TableCell>
+
+                    {/* Status */}
                     <TableCell
                       sx={{
                         width: "10%",
@@ -2325,7 +2127,6 @@ export default function AllEvents() {
                       <Box
                         sx={{
                           display: "flex",
-                          //alignItems: "center",
                           justifyContent: "center",
                           width: "100%",
                           cursor: "pointer",
@@ -2342,6 +2143,8 @@ export default function AllEvents() {
                         />
                       </Box>
                     </TableCell>
+
+                    {/* Route */}
                     <TableCell
                       sx={{
                         width: "10%",
@@ -2351,7 +2154,6 @@ export default function AllEvents() {
                       <Box
                         sx={{
                           display: "flex",
-                          //alignItems: "center",
                           justifyContent: "center",
                           gap: 0.5,
                         }}
@@ -2367,9 +2169,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Physician */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "12%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2395,9 +2198,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Crew */}
                     <TableCell
                       sx={{
-                        width: "11%",
+                        width: "12%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2444,7 +2248,7 @@ export default function AllEvents() {
                   {displayRows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={8}
                         align="center"
                         sx={{
                           py: 4,
@@ -2468,7 +2272,6 @@ export default function AllEvents() {
                         const isEditing = (field) =>
                           editingCell?.rowId === row.id &&
                           editingCell?.field === field;
-                        // const eyeTooltip = isRowSeen(row) ? "Seen" : "Unseen";
 
                         const EditableCell = ({ field, children, sx }) => {
                           const cellRef = React.useRef(null);
@@ -2533,9 +2336,6 @@ export default function AllEvents() {
                                     ? "rgba(1, 93, 255, 0.18)"
                                     : "transparent",
                                   px: isEditing(field) ? 0.5 : 0,
-                                  // "&:hover": {
-                                  //   bgcolor: "rgba(1, 93, 255, 0.12)",
-                                  // },
                                   "&:focus": {
                                     outline: "none !important",
                                     border: "none !important",
@@ -2626,17 +2426,6 @@ export default function AllEvents() {
                               </Box>
                             </EditableCell>
 
-                            {/* Patient ID */}
-                            <EditableCell field="mrn">
-                              <Box
-                                fontWeight={600}
-                                fontSize={12}
-                                sx={{ display: "inline-block" }}
-                              >
-                                {row.mrn}
-                              </Box>
-                            </EditableCell>
-
                             {/* Duration */}
                             <EditableCell field="duration">
                               <Box
@@ -2648,6 +2437,7 @@ export default function AllEvents() {
                               </Box>
                             </EditableCell>
 
+                            {/* Status */}
                             <EditableCell field="status">
                               <Box fontWeight={600} fontSize={12}>
                                 {row.status}
@@ -2816,7 +2606,7 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
-                            {/* Resident */}
+                            {/* Crew */}
                             <TableCell>
                               <Box
                                 suppressContentEditableWarning
@@ -2932,7 +2722,6 @@ export default function AllEvents() {
                                       color: theme.textMuted,
                                     }}
                                   >
-                                    {console.log("Rwe", row)}
                                     Added:{" "}
                                     {row.updated_at || row.created_at
                                       ? dayjs(row.sidelistTimestamp).format(
@@ -2962,9 +2751,8 @@ export default function AllEvents() {
                                   }}
                                 >
                                   <Tooltip
-                                    // title={eyeTooltip}
                                     arrow
-                                    componentsProps={{
+                                    slotProps={{
                                       tooltip: {
                                         sx: {
                                           bgcolor: "#000000",
@@ -2991,29 +2779,12 @@ export default function AllEvents() {
                                       }}
                                     >
                                       <VisibilityIcon />
-                                      {/* {!isRowSeen(row) && (
-                                        <Box
-                                          sx={{
-                                            position: "absolute",
-                                            top: "50%",
-                                            left: "50%",
-                                            transform: "translate(-50%, -50%)",
-                                            fontSize: "28px",
-                                            color: eyeColors.icon,
-                                            pointerEvents: "none",
-                                            lineHeight: 1,
-                                          }}
-                                        >
-                                          /
-                                        </Box>
-                                      )} */}
                                     </IconButton>
                                   </Tooltip>
 
                                   <Tooltip
-                                    // title="List of Encounter"
                                     arrow
-                                    componentsProps={{
+                                    slotProps={{
                                       tooltip: {
                                         sx: {
                                           bgcolor: "#000000",
@@ -3040,9 +2811,8 @@ export default function AllEvents() {
                                   </Tooltip>
                                   {canEditFacesheet && (
                                     <Tooltip
-                                      // title="Facesheet"
                                       arrow
-                                      componentsProps={{
+                                      slotProps={{
                                         tooltip: {
                                           sx: {
                                             bgcolor: "#000000",
@@ -3073,9 +2843,8 @@ export default function AllEvents() {
                                   )}
 
                                   <Tooltip
-                                    // title="Video"
                                     arrow
-                                    componentsProps={{
+                                    slotProps={{
                                       tooltip: {
                                         sx: {
                                           bgcolor: "#000000",
@@ -3100,9 +2869,8 @@ export default function AllEvents() {
                                   </Tooltip>
 
                                   <Tooltip
-                                    // title="More options"
                                     arrow
-                                    componentsProps={{
+                                    slotProps={{
                                       tooltip: {
                                         sx: {
                                           bgcolor: "#000000",
@@ -3233,8 +3001,6 @@ export default function AllEvents() {
             </Box>
           </MenuItem>
 
-          {/* <Divider /> */}
-
           <MenuItem
             onClick={() => {
               const selectedPatient = rows.find((r) => r.id === menuRowId);
@@ -3255,8 +3021,6 @@ export default function AllEvents() {
               </Typography>
             </Box>
           </MenuItem>
-
-          {/* <Divider /> */}
 
           <MenuItem
             onClick={() => {
@@ -3548,10 +3312,10 @@ export default function AllEvents() {
                   fontSize: "14px",
                   minWidth: 110,
                   color: "#FFFFFF",
-                  backgroundColor: darkMode ? "#2563EB" : "#2563EB",
+                  backgroundColor: "#2563EB",
                   boxShadow: "none",
                   "&:hover": {
-                    backgroundColor: darkMode ? "#1D4ED8" : "#1D4ED8",
+                    backgroundColor: "#1D4ED8",
                     boxShadow: "none",
                   },
                 }}
@@ -3662,7 +3426,6 @@ export default function AllEvents() {
                 />
               </Box>
 
-              {/* List */}
               <Box
                 sx={{
                   overflowY: "auto",
@@ -3705,8 +3468,6 @@ export default function AllEvents() {
                   >
                     <Box>
                       <Typography
-                        //fontSize={12}
-                        //fontWeight={300}
                         sx={{
                           color: theme.textPrimary,
                           fontSize: "14px",
@@ -3716,8 +3477,6 @@ export default function AllEvents() {
                         {doc.name}
                       </Typography>
                       <Typography
-                        //fontSize={10}
-                        //fontWeight={300}
                         sx={{
                           color: "#228B22",
                           mt: 0.2,
@@ -3751,24 +3510,8 @@ export default function AllEvents() {
                     )}
                   </Box>
                 ))}
-
-                {/* {filteredAssignProviders.length === 0 && (
-                  <Typography
-                    sx={{
-                      px: 1,
-                      py: 2,
-                      color: theme.textSecondary,
-                      fontSize: 13,
-                    }}
-                  >
-                    {assignType === "resident"
-                      ? "No residents found."
-                      : null }
-                  </Typography>
-                )} */}
               </Box>
 
-              {/* Assign Button */}
               <Button
                 fullWidth
                 variant="contained"
@@ -3780,8 +3523,6 @@ export default function AllEvents() {
                   fontWeight: 300,
                   bgcolor: "#1251CC",
                   fontSize: "14px",
-                  // bgcolor: theme.actionIconColor,
-                  // "&:hover": { bgcolor: "#1251CC" },
                 }}
                 onClick={async () => {
                   if (!selectedDoctor || !selectedDoctorId) return;
@@ -3863,7 +3604,6 @@ export default function AllEvents() {
           </DialogContent>
         </Dialog>
 
-        {/* Snackbar for notifications */}
         <Snackbar
           open={snackbar.open}
           autoHideDuration={4000}

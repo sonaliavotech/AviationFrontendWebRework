@@ -144,7 +144,7 @@ const Sidebar = ({ onAiClick }) => {
       title={title}
       placement="right"
       arrow
-      componentsProps={{
+      slotProps={{
         tooltip: {
           sx: {
             bgcolor: darkMode ? "#000" : "#0F2646",
@@ -280,7 +280,7 @@ const Sidebar = ({ onAiClick }) => {
               checked={darkMode}
               onChange={toggleTheme}
               size="small"
-              inputProps={{ "aria-label": "Dark mode toggle" }}
+              slotProps={{ input: { "aria-label": "Dark mode toggle" } }}
               sx={{
                 "& .MuiSwitch-switchBase.Mui-checked": {
                   color: tokens.sidebarActive,

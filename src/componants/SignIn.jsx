@@ -595,7 +595,7 @@ const SignInForm = () => {
                         WebkitTextSecurity: showPassword ? "none" : undefined,
                       },
                     }}
-                    componentsProps={{ input: { "data-ms-reveal": "false" } }}
+                    slotProps={{ input: { "data-ms-reveal": "false" } }}
                     endAdornment={
                       <InputAdornment position="end">
                         <Box

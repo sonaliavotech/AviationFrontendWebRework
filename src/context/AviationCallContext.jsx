@@ -18,11 +18,13 @@ import IncomingCallScreen from "../componants/calls/IncomingCallScreen";
 import JitsiCall from "../componants/JitsiCall";
 import LoadingSpinner from "../componants/LoadingSpinner";
 import { useThemeMode } from "./ThemeContext";
+import { JITSI_SERVER_URL } from "../config/appConfig";
 
 const AviationCallContext = createContext(null);
 
 const resolveRoomId = (call = {}) => {
-  const roomId = call.roomId || call.callId || call.roomName || call.broadcastId;
+  const roomId =
+    call.roomId || call.callId || call.roomName || call.broadcastId;
   return roomId ? String(roomId).trim() : "";
 };
 
@@ -88,10 +90,17 @@ export function AviationCallProvider({ children }) {
       const callPayload = {
         ...incomingCall,
         ...data,
-        callId: data?.callId || incomingCall?.callId || incomingCall?.broadcastId,
+        callId:
+          data?.callId || incomingCall?.callId || incomingCall?.broadcastId,
         roomId: data?.roomId || incomingCall?.roomId || data?.callId,
-        fromUserId: data?.fromUserId || incomingCall?.fromUserId || incomingCall?.callerId,
-        callerId: data?.fromUserId || incomingCall?.fromUserId || incomingCall?.callerId,
+        fromUserId:
+          data?.fromUserId ||
+          incomingCall?.fromUserId ||
+          incomingCall?.callerId,
+        callerId:
+          data?.fromUserId ||
+          incomingCall?.fromUserId ||
+          incomingCall?.callerId,
         callerName: incomingCall?.callerName || data?.callerName,
         callerRole: incomingCall?.callerRole || data?.callerRole,
         toUserId: data?.toUserId || incomingCall?.toUserId || userId,
@@ -216,7 +225,7 @@ export function AviationCallProvider({ children }) {
           onClose={closeJitsi}
           isPiP={isPiP}
           togglePiP={togglePiP}
-          domain="tiajitsistg.tiatech.net"
+          domain={JITSI_SERVER_URL}
           darkMode={darkMode}
         />
       )}
