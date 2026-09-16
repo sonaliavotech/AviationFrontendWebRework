@@ -40,11 +40,7 @@ import { getVitalsSidebarTheme } from "../../theme/appStyles";
 import EventSummaryPanel from "./EventSummaryPanel";
 import MedicineModules from "./MedicineModules";
 import CaseDetailsChatPanel from "./CaseDetailsChatPanel";
-import {
-  parseAiSummary,
-  getMedicineKey,
-  formatMedicineLine,
-} from "./caseDetailUtils";
+import { parseAiSummary } from "./caseDetailUtils";
 
 // Import Call Context
 import { useAviationCallContext } from "../../context/AviationCallContext";
@@ -536,7 +532,10 @@ export const CaseDetails = () => {
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [pendingMedicines, setPendingMedicines] = useState([]);
-  const [recommendedMedicines, setRecommendedMedicines] = useState([]);
+  // Queue of kit-medicines waiting to become an order. Each entry groups
+  // medicines picked from the same kit module and pre-fills the "Add Order"
+  // form in EventSummaryPanel (Title = module name, Instructions = medicines).
+  const [medicineOrderQueue, setMedicineOrderQueue] = useState([]);
   const [mobilePanel, setMobilePanel] = useState("summary");
 
   // Call state (UI overlays handled globally by AviationCallProvider)
@@ -622,6 +621,13 @@ export const CaseDetails = () => {
       .finally(() => setLoadingEcg(false));
   }, [incidentId]);
 
+  // Reset case-specific medicine state when the incident changes so the
+  // Recommended Medicines table never shows medicines from another case.
+  useEffect(() => {
+    setMedicineOrderQueue([]);
+    setPendingMedicines([]);
+  }, [incidentId]);
+
   // Handle call error
   useEffect(() => {
     if (callError) {
@@ -659,9 +665,9 @@ export const CaseDetails = () => {
       participants: [
         {
           userId: crewUserId,
-          role: "crew"
-        }
-      ]
+          role: "crew",
+        },
+      ],
     };
 
     const success = startCall(callData);
@@ -669,7 +675,15 @@ export const CaseDetails = () => {
       openJitsi(callData);
       console.log("📞 Call initiated:", callData);
     }
-  }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall, openJitsi]);
+  }, [
+    physicianAssigned,
+    crewUserId,
+    incidentId,
+    prefetchedRoomId,
+    physicianUser,
+    startCall,
+    openJitsi,
+  ]);
 
   const aiSummary = useMemo(() => parseAiSummary(eventData), [eventData]);
 
@@ -690,72 +704,82 @@ export const CaseDetails = () => {
     [eventData],
   );
 
-  const addPendingMedicine = useCallback((medicineOrMedicines) => {
+  const queueMedicineOrder = useCallback((medicineOrMedicines) => {
     const medicines = Array.isArray(medicineOrMedicines)
       ? medicineOrMedicines
       : [medicineOrMedicines];
     const normalized = medicines
       .map((m) =>
         typeof m === "string"
-          ? { moduleId: "", moduleTitle: "", medicineName: m, usage: "" }
+          ? {
+              moduleId: "",
+              moduleTitle: "",
+              medicineName: m,
+              usage: "",
+            }
           : {
-            moduleId: m?.moduleId || "",
-            moduleTitle: m?.moduleTitle || "",
-            medicineName: m?.medicineName || m?.name || m?.title || "",
-            usage: m?.usage || "",
-          },
+              moduleId: m?.moduleId || "",
+              moduleTitle: m?.moduleTitle || "",
+              medicineName: m?.medicineName || m?.name || m?.title || "",
+              usage: m?.usage || "",
+            },
       )
-      .filter((m) => m.medicineName);
+      .filter((m) => m.medicineName && !m.outOfStock);
 
     if (!normalized.length) return;
 
-    setPendingMedicines((prev) => {
-      const existingKeys = new Set(prev.map(getMedicineKey));
+    // Queue picked medicines into the "Add Order" form (grouped by kit
+    // module). EventSummaryPanel pre-fills the form with the module name as
+    // Title and the medicine names as Instructions; clicking "Add Order"
+    // creates a real physician order with the normal Order Actions menu.
+    setMedicineOrderQueue((prev) => {
       const next = [...prev];
       normalized.forEach((medicine) => {
-        const key = getMedicineKey(medicine);
-        if (!existingKeys.has(key)) {
-          next.push(medicine);
-          existingKeys.add(key);
+        const key =
+          medicine.moduleId ||
+          medicine.moduleTitle ||
+          "Recommended Medicines";
+        const moduleTitle =
+          medicine.moduleTitle ||
+          medicine.moduleId ||
+          "Recommended Medicines";
+        let group = next.find((g) => g.key === key);
+        if (!group) {
+          group = { key, moduleTitle, medicines: [] };
+          next.push(group);
+        }
+        const name = medicine.medicineName;
+        if (!group.medicines.includes(name)) {
+          group.medicines.push(name);
         }
       });
       return next;
     });
 
-    setChatMessage((prev) => {
-      const existingLines = prev.split("\n").filter(Boolean);
-      const newLines = normalized
-        .map(formatMedicineLine)
-        .filter(Boolean)
-        .filter((line) => !existingLines.includes(line));
-      return [...existingLines, ...newLines].join("\n");
-    });
-
-    setChatVisible(true);
     if (isMobile) setMobilePanel("summary");
   }, [isMobile]);
 
+  // Remove the first queued medicine group after it has been converted into
+  // an order via the "Add Order" button.
+  const consumeMedicineOrderQueueHead = useCallback(() => {
+    setMedicineOrderQueue((prev) =>
+      prev.length ? prev.slice(1) : prev,
+    );
+  }, []);
+
+  // Drop all queued medicine groups when the physician cancels/closes the
+  // pre-filled "Add Order" form without submitting.
+  const clearMedicineOrderQueue = useCallback(() => {
+    setMedicineOrderQueue([]);
+  }, []);
+
   const handleSendChatMedicines = useCallback(() => {
-    if (pendingMedicines.length === 0 && !chatMessage.trim()) return;
-
-    if (pendingMedicines.length > 0) {
-      setRecommendedMedicines((prev) => {
-        const existingKeys = new Set(prev.map(getMedicineKey));
-        const next = [...prev];
-        pendingMedicines.forEach((medicine) => {
-          const key = getMedicineKey(medicine);
-          if (!existingKeys.has(key)) {
-            next.push(medicine);
-            existingKeys.add(key);
-          }
-        });
-        return next;
-      });
-    }
-
+    // Medicines now go straight to the Recommended Medicines table, so
+    // sending a chat message simply clears the pending list (kept for
+    // backward compatibility with the chat panel receiving pendingMedicines).
     setPendingMedicines([]);
     setChatMessage("");
-  }, [pendingMedicines, chatMessage]);
+  }, []);
 
   const handleEcgClick = (item) => {
     const url = `https://files.tiamdplus.databin.in/${item.storage_url}`;
@@ -782,7 +806,10 @@ export const CaseDetails = () => {
         />
       </Box>
     ) : (
-      <MedicineModules darkMode={darkMode} onAddMedicine={addPendingMedicine} />
+      <MedicineModules
+        darkMode={darkMode}
+        onAddMedicine={queueMedicineOrder}
+      />
     );
 
   const renderVitalsPanel = () => (
@@ -868,7 +895,11 @@ export const CaseDetails = () => {
               color: active ? "#fff" : C.textMuted,
               background: active ? "#0A5FFF" : "transparent",
               "&:hover": {
-                background: active ? "#0047cc" : darkMode ? "#1E293B" : "#F1F5F9",
+                background: active
+                  ? "#0047cc"
+                  : darkMode
+                    ? "#1E293B"
+                    : "#F1F5F9",
               },
             }}
           >
@@ -1008,15 +1039,18 @@ export const CaseDetails = () => {
             </Button>
 
             <Button
-              startIcon={<VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
+              startIcon={
+                <VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />
+              }
               disabled={!physicianAssigned || !crewUserId}
               onClick={handleJoinNow}
               sx={{
-                background: physicianAssigned && crewUserId
-                  ? "#0A5FFF"
-                  : darkMode
-                    ? "#1E293B"
-                    : "#E2E8F0",
+                background:
+                  physicianAssigned && crewUserId
+                    ? "#0A5FFF"
+                    : darkMode
+                      ? "#1E293B"
+                      : "#E2E8F0",
                 color: physicianAssigned && crewUserId ? "#fff" : C.textMuted,
                 borderRadius: "8px",
                 px: { xs: "10px", sm: "14px" },
@@ -1028,14 +1062,21 @@ export const CaseDetails = () => {
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
                 "&:hover": {
-                  background: physicianAssigned && crewUserId ? "#0047cc" : undefined,
+                  background:
+                    physicianAssigned && crewUserId ? "#0047cc" : undefined,
                 },
               }}
             >
-              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
                 Join Now
               </Box>
-              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              <Box
+                component="span"
+                sx={{ display: { xs: "inline", sm: "none" } }}
+              >
                 Join
               </Box>
             </Button>
@@ -1106,7 +1147,9 @@ export const CaseDetails = () => {
                   loadingEvent={loadingEvent}
                   loadingEcg={loadingEcg}
                   ecgFiles={ecgFiles}
-                  recommendedMedicines={recommendedMedicines}
+                  medicineOrderQueue={medicineOrderQueue}
+                  onMedicineOrderConsumed={consumeMedicineOrderQueueHead}
+                  onClearMedicineOrderQueue={clearMedicineOrderQueue}
                   aiSummary={aiSummary}
                   darkMode={darkMode}
                   onBack={() => navigate("/all-events")}
@@ -1323,11 +1366,7 @@ export const CaseDetails = () => {
       )}
 
       {loadingEvent && (
-        <LoadingSpinner
-          variant="overlay"
-          size="lg"
-          message="Loading case..."
-        />
+        <LoadingSpinner variant="overlay" size="lg" message="Loading case..." />
       )}
     </Box>
   );

@@ -152,7 +152,9 @@ const EventSummaryPanel = ({
   loadingEvent: loadingEventProp,
   loadingEcg: loadingEcgProp,
   ecgFiles: ecgFilesProp,
-  recommendedMedicines: recommendedMedicinesProp = [],
+  medicineOrderQueue = [],
+  onMedicineOrderConsumed,
+  onClearMedicineOrderQueue,
   aiSummary: aiSummaryProp,
   darkMode: darkModeProp,
   onBack,
@@ -754,6 +756,18 @@ const EventSummaryPanel = ({
     return Array.from(seen.values());
   }, [orders]);
 
+  // When medicines are picked from the kit panel, open the "Add Order" form
+  // pre-filled with the module name as Title and the medicines as Instructions.
+  // The order is only created (and shows in the Recommended Medicines table)
+  // after the physician clicks the "Add Order" button.
+  useEffect(() => {
+    if (!medicineOrderQueue.length) return;
+    const first = medicineOrderQueue[0];
+    setOrderTitle(first?.moduleTitle || "");
+    setOrderInstructions((first?.medicines || []).join("\n"));
+    setShowAddOrder(true);
+  }, [medicineOrderQueue]);
+
   const hasCollapsibleNotes = dedupedNotes.length > NOTES_COLLAPSE_THRESHOLD;
   const visibleNotes =
     hasCollapsibleNotes && !notesExpanded ? [] : dedupedNotes;
@@ -1086,8 +1100,17 @@ const EventSummaryPanel = ({
       setOrderTitle("");
       setOrderInstructions("");
       setShowAddOrder(false);
+      // Move to the next queued medicine group (if any) so its medicines
+      // pre-fill the form for the next order.
+      onMedicineOrderConsumed?.();
     }
-  }, [orderTitle, orderInstructions, physicianAssigned, createOrder]);
+  }, [
+    orderTitle,
+    orderInstructions,
+    physicianAssigned,
+    createOrder,
+    onMedicineOrderConsumed,
+  ]);
 
   const deleteOrder = useCallback(
     async (orderId, orderSnapshot = null) => {
@@ -2052,6 +2075,7 @@ const EventSummaryPanel = ({
                   setShowAddOrder(false);
                   setOrderTitle("");
                   setOrderInstructions("");
+                  onClearMedicineOrderQueue?.();
                 }}
                 sx={{ color: darkMode ? "#94A3B8" : "#64748B" }}
               >
@@ -2168,6 +2192,7 @@ const EventSummaryPanel = ({
                   setShowAddOrder(false);
                   setOrderTitle("");
                   setOrderInstructions("");
+                  onClearMedicineOrderQueue?.();
                 }}
                 sx={{
                   textTransform: "none",

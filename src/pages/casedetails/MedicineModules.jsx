@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Box,
   Typography,
   IconButton,
   Checkbox,
   Button,
+  TextField,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { MODULES } from "./medicineModulesData";
@@ -26,6 +28,11 @@ const MedicineModules = ({
   const [selection, setSelection] = useState(() =>
     Object.fromEntries(MODULES.map((m) => [m.id, new Set()])),
   );
+  const [searchValue, setSearchValue] = useState(searchQuery || "");
+
+  useEffect(() => {
+    setSearchValue(searchQuery || "");
+  }, [searchQuery]);
 
   const colors = useMemo(
     () => ({
@@ -51,6 +58,9 @@ const MedicineModules = ({
   };
 
   const toggleRow = (moduleId, rowIndex) => {
+    const module = MODULES.find((m) => m.id === moduleId);
+    const item = module?.items?.[rowIndex];
+    if (!item || item.outOfStock) return;
     setSelection((prev) => {
       const next = new Set(prev[moduleId]);
       if (next.has(rowIndex)) next.delete(rowIndex);
@@ -60,6 +70,7 @@ const MedicineModules = ({
   };
 
   const handleAddRow = (module, item) => {
+    if (item.outOfStock) return;
     onAddMedicine?.({
       moduleId: module.id,
       moduleTitle: module.title,
@@ -74,7 +85,7 @@ const MedicineModules = ({
       const rows = selection[module.id] || new Set();
       rows.forEach((idx) => {
         const item = module.items[idx];
-        if (item) {
+        if (item && !item.outOfStock) {
           medicines.push({
             moduleId: module.id,
             moduleTitle: module.title,
@@ -138,11 +149,55 @@ const MedicineModules = ({
         </Box>
       )}
 
+      {/* Search bar to filter medicines */}
+      <Box sx={{ position: "relative", width: "100%" }}>
+        <SearchIcon
+          sx={{
+            position: "absolute",
+            left: 10,
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontSize: 16,
+            color: colors.textTertiary,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+        <TextField
+          fullWidth
+          placeholder="Search medicines..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              background: colors.moduleBg,
+              color: colors.textPrimary,
+              borderRadius: "10px",
+              fontSize: { xs: "11px", md: "12px" },
+              pl: "30px",
+              "& fieldset": {
+                borderColor: colors.border,
+              },
+              "&:hover fieldset": {
+                borderColor: darkMode ? "#334155" : "#CBD5E1",
+              },
+            },
+            "& .MuiInputBase-input": { py: { xs: "7px", md: "8px" }, px: "10px" },
+            "& .MuiInputBase-input::placeholder": {
+              color: colors.textTertiary,
+              opacity: 1,
+            },
+          }}
+        />
+      </Box>
+
       {MODULES.map((module) => {
-        const filtered = searchQuery
+        const filtered = searchValue
           ? module.items
               .map((item, originalIdx) => ({ ...item, originalIdx }))
-              .filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+              .filter((i) =>
+                i.name.toLowerCase().includes(searchValue.toLowerCase()),
+              )
           : module.items.map((item, originalIdx) => ({ ...item, originalIdx }));
 
         const isOpen = openModules[module.id];
@@ -246,7 +301,8 @@ const MedicineModules = ({
                 </Box>
 
                 {filtered.map((item) => {
-                  const checked = moduleSelection.has(item.originalIdx);
+                  const checked =
+                    moduleSelection.has(item.originalIdx) && !item.outOfStock;
                   return (
                     <Box
                       key={`${module.id}-${item.originalIdx}`}
@@ -259,12 +315,14 @@ const MedicineModules = ({
                         borderTop: `1px solid ${colors.border}`,
                         background: colors.rowBg,
                         gap: 0.5,
+                        opacity: item.outOfStock ? 0.75 : 1,
                       }}
                     >
                       {showCheckboxes && (
                         <Checkbox
                           size="small"
                           checked={checked}
+                          disabled={item.outOfStock}
                           onChange={() => toggleRow(module.id, item.originalIdx)}
                           sx={{
                             p: 0,
@@ -272,6 +330,9 @@ const MedicineModules = ({
                             flexShrink: 0,
                             color: darkMode ? "#4B5563" : "#CBD5E1",
                             "&.Mui-checked": { color: colors.primary },
+                            "&.Mui-disabled": {
+                              color: darkMode ? "#334155" : "#CBD5E1",
+                            },
                           }}
                         />
                       )}
@@ -309,14 +370,21 @@ const MedicineModules = ({
                       {showAddButtons && (
                         <IconButton
                           size="small"
+                          disabled={item.outOfStock}
                           onClick={() => handleAddRow(module, item)}
                           sx={{
                             width: { xs: 26, md: 28 },
                             height: { xs: 26, md: 28 },
                             flexShrink: 0,
-                            background: colors.primary,
-                            color: "#fff",
-                            "&:hover": { background: "#0047cc" },
+                            background: item.outOfStock
+                              ? darkMode
+                                ? "#1E293B"
+                                : "#E2E8F0"
+                              : colors.primary,
+                            color: item.outOfStock ? colors.textTertiary : "#fff",
+                            "&:hover": item.outOfStock
+                              ? {}
+                              : { background: "#0047cc" },
                           }}
                         >
                           <AddIcon sx={{ fontSize: { xs: 14, md: 16 } }} />
