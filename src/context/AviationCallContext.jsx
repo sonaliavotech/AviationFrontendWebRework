@@ -10,6 +10,7 @@ import React, {
 import { Box, Button } from "@mui/material";
 import { useAviationCall } from "../hooks/useAviationCall";
 import AviationCallSocket from "../services/AviationCallSocket";
+import PhysicianStatusService from "../services/PhysicianStatusService";
 import {
   getPhysicianSession,
   mapPhysicianToWebUser,
@@ -55,6 +56,34 @@ export function AviationCallProvider({ children }) {
     getParticipants,
     clearError,
   } = useAviationCall(userId);
+
+  // Keep the physician presence status in sync with the active call on every
+  // page (not just AllEvents). While a call is active the provider is "busy";
+  // when it ends/rejects the last manual status (available/away) is restored.
+  // `callStatus` is included so the restore ALSO fires when the call UI goes
+  // back to idle even if the `isInCall` flag gets stuck (e.g. hangup/left_ack
+  // flows that don't flip the boolean).
+  useEffect(() => {
+    if (!userId) return;
+    const inActiveCall =
+      isInCall || callStatus === "ringing" || callStatus === "connected";
+    if (inActiveCall) {
+      PhysicianStatusService.markBusyOnCallAccept();
+    } else {
+      PhysicianStatusService.markAvailableOnCallEnd();
+    }
+  }, [isInCall, callStatus, userId]);
+
+  // Belt-and-braces: some call-end signals only arrive as `left_ack` on the
+  // socket (e.g. the physician leaving/hanging up on their side). Make sure
+  // the presence restore runs for those too.
+  useEffect(() => {
+    if (!userId) return;
+    const handleLeftAck = () =>
+      PhysicianStatusService.markAvailableOnCallEnd();
+    AviationCallSocket.on("aviation_call_left_ack", handleLeftAck);
+    return () => AviationCallSocket.off("aviation_call_left_ack", handleLeftAck);
+  }, [userId]);
 
   const prepareJitsiSession = useCallback((callPayload) => {
     const roomId = resolveRoomId(callPayload);

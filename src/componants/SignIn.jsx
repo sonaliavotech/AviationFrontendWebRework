@@ -25,6 +25,7 @@ import LoadingSpinner from "./LoadingSpinner";
 import { physicianLogin } from "../services/api";
 import AviationChatSocket from "../services/AviationChatSocket";
 import AviationCallSocket from "../services/AviationCallSocket";
+import PhysicianStatusService from "../services/PhysicianStatusService";
 import {
   savePhysicianSession,
   getPhysicianSession,
@@ -254,6 +255,12 @@ const SignInForm = () => {
       savePhysicianSession(data.user);
       AviationChatSocket.connect(userId);
       AviationCallSocket.connect(userId);
+
+      // Mirror native physicianAuthSessionService.connectPhysicianAviationSession:
+      // start the PhysicianStatusService which connects, then forces "available"
+      // on login (queued + flushed on register) so the DB flips
+      // is_online=true / status='available'.
+      PhysicianStatusService.start(userId);
 
       setSnackbar({
         open: true,

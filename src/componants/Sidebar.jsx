@@ -14,6 +14,7 @@ import { useThemeMode } from "../context/ThemeContext";
 import { clearPhysicianSession } from "../utils/physicianSession";
 import AviationChatSocket from "../services/AviationChatSocket";
 import AviationCallSocket from "../services/AviationCallSocket";
+import PhysicianStatusService from "../services/PhysicianStatusService";
 import NotificationPanel from "../pages/AllEvents/Alert";
 
 const ITEM_SIZE = 64;
@@ -78,6 +79,9 @@ const Sidebar = ({ onAiClick }) => {
     }
 
     if (path === "/sign-in") {
+      // Flip the DB presence to offline BEFORE tearing the sockets down so
+      // the status emit can reach the server.
+      PhysicianStatusService.markOfflineOnLogout();
       AviationChatSocket.disconnect();
       AviationCallSocket.disconnect();
       clearPhysicianSession();

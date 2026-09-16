@@ -211,7 +211,19 @@ export async function getPhysicianLiveStatus(userId) {
   const json = await request(
     `${CHAT_API_URL}/users/${encodeURIComponent(userId)}`,
   );
-  return json?.data || null;
+  const data = json?.data;
+
+  // The chat service actually returns the FULL user directory (an array)
+  // for this route instead of a single user. Pick the entry that matches
+  // the requested physician so callers never treat the truthy directory
+  // array itself as a single user's live presence — that bug downgraded
+  // every physician to "offline" in the Assign to Provider modal.
+  if (Array.isArray(data)) {
+    const match = data.find((u) => u && String(u.id) === String(userId));
+    return match || null;
+  }
+  if (data && typeof data === "object") return data;
+  return null;
 }
 
 export function mapIncidentToTableRow(incident) {
@@ -295,15 +307,25 @@ export function mapPhysicianFromApi(doctor, live = null) {
     .join(" ")
     .trim();
 
-  // Backend doctor.status is usually the fallback
-  const fallbackStatus = normalizePhysicianStatus(doctor.status);
+  // The physicians directory (GET /api/physicians) already carries the
+  // DB-backed presence columns (status / physician_is_active / is_online),
+  // so it is the authoritative source for a physician's presence.
+  const fallbackStatus = normalizePhysicianStatus(
+    doctor.status || (doctor.is_online ? "available" : null),
+  );
 
-  // Live presence wins if available
-  const liveStatus = live
-    ? normalizePhysicianStatus(
-        live.status || (live.is_online ? "available" : "offline"),
-      )
-    : fallbackStatus;
+  // Live presence from the chat service is only trusted when it exposes a
+  // real status string. The chat user records otherwise only keep a stale
+  // is_online flag that does NOT reflect the physician presence DB, so we
+  // never let it downgrade an authoritative "available" to "offline".
+  const liveHasStatus =
+    live &&
+    typeof live === "object" &&
+    !Array.isArray(live) &&
+    String(live.status || "").trim() !== "";
+  const liveStatus = liveHasStatus
+    ? normalizePhysicianStatus(live.status)
+    : null;
 
   const isActive =
     doctor.physician_is_active === true ||
@@ -311,7 +333,14 @@ export function mapPhysicianFromApi(doctor, live = null) {
     // If backend doesn't return the flag at all, treat as active
     doctor.physician_is_active === undefined;
 
-  const finalStatus = liveStatus || fallbackStatus || PHYSICIAN_STATUS.OFFLINE;
+  // When we have no explicit status at all, an active physician is treated
+  // as Available (mirrors the native directory: active staff are assignable).
+  // This prevents the modal from showing zero online physicians when the
+  // per-user live lookup fails.
+  const finalStatus =
+    liveStatus ||
+    fallbackStatus ||
+    (isActive ? PHYSICIAN_STATUS.AVAILABLE : PHYSICIAN_STATUS.OFFLINE);
   const assignable = isPhysicianAssignable(finalStatus, isActive);
 
   return {

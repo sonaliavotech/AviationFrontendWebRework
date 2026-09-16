@@ -27,32 +27,28 @@ export const PHYSICIAN_STATUS_SHORT_LABELS = {
   [PHYSICIAN_STATUS.BUSY]: "Busy",
   [PHYSICIAN_STATUS.ON_CALL]: "On Call",
   [PHYSICIAN_STATUS.AWAY]: "Away",
-  [PHYSICIAN_STATUS.APPEAR_AWAY]: "Appear Away",
+  [PHYSICIAN_STATUS.APPEAR_AWAY]: "Away",
   [PHYSICIAN_STATUS.DO_NOT_DISTURB]: "Do Not Disturb",
   [PHYSICIAN_STATUS.OFFLINE]: "Offline",
-  [PHYSICIAN_STATUS.IN_CALL]: "In Call",
+  [PHYSICIAN_STATUS.IN_CALL]: "Busy",
 };
 
-// Statuses a physician can manually pick from the web/native picker
+/**
+ * Only two statuses can be picked manually.
+ * Busy / On Call / In Call are set automatically by the call lifecycle.
+ */
 export const MANUAL_PHYSICIAN_STATUSES = [
   PHYSICIAN_STATUS.AVAILABLE,
-  PHYSICIAN_STATUS.APPEAR_AWAY,
-  PHYSICIAN_STATUS.BUSY,
-  PHYSICIAN_STATUS.ON_CALL,
-  PHYSICIAN_STATUS.DO_NOT_DISTURB,
+  PHYSICIAN_STATUS.AWAY,
 ];
 
-// Which statuses mean "assignable" — i.e., can receive a case
+// Statuses considered "assignable"
 const ASSIGNABLE_STATUSES = new Set([
   PHYSICIAN_STATUS.AVAILABLE,
   PHYSICIAN_STATUS.ON_CALL,
   PHYSICIAN_STATUS.BUSY,
 ]);
 
-/**
- * Normalize any incoming status string to one of our known statuses.
- * Handles: "Available", "AVAILABLE", "available", "online", "in-call", etc.
- */
 export function normalizePhysicianStatus(raw) {
   if (!raw) return PHYSICIAN_STATUS.OFFLINE;
   const s = String(raw)
@@ -63,9 +59,8 @@ export function normalizePhysicianStatus(raw) {
   if (s === "available" || s === "online") return PHYSICIAN_STATUS.AVAILABLE;
   if (s === "busy") return PHYSICIAN_STATUS.BUSY;
   if (s === "on_call" || s === "oncall") return PHYSICIAN_STATUS.ON_CALL;
-  if (s === "away") return PHYSICIAN_STATUS.AWAY;
-  if (s === "appear_away" || s === "appearaway")
-    return PHYSICIAN_STATUS.APPEAR_AWAY;
+  if (s === "away" || s === "appear_away" || s === "appearaway")
+    return PHYSICIAN_STATUS.AWAY;
   if (s === "do_not_disturb" || s === "dnd")
     return PHYSICIAN_STATUS.DO_NOT_DISTURB;
   if (s === "offline" || s === "off_line") return PHYSICIAN_STATUS.OFFLINE;
@@ -74,13 +69,6 @@ export function normalizePhysicianStatus(raw) {
   return PHYSICIAN_STATUS.OFFLINE;
 }
 
-/**
- * A physician is assignable when:
- *  - they're active (backend flag physician_is_active)
- *  - their status is one of the assignable ones
- *
- * This matches the native `isPhysicianAssignable(status, isActive)`.
- */
 export function isPhysicianAssignable(status, isActive = true) {
   if (!isActive) return false;
   return ASSIGNABLE_STATUSES.has(status);
