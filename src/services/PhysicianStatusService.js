@@ -1,25 +1,19 @@
 // src/services/PhysicianStatusService.js
 //
 // Web port of the native PhysicianStatusService (Aviation-physician-frontend).
-// This is the SINGLE SOURCE OF TRUTH for the physician's presence status.
-// AviationChatSocket is a pure transport: it never decides a status on its
-// own anymore, it just exposes onRegistered() (fires on login AND every
-// reconnect) and an _inCall flag. Every status decision + DB write happens
-// here, so there's no more race between two systems.
+// SINGLE SOURCE OF TRUTH for the physician's presence status.
 //
-// Behaviour:
-//  - start(userId)              → connect, then force "available" on login
-//  - setStatus(status, manual)  → only Available/Away are user-selectable;
-//                                  ignored while an active call is in progress
-//  - markBusyOnCallAccept()     → automatic Busy (call lifecycle)
-//  - markAvailableOnCallEnd()   → restores last manual status (Available/Away)
-//  - markOfflineOnLogout()      → force Offline + emit on logout
-//  - socket disconnect          → auto "away" (only if was Available)
-//  - socket (re)registers       → resync: busy (if in call) or last manual
-//                                  status (available/away), on login AND
-//                                  every reconnect
+// Changes in this revision:
+//  - start() / _handleRegistered() now ALSO pull the authoritative status from
+//    GET /api/physicians (the same directory the Assign modal uses) and apply
+//    it immediately. Previously the service only applied an optimistic
+//    "available" and waited for a socket echo, so the header chip stayed on
+//    "Offline" whenever the backend didn't emit `aviation_user_status` for
+//    the current physician (or the echo was stale).
+//  - A 30s interval keeps the chip in sync with the DB without a page refresh.
 
 import AviationChatSocket from "./AviationChatSocket";
+import { getPhysicians } from "./api";
 import {
   PHYSICIAN_STATUS,
   MANUAL_PHYSICIAN_STATUSES,
@@ -28,9 +22,6 @@ import {
 
 class PhysicianStatusService {
   constructor() {
-    // Start optimistic: a logged-in user is "available" until proven otherwise.
-    // This prevents the UI from flashing "Offline" on reload before the socket
-    // confirms the DB state. reset()/markOfflineOnLogout() restore Offline.
     this.state = {
       status: PHYSICIAN_STATUS.AVAILABLE,
       isActive: true,
@@ -41,15 +32,16 @@ class PhysicianStatusService {
     this.disconnectInducedAway = false;
     this.lastManualStatus = null;
 
+    this._refreshTimer = null;
+    this._refreshing = false;
+
     this._handleStatusChanged = this._handleStatusChanged.bind(this);
     this._handleSocketDisconnect = this._handleSocketDisconnect.bind(this);
     this._handleRegistered = this._handleRegistered.bind(this);
   }
 
   subscribe(listener) {
-    if (typeof listener !== "function") {
-      return () => {};
-    }
+    if (typeof listener !== "function") return () => {};
     this.listeners.add(listener);
     listener(this.getState());
     return () => {
@@ -79,21 +71,24 @@ class PhysicianStatusService {
     const normalized = normalizePhysicianStatus(status);
     if (!normalized) return;
 
+    const prev = this.state.status;
+    const nextIsActive =
+      typeof isActive === "boolean"
+        ? isActive
+        : normalized !== PHYSICIAN_STATUS.OFFLINE;
+
+    if (prev === normalized && this.state.isActive === nextIsActive) {
+      return; // no change — avoid needless re-renders
+    }
+
     this.state = {
       ...this.state,
       status: normalized,
-      isActive:
-        typeof isActive === "boolean"
-          ? isActive
-          : normalized !== PHYSICIAN_STATUS.OFFLINE,
+      isActive: nextIsActive,
     };
     this._notify();
   }
 
-  // Emit directly through AviationChatSocket, which queues the
-  // aviation_set_status event and flushes it on register/reconnect.
-  // This guarantees the server (and thus the DB) receives the change
-  // regardless of socket readiness — no silent drops.
   _emitStatus(status) {
     if (!this.state.userId) return;
     try {
@@ -124,32 +119,93 @@ class PhysicianStatusService {
     }
   }
 
+  // ---- Authoritative DB read ----
+  // GET /api/physicians returns the directory with DB columns
+  // status / is_online / physician_is_active. We find our own row and apply
+  // its status — same source the Assign modal uses, so both stay consistent.
+  async refreshFromServer() {
+    if (!this.state.userId || this._refreshing) return;
+    this._refreshing = true;
+    try {
+      const list = await getPhysicians();
+      const me = (Array.isArray(list) ? list : []).find(
+        (doc) => doc && String(doc.id) === String(this.state.userId),
+      );
+      if (!me) return;
+
+      const normalized = normalizePhysicianStatus(
+        me.status || (me.is_online ? "available" : null),
+      );
+      if (!normalized) return;
+
+      const isActive =
+        me.physician_is_active === true ||
+        String(me.physician_is_active || "").toLowerCase() === "true" ||
+        me.physician_is_active === undefined;
+
+      // Don't clobber an in-call "busy" with a stale DB row.
+      if (AviationChatSocket.isInCall()) {
+        this._applyStatus(PHYSICIAN_STATUS.BUSY, { isActive: true });
+        return;
+      }
+
+      this._applyStatus(normalized, { isActive });
+    } catch (error) {
+      console.warn(
+        "[PhysicianStatusService] refreshFromServer failed:",
+        error?.message ?? error,
+      );
+    } finally {
+      this._refreshing = false;
+    }
+  }
+
+  _startRefreshLoop() {
+    this._stopRefreshLoop();
+    // Poll every 30s — matches AllEvents' incidents poll cadence and keeps
+    // the chip honest even if the socket echo never arrives.
+    this._refreshTimer = setInterval(() => {
+      this.refreshFromServer();
+    }, 30000);
+  }
+
+  _stopRefreshLoop() {
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+      this._refreshTimer = null;
+    }
+  }
+
   start(userId) {
     const nextUserId = String(userId);
     this.bindSocket();
 
-    // Idempotent start: if we already manage this user (e.g. AllEvents
-    // remounts during SPA navigation), keep their current status instead of
-    // resetting a manually chosen "Away" back to "Available" and re-emitting
-    // it to the DB. Only a genuine fresh start forces "available".
+    // Idempotent start — do NOT reset a manual Away on remount.
     if (this.state.userId === nextUserId) {
       if (!AviationChatSocket.isConnected()) {
         AviationChatSocket.connect(nextUserId);
       }
+      // Still refresh once and keep the loop alive.
+      this.refreshFromServer();
+      this._startRefreshLoop();
       return;
     }
 
     this.state.userId = nextUserId;
-
-    // Apply "available" optimistically IMMEDIATELY so the UI never flashes
-    // Offline on reload (the DB flip happens async via the queued emit).
     this.lastManualStatus = PHYSICIAN_STATUS.AVAILABLE;
     this.disconnectInducedAway = false;
+
+    // Optimistic UI: never flash Offline on login.
     this._applyStatus(PHYSICIAN_STATUS.AVAILABLE, { isActive: true });
     this._emitStatus(PHYSICIAN_STATUS.AVAILABLE);
+
+    // Then reconcile with the DB (Assign modal's source of truth).
+    this.refreshFromServer();
+    this._startRefreshLoop();
   }
 
   reset() {
+    this._stopRefreshLoop();
     this.state = {
       status: PHYSICIAN_STATUS.OFFLINE,
       isActive: false,
@@ -165,8 +221,6 @@ class PhysicianStatusService {
       return false;
     }
 
-    // Busy (from an active call) always wins — a manual click shouldn't be
-    // able to quietly override it while the physician is on a call.
     if (source === "manual" && AviationChatSocket.isInCall()) {
       return false;
     }
@@ -180,15 +234,6 @@ class PhysicianStatusService {
     return true;
   }
 
-  async _markAvailableOnLogin() {
-    await AviationChatSocket.whenReady().catch(() => null);
-    if (!this.state.userId) return;
-
-    this.lastManualStatus = PHYSICIAN_STATUS.AVAILABLE;
-    this._applyStatus(PHYSICIAN_STATUS.AVAILABLE, { isActive: true });
-    this._emitStatus(PHYSICIAN_STATUS.AVAILABLE);
-  }
-
   markBusyOnCallAccept() {
     if (!this.state.userId) return;
     AviationChatSocket.setInCall(true);
@@ -199,28 +244,25 @@ class PhysicianStatusService {
   markAvailableOnCallEnd() {
     if (!this.state.userId) return;
 
-    // Always clear the in-call flag first so a rejected/ended call can never
-    // leave the manual-status guard (setStatus) permanently blocked.
     AviationChatSocket.setInCall(false);
 
-    // Restore UNCONDITIONALLY. The old guard (`status !== BUSY → return`)
-    // silently skipped the restore whenever the local status got out of sync
-    // (e.g. a stale status echo), leaving the UI stuck on "Busy" after the
-    // call had ended. Manual picks only ever normalize to AVAILABLE or AWAY,
-    // so this is always the correct resting status.
     const restore =
       this.lastManualStatus === PHYSICIAN_STATUS.AWAY
         ? PHYSICIAN_STATUS.AWAY
         : PHYSICIAN_STATUS.AVAILABLE;
 
-    // Skip redundant work only when nothing actually changes.
     if (this.state.status === restore) return;
 
     this._applyStatus(restore, { isActive: true });
     this._emitStatus(restore);
+
+    // Pull DB status again right after a call ends — matches what the
+    // Assign modal would see on its next open.
+    this.refreshFromServer();
   }
 
   markOfflineOnLogout() {
+    this._stopRefreshLoop();
     if (!this.state.userId) {
       this.reset();
       return;
@@ -257,19 +299,14 @@ class PhysicianStatusService {
   _handleSocketDisconnect(reason) {
     if (reason === "io client disconnect") return;
     if (!this.state.userId) return;
-    if (AviationChatSocket.isInCall()) return; // don't flip an active call to Away
+    if (AviationChatSocket.isInCall()) return;
     if (this.state.status !== PHYSICIAN_STATUS.AVAILABLE) return;
 
     this._applyStatus(PHYSICIAN_STATUS.AWAY, { isActive: true });
     this._emitStatus(PHYSICIAN_STATUS.AWAY);
   }
 
-  // Bug fix: this replaces the old _handleSocketReconnect, which listened
-  // for a "socket_reconnected" call event that AviationChatSocket never
-  // actually emitted — so reconnect-restore silently never ran. This now
-  // fires on the initial login AND every genuine reconnect (both go
-  // through "aviation_registered"), and always resyncs to the correct
-  // status: Busy if a call is active, otherwise the last manual choice.
+  // Fires on initial login AND every (re)connect. Re-emit + re-read from DB.
   _handleRegistered() {
     if (!this.state.userId) return;
 
@@ -279,6 +316,10 @@ class PhysicianStatusService {
 
     this._applyStatus(statusToSend, { isActive: true });
     this._emitStatus(statusToSend);
+
+    // After the socket registers, pull the DB truth so the chip can't stay
+    // stuck on the optimistic value if the server rejects/overrides it.
+    this.refreshFromServer();
   }
 }
 
