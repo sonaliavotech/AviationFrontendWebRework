@@ -532,10 +532,11 @@ export const CaseDetails = () => {
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [pendingMedicines, setPendingMedicines] = useState([]);
-  // Queue of kit-medicines waiting to become an order. Each entry groups
-  // medicines picked from the same kit module and pre-fills the "Add Order"
-  // form in EventSummaryPanel (Title = module name, Instructions = medicines).
-  const [medicineOrderQueue, setMedicineOrderQueue] = useState([]);
+  // One medicine-order draft holding ALL picked medicines from ANY kit
+  // module. EventSummaryPanel pre-fills the "Add Order" form with every
+  // module (Title) and their medicines (Instructions), so a single order
+  // can contain multiple modules at once.
+  const [medicineOrderDraft, setMedicineOrderDraft] = useState(null);
   const [mobilePanel, setMobilePanel] = useState("summary");
 
   // Call state (UI overlays handled globally by AviationCallProvider)
@@ -624,7 +625,7 @@ export const CaseDetails = () => {
   // Reset case-specific medicine state when the incident changes so the
   // Recommended Medicines table never shows medicines from another case.
   useEffect(() => {
-    setMedicineOrderQueue([]);
+    setMedicineOrderDraft(null);
     setPendingMedicines([]);
   }, [incidentId]);
 
@@ -728,12 +729,21 @@ export const CaseDetails = () => {
 
     if (!normalized.length) return;
 
-    // Queue picked medicines into the "Add Order" form (grouped by kit
-    // module). EventSummaryPanel pre-fills the form with the module name as
-    // Title and the medicine names as Instructions; clicking "Add Order"
-    // creates a real physician order with the normal Order Actions menu.
-    setMedicineOrderQueue((prev) => {
-      const next = [...prev];
+    // Accumulate EVERY picked medicine into ONE order draft (grouped by kit
+    // module). EventSummaryPanel pre-fills the "Add Order" form with all the
+    // modules as Title and all their medicines as Instructions, so a single
+    // order can contain medicines from multiple modules. Clicking "Add Order"
+    // creates one real physician order with the normal Order Actions menu.
+    setMedicineOrderDraft((prev) => {
+      const next = {
+        groups: prev?.groups
+          ? prev.groups.map((g) => ({
+              key: g.key,
+              moduleTitle: g.moduleTitle,
+              medicines: [...g.medicines],
+            }))
+          : [],
+      };
       normalized.forEach((medicine) => {
         const key =
           medicine.moduleId ||
@@ -743,10 +753,10 @@ export const CaseDetails = () => {
           medicine.moduleTitle ||
           medicine.moduleId ||
           "Recommended Medicines";
-        let group = next.find((g) => g.key === key);
+        let group = next.groups.find((g) => g.key === key);
         if (!group) {
           group = { key, moduleTitle, medicines: [] };
-          next.push(group);
+          next.groups.push(group);
         }
         const name = medicine.medicineName;
         if (!group.medicines.includes(name)) {
@@ -759,18 +769,16 @@ export const CaseDetails = () => {
     if (isMobile) setMobilePanel("summary");
   }, [isMobile]);
 
-  // Remove the first queued medicine group after it has been converted into
-  // an order via the "Add Order" button.
-  const consumeMedicineOrderQueueHead = useCallback(() => {
-    setMedicineOrderQueue((prev) =>
-      prev.length ? prev.slice(1) : prev,
-    );
+  // Clear the order draft after it has been converted into an order via the
+  // "Add Order" button.
+  const consumeMedicineOrderDraft = useCallback(() => {
+    setMedicineOrderDraft(null);
   }, []);
 
-  // Drop all queued medicine groups when the physician cancels/closes the
-  // pre-filled "Add Order" form without submitting.
-  const clearMedicineOrderQueue = useCallback(() => {
-    setMedicineOrderQueue([]);
+  // Drop the order draft when the physician cancels/closes the pre-filled
+  // "Add Order" form without submitting.
+  const clearMedicineOrderDraft = useCallback(() => {
+    setMedicineOrderDraft(null);
   }, []);
 
   const handleSendChatMedicines = useCallback(() => {
@@ -1147,9 +1155,9 @@ export const CaseDetails = () => {
                   loadingEvent={loadingEvent}
                   loadingEcg={loadingEcg}
                   ecgFiles={ecgFiles}
-                  medicineOrderQueue={medicineOrderQueue}
-                  onMedicineOrderConsumed={consumeMedicineOrderQueueHead}
-                  onClearMedicineOrderQueue={clearMedicineOrderQueue}
+                  medicineOrderDraft={medicineOrderDraft}
+                  onMedicineOrderConsumed={consumeMedicineOrderDraft}
+                  onClearMedicineOrderDraft={clearMedicineOrderDraft}
                   aiSummary={aiSummary}
                   darkMode={darkMode}
                   onBack={() => navigate("/all-events")}

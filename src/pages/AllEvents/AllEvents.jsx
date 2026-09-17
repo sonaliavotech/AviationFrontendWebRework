@@ -575,6 +575,7 @@ export default function AllEvents() {
     AviationCallSocket.on("aviation_call_ended", handleCallEnded);
     AviationCallSocket.on("aviation_call_rejected", handleCallEnded);
     AviationCallSocket.on("aviation_call_left_ack", handleCallEnded);
+    AviationCallSocket.on("aviation_call_cancelled", handleCallEnded);
 
     return () => {
       AviationChatSocket.offUserStatus(handleUserStatus);
@@ -584,6 +585,7 @@ export default function AllEvents() {
       AviationCallSocket.off("aviation_call_ended", handleCallEnded);
       AviationCallSocket.off("aviation_call_rejected", handleCallEnded);
       AviationCallSocket.off("aviation_call_left_ack", handleCallEnded);
+      AviationCallSocket.off("aviation_call_cancelled", handleCallEnded);
     };
   }, []);
 

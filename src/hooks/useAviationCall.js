@@ -157,6 +157,21 @@ export const useAviationCall = (userId) => {
         };
         callSocket.on("aviation_call_error", errorHandler);
 
+        const cancelledHandler = (data) => {
+            const callId = normalizeCallId(data.callId || data.broadcastId);
+            // Only clear if it's a call we're actually ringing on (avoid nuking an active call)
+            if (!callId || activeCallRef.current?.callId !== callId) return;
+            processedAcceptRef.current = null;
+            setCallStatus("idle");
+            setIsInCall(false);
+            setIncomingCall(null);
+            setActiveCall(null);
+            callStartTimeRef.current = null;
+        };
+        callSocket.on("aviation_call_cancelled", cancelledHandler);
+
+
+
         return () => {
             callSocket.off("aviation_incoming_call", incomingHandler);
             callSocket.off("aviation_call_accepted", acceptedHandler);
@@ -167,6 +182,7 @@ export const useAviationCall = (userId) => {
             callSocket.off("aviation_call_participant_left", participantLeftHandler);
             callSocket.off("aviation_call_participants_list", participantsListHandler);
             callSocket.off("aviation_call_error", errorHandler);
+            callSocket.off("aviation_call_cancelled", cancelledHandler);
         };
     }, [userId]);
 

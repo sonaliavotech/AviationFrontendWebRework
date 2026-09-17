@@ -152,9 +152,9 @@ const EventSummaryPanel = ({
   loadingEvent: loadingEventProp,
   loadingEcg: loadingEcgProp,
   ecgFiles: ecgFilesProp,
-  medicineOrderQueue = [],
+  medicineOrderDraft = null,
   onMedicineOrderConsumed,
-  onClearMedicineOrderQueue,
+  onClearMedicineOrderDraft,
   aiSummary: aiSummaryProp,
   darkMode: darkModeProp,
   onBack,
@@ -322,7 +322,7 @@ const EventSummaryPanel = ({
     }
   }, [incidentId]);
 
-  // ── ⭐ FETCH ECG FILES ⭐ ──
+  // ── FETCH ECG FILES ──
   const fetchEcgFiles = useCallback(async () => {
     if (!incidentId) return;
     try {
@@ -473,7 +473,6 @@ const EventSummaryPanel = ({
     };
     const onCaseDetailRefresh = () => fetchEventNotes();
 
-    // ⭐ ECG upload listener — refresh ECG list when crew uploads
     const onEcgUploaded = (payload) => {
       console.log("📄 ECG uploaded event received:", payload);
       fetchEcgFiles();
@@ -756,17 +755,20 @@ const EventSummaryPanel = ({
     return Array.from(seen.values());
   }, [orders]);
 
-  // When medicines are picked from the kit panel, open the "Add Order" form
-  // pre-filled with the module name as Title and the medicines as Instructions.
-  // The order is only created (and shows in the Recommended Medicines table)
-  // after the physician clicks the "Add Order" button.
   useEffect(() => {
-    if (!medicineOrderQueue.length) return;
-    const first = medicineOrderQueue[0];
-    setOrderTitle(first?.moduleTitle || "");
-    setOrderInstructions((first?.medicines || []).join("\n"));
+    const groups = medicineOrderDraft?.groups;
+    if (!groups || !groups.length) return;
+    setOrderTitle(groups.map((g) => g.moduleTitle).join("\n"));
+
+    const instructionLines = [];
+    groups.forEach((g) => {
+      instructionLines.push(g.moduleTitle);
+      g.medicines.forEach((name) => instructionLines.push(name));
+    });
+    setOrderInstructions(instructionLines.join("\n"));
+
     setShowAddOrder(true);
-  }, [medicineOrderQueue]);
+  }, [medicineOrderDraft]);
 
   const hasCollapsibleNotes = dedupedNotes.length > NOTES_COLLAPSE_THRESHOLD;
   const visibleNotes =
@@ -1100,8 +1102,6 @@ const EventSummaryPanel = ({
       setOrderTitle("");
       setOrderInstructions("");
       setShowAddOrder(false);
-      // Move to the next queued medicine group (if any) so its medicines
-      // pre-fill the form for the next order.
       onMedicineOrderConsumed?.();
     }
   }, [
@@ -2075,7 +2075,7 @@ const EventSummaryPanel = ({
                   setShowAddOrder(false);
                   setOrderTitle("");
                   setOrderInstructions("");
-                  onClearMedicineOrderQueue?.();
+                  onClearMedicineOrderDraft?.();
                 }}
                 sx={{ color: darkMode ? "#94A3B8" : "#64748B" }}
               >
@@ -2192,7 +2192,7 @@ const EventSummaryPanel = ({
                   setShowAddOrder(false);
                   setOrderTitle("");
                   setOrderInstructions("");
-                  onClearMedicineOrderQueue?.();
+                  onClearMedicineOrderDraft?.();
                 }}
                 sx={{
                   textTransform: "none",
@@ -2242,30 +2242,77 @@ const EventSummaryPanel = ({
               overflow: "hidden",
             }}
           >
-            <Table size="small">
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow sx={{ background: darkMode ? "#1E293B" : "#F3F4F6" }}>
-                  {["No.", "Title", "Instructions", "Status", "Action"].map(
-                    (h) => (
-                      <TableCell
-                        key={h}
-                        sx={{
-                          color: darkMode ? "#F8FAFC" : "#111827",
-                          fontSize: "10px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          py: "8px",
-                        }}
-                      >
-                        {h}
-                      </TableCell>
-                    ),
-                  )}
+                  <TableCell
+                    align="center"
+                    sx={{
+                      color: darkMode ? "#F8FAFC" : "#111827",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      py: "8px",
+                      width: "50px",
+                    }}
+                  >
+                    No.
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      color: darkMode ? "#F8FAFC" : "#111827",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      py: "8px",
+                      width: "24%",
+                    }}
+                  >
+                    Title
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      color: darkMode ? "#F8FAFC" : "#111827",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      py: "8px",
+                    }}
+                  >
+                    Instructions
+                  </TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{
+                      color: darkMode ? "#F8FAFC" : "#111827",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      py: "8px",
+                      width: "96px",
+                    }}
+                  >
+                    Status
+                  </TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{
+                      color: darkMode ? "#F8FAFC" : "#111827",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      py: "8px",
+                      width: "68px",
+                    }}
+                  >
+                    Action
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {dedupedOrders.map((order, index) => {
                   const orderManageable = canManageOrder(order);
+
                   const titleModules = (order.title || "")
                     .split("\n")
                     .map((s) => s.trim())
@@ -2275,48 +2322,89 @@ const EventSummaryPanel = ({
                     .map((s) => s.trim())
                     .filter(Boolean);
 
-                  const pairedRows = [];
-                  if (
-                    titleModules.length === 0 &&
-                    instructionModules.length > 0
-                  ) {
-                    instructionModules.forEach((instr) =>
-                      pairedRows.push({
+                  const buildDisplayRows = () => {
+                    if (
+                      titleModules.length === 0 &&
+                      instructionModules.length > 0
+                    ) {
+                      return instructionModules.map((instr) => ({
                         title: "Unassigned Module",
-                        instruction: instr,
-                      }),
-                    );
-                  } else if (
-                    titleModules.length > 0 &&
-                    instructionModules.length === 0
-                  ) {
-                    titleModules.forEach((t) =>
-                      pairedRows.push({ title: t, instruction: "-" }),
-                    );
-                  } else {
-                    const maxLen = Math.max(
-                      titleModules.length,
-                      instructionModules.length,
-                    );
-                    for (let i = 0; i < maxLen; i++) {
-                      let title =
-                        i < titleModules.length
-                          ? titleModules[i]
-                          : titleModules[titleModules.length - 1] ||
-                            "Unassigned Module";
-                      let instruction =
-                        i < instructionModules.length
-                          ? instructionModules[i]
-                          : "-";
-                      const titlePrefix = title + ":";
-                      if (instruction.startsWith(titlePrefix)) {
-                        instruction = instruction
-                          .substring(titlePrefix.length)
-                          .trim();
-                      }
-                      pairedRows.push({ title, instruction });
+                        instructions: [instr],
+                      }));
                     }
-                  }
+                    if (
+                      titleModules.length > 0 &&
+                      instructionModules.length === 0
+                    ) {
+                      return titleModules.map((t) => ({
+                        title: t,
+                        instructions: [],
+                      }));
+                    }
+
+                    const headingOf = (line) => {
+                      const trimmed = (line || "").trim();
+                      if (!trimmed) return null;
+                      return (
+                        titleModules.find((t) => t.trim() === trimmed) || null
+                      );
+                    };
+
+                    const usesHeadings = instructionModules.some((line) =>
+                      headingOf(line),
+                    );
+
+                    const rows = [];
+                    if (usesHeadings) {
+                      let currentTitle = null;
+                      instructionModules.forEach((line) => {
+                        const heading = headingOf(line);
+                        if (heading) {
+                          currentTitle = heading;
+                          return;
+                        }
+                        rows.push({
+                          title:
+                            currentTitle ||
+                            titleModules[0] ||
+                            "Unassigned Module",
+                          instructions: [line],
+                        });
+                      });
+                    } else {
+                      const maxLen = Math.max(
+                        titleModules.length,
+                        instructionModules.length,
+                      );
+                      for (let i = 0; i < maxLen; i++) {
+                        const title =
+                          i < titleModules.length
+                            ? titleModules[i]
+                            : titleModules[titleModules.length - 1] ||
+                              "Unassigned Module";
+                        let instruction =
+                          i < instructionModules.length
+                            ? instructionModules[i]
+                            : "—";
+                        const titlePrefix = title + ":";
+                        if (instruction.startsWith(titlePrefix)) {
+                          instruction = instruction
+                            .substring(titlePrefix.length)
+                            .trim();
+                        }
+                        if (!instruction) continue;
+                        rows.push({ title, instructions: [instruction] });
+                      }
+                    }
+                    if (rows.length === 0) {
+                      titleModules.forEach((t) =>
+                        rows.push({ title: t, instructions: [] }),
+                      );
+                    }
+                    return rows;
+                  };
+
+                  const displayRows = buildDisplayRows();
 
                   return (
                     <TableRow
@@ -2327,13 +2415,16 @@ const EventSummaryPanel = ({
                           borderBottom: `1px solid ${
                             darkMode ? "#1F2937" : "#E5E7EB"
                           }`,
-                          verticalAlign: "top",
                           py: "10px",
+                          verticalAlign: "top",
                         },
                       }}
                     >
+                      {/* No. */}
                       <TableCell
+                        align="center"
                         sx={{
+                          verticalAlign: "top",
                           color: darkMode ? "#F8FAFC" : "#111827",
                           fontSize: "12px",
                           fontWeight: 700,
@@ -2342,70 +2433,170 @@ const EventSummaryPanel = ({
                       >
                         {index + 1}
                       </TableCell>
-                      <TableCell sx={{ minWidth: 120 }}>
-                        {pairedRows.map((p, i) => (
-                          <Typography
+
+                      {/* Title */}
+                      <TableCell
+                        sx={{
+                          width: "24%",
+                          minWidth: 120,
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {displayRows.map((r, i) => (
+                          <Box
                             key={i}
                             sx={{
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              color: darkMode ? "#F8FAFC" : "#111827",
-                              mb: i < pairedRows.length - 1 ? "8px" : 0,
+                              minHeight: 22,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              mb: i < displayRows.length - 1 ? "6px" : 0,
                             }}
                           >
-                            {p.title}
-                          </Typography>
-                        ))}
-                      </TableCell>
-                      <TableCell>
-                        {pairedRows.map((p, i) => (
-                          <Typography
-                            key={i}
-                            sx={{
-                              fontSize: "12px",
-                              color: darkMode ? "#CBD5E1" : "#374151",
-                              mb: i < pairedRows.length - 1 ? "8px" : 0,
-                            }}
-                          >
-                            {p.instruction}
-                          </Typography>
-                        ))}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={order.status}
-                          size="small"
-                          sx={{
-                            background:
-                              order.status === "Completed"
-                                ? "#DCFCE7"
-                                : "#FEF3C7",
-                            color:
-                              order.status === "Completed"
-                                ? "#166534"
-                                : "#92400E",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            height: 22,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {orderManageable && (
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setSelectedOrderForAction(order);
-                              setOrderActionOpen(true);
-                            }}
-                          >
-                            <MoreVertIcon
+                            <Typography
                               sx={{
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                lineHeight: 1.4,
                                 color: darkMode ? "#F8FAFC" : "#111827",
+                                wordBreak: "break-word",
                               }}
-                            />
-                          </IconButton>
+                            >
+                              {r.title}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </TableCell>
+
+                      {/* Instructions */}
+                      <TableCell
+                        sx={{
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {displayRows.map((r, ri) =>
+                          r.instructions.length ? (
+                            r.instructions.map((instr, ii) => (
+                              <Box
+                                key={`${ri}-${ii}`}
+                                sx={{
+                                  minHeight: 22,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  mb:
+                                    ri === displayRows.length - 1 &&
+                                    ii === r.instructions.length - 1
+                                      ? 0
+                                      : "6px",
+                                }}
+                              >
+                                <Typography
+                                  sx={{
+                                    fontSize: "12px",
+                                    lineHeight: 1.4,
+                                    color: darkMode ? "#CBD5E1" : "#374151",
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  {instr}
+                                </Typography>
+                              </Box>
+                            ))
+                          ) : (
+                            <Box
+                              key={`${ri}-empty`}
+                              sx={{ minHeight: 22, mb: "6px" }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontSize: "12px",
+                                  lineHeight: 1.4,
+                                  color: darkMode ? "#CBD5E1" : "#374151",
+                                }}
+                              >
+                                —
+                              </Typography>
+                            </Box>
+                          ),
                         )}
+                      </TableCell>
+
+                      {/* ⭐ STATUS — centered horizontally AND vertically ⭐ */}
+                      <TableCell
+                        align="center"
+                        sx={{
+                          width: "96px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          p: 0,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            py: "10px",
+                          }}
+                        >
+                          <Chip
+                            label={order.status}
+                            size="small"
+                            sx={{
+                              background:
+                                order.status === "Completed"
+                                  ? "#DCFCE7"
+                                  : "#FEF3C7",
+                              color:
+                                order.status === "Completed"
+                                  ? "#166534"
+                                  : "#92400E",
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              height: 22,
+                              minWidth: 70,
+                            }}
+                          />
+                        </Box>
+                      </TableCell>
+
+                      {/* ⭐ ACTION — centered horizontally AND vertically ⭐ */}
+                      <TableCell
+                        align="center"
+                        sx={{
+                          width: "68px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          p: 0,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            py: "10px",
+                          }}
+                        >
+                          {orderManageable ? (
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setSelectedOrderForAction(order);
+                                setOrderActionOpen(true);
+                              }}
+                            >
+                              <MoreVertIcon
+                                sx={{
+                                  color: darkMode ? "#F8FAFC" : "#111827",
+                                }}
+                              />
+                            </IconButton>
+                          ) : null}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
