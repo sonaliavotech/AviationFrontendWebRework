@@ -163,24 +163,7 @@ const MyAppointmentsIcon = ({ isActive }) => (
   </svg>
 );
 
-const PhysicianStatusDot = ({ status }) => {
-  const normalized = normalizePhysicianStatus(status);
-  const color = PHYSICIAN_STATUS_COLORS[normalized] || "#64748B";
-  const label = PHYSICIAN_STATUS_SHORT_LABELS[normalized] || "Offline";
-  return (
-    <Box
-      title={`Physician status: ${label}`}
-      sx={{
-        width: 9,
-        height: 9,
-        borderRadius: "50%",
-        backgroundColor: color,
-        display: "inline-block",
-        flexShrink: 0,
-      }}
-    />
-  );
-};
+// ❌ REMOVED: PhysicianStatusDot component (no longer needed)
 
 const INITIAL_TABLE_FILTERS = {
   roundingStatus: [],
@@ -2085,7 +2068,7 @@ export default function AllEvents() {
                       <TableCell
                         sx={{
                           width: "auto",
-                          minWidth: 100,
+                          minWidth: 160,
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -2362,9 +2345,7 @@ export default function AllEvents() {
                                       ...getPhysicianValueStyles(true),
                                     }}
                                   >
-                                    <PhysicianStatusDot
-                                      status={row.physicianLiveStatus}
-                                    />
+                                    {/* ❌ REMOVED: <PhysicianStatusDot status={row.physicianLiveStatus} /> */}
                                     {row.physician}
                                   </Box>
                                 ) : (
@@ -2474,7 +2455,7 @@ export default function AllEvents() {
                                 sx={{
                                   overflow: "visible !important",
                                   width: "100%",
-                                  minWidth: { xs: 280, sm: 320, md: 220 },
+                                  minWidth: { xs: 160, sm: 180, md: 160 },
                                 }}
                               >
                                 <Box
