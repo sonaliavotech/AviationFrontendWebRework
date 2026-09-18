@@ -13,6 +13,11 @@ class AviationChatSocket {
     this._joinWaiters = new Map();
     this._registeredCallbacks = new Set();
 
+    // Registry of user-subscribed socket events (on*/off*). Kept across socket
+    // (re)creation so consumers that subscribe before connect() (e.g. the
+    // app-root chat-notification hook) still receive events after login.
+    this._callbacks = new Map();
+
     // Last manual status (only "available" or "away")
     this._lastStatus = null;
 
@@ -148,6 +153,10 @@ class AviationChatSocket {
     this.socket.on("connect_error", (err) => {
       console.warn("AviationChatSocket connect_error:", err?.message);
     });
+
+    // Re-attach any event callbacks that were registered before the socket
+    // existed (e.g. the root chat-notification hook subscribing at App mount).
+    this._attachRegisteredCallbacks();
 
     return this.socket;
   }
@@ -344,9 +353,37 @@ class AviationChatSocket {
   }
 
   _bind(event, callback) {
-    if (!this.socket || !callback) return;
-    this.socket.off(event, callback);
-    this.socket.on(event, callback);
+    if (typeof callback !== "function") return;
+
+    // Track the subscription so it can be re-attached when a fresh socket is
+    // created AFTER this consumer subscribed (pre-connect subscriptions).
+    if (!this._callbacks.has(event)) this._callbacks.set(event, new Set());
+    this._callbacks.get(event).add(callback);
+
+    this.socket?.off(event, callback);
+    this.socket?.on(event, callback);
+  }
+
+  _unbind(event, callback) {
+    const set = this._callbacks.get(event);
+    if (set && callback) {
+      set.delete(callback);
+      if (set.size === 0) this._callbacks.delete(event);
+    }
+    this.socket?.off(event, callback);
+  }
+
+  // Re-attach every registered event callback onto a newly created socket so
+  // consumers that subscribed before connect() (root-level hooks) never miss
+  // events after login / reconnect.
+  _attachRegisteredCallbacks() {
+    if (!this.socket) return;
+    this._callbacks.forEach((callbacks, event) => {
+      callbacks.forEach((cb) => {
+        this.socket.off(event, cb);
+        this.socket.on(event, cb);
+      });
+    });
   }
 
   onNewMessage(cb) {
@@ -401,37 +438,37 @@ class AviationChatSocket {
   }
 
   offNewMessage(cb) {
-    this.socket?.off("aviation_new_message", cb);
+    this._unbind("aviation_new_message", cb);
   }
   offMessageSent(cb) {
-    this.socket?.off("aviation_message_sent", cb);
+    this._unbind("aviation_message_sent", cb);
   }
   offMessageDelivered(cb) {
-    this.socket?.off("aviation_message_delivered", cb);
+    this._unbind("aviation_message_delivered", cb);
   }
   offMessageSeen(cb) {
-    this.socket?.off("aviation_message_seen", cb);
+    this._unbind("aviation_message_seen", cb);
   }
   offMessageDeleted(cb) {
-    this.socket?.off("aviation_message_deleted", cb);
+    this._unbind("aviation_message_deleted", cb);
   }
   offMessageHidden(cb) {
-    this.socket?.off("aviation_message_hidden", cb);
+    this._unbind("aviation_message_hidden", cb);
   }
   offUserTyping(cb) {
-    this.socket?.off("aviation_user_typing", cb);
+    this._unbind("aviation_user_typing", cb);
   }
   offUserStopTyping(cb) {
-    this.socket?.off("aviation_user_stop_typing", cb);
+    this._unbind("aviation_user_stop_typing", cb);
   }
   offUserStatus(cb) {
-    this.socket?.off("aviation_user_status", cb);
+    this._unbind("aviation_user_status", cb);
   }
   offChatUnread(cb) {
-    this.socket?.off("aviation_chat_unread", cb);
+    this._unbind("aviation_chat_unread", cb);
   }
   offError(cb) {
-    this.socket?.off("aviation_error", cb);
+    this._unbind("aviation_error", cb);
   }
 
   isConnected() {

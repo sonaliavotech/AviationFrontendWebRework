@@ -1,6 +1,12 @@
 // EventSummaryPanel
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Box,
   Typography,
@@ -181,6 +187,12 @@ const EventSummaryPanel = ({
 
   const [message, setMessage] = useState("");
   const [editingNoteId, setEditingNoteId] = useState(null);
+
+  // ── Refs used to scroll to / focus the note textarea when "Edit" is
+  // clicked on a previous note, so the physician lands right in the
+  // input instead of having to scroll up and click into it manually. ──
+  const noteInputRef = useRef(null);
+  const noteSectionRef = useRef(null);
 
   const [showAddOrder, setShowAddOrder] = useState(false);
   const [orderTitle, setOrderTitle] = useState("");
@@ -976,6 +988,32 @@ const EventSummaryPanel = ({
       }
       setMessage(note.content || "");
       setEditingNoteId(note.id);
+
+      // Bring the note box into view and focus it so the physician can
+      // start typing immediately instead of having to scroll up manually.
+      requestAnimationFrame(() => {
+        noteSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        const focusTimer = setTimeout(
+          () => {
+            const el = noteInputRef.current;
+            if (el) {
+              el.focus();
+              // place the cursor at the end of the existing note text
+              const len = el.value?.length ?? 0;
+              try {
+                el.setSelectionRange(len, len);
+              } catch (_) {
+                // setSelectionRange can throw on some input types; safe to ignore
+              }
+            }
+          },
+          300,
+        );
+        return () => clearTimeout(focusTimer);
+      });
     },
     [canManageNote],
   );
@@ -1286,6 +1324,25 @@ const EventSummaryPanel = ({
     },
   };
 
+  // ⭐ Note textarea while editing an existing note: stays highlighted with
+  // a thicker blue border the whole time it's in edit mode (not just while
+  // focused), so it's obvious to the physician which note is being edited —
+  // same treatment as the native app's noteInput/noteSectionEditing style.
+  const noteInputSx = {
+    ...inputSx,
+    "& .MuiOutlinedInput-root": {
+      ...inputSx["& .MuiOutlinedInput-root"],
+      "& fieldset": {
+        borderColor: editingNoteId
+          ? "#0A5FFF"
+          : darkMode
+            ? "#334155"
+            : "#D1D5DB",
+        borderWidth: editingNoteId ? 2 : 1,
+      },
+    },
+  };
+
   if (loadingEvent && !eventData) {
     return (
       <LoadingSpinner
@@ -1335,6 +1392,16 @@ const EventSummaryPanel = ({
     mb: "10px",
     maxWidth: "75%",
     minWidth: "30%",
+  };
+
+  // ── ⭐ Recommended Medicines / Orders table column widths ──
+  // Matched 1:1 to the native (React Native) app's table columns so both
+  // platforms line up identically: No. / Title / Instructions / Status / Action
+  const ORDERS_TABLE_COL = {
+    no: "50px",
+    title: "110px",
+    status: "100px",
+    action: "50px",
   };
 
   return (
@@ -1766,7 +1833,20 @@ const EventSummaryPanel = ({
       })}
 
       {/* ───── DOCTOR NOTES ───── */}
-      <Box sx={cardSx}>
+      <Box
+        ref={noteSectionRef}
+        sx={{
+          ...cardSx,
+          ...(editingNoteId
+            ? {
+                border: "2px solid #0A5FFF",
+                // keep the box the same visual size even though the
+                // border got thicker, so nothing else in the layout shifts
+                p: "15px",
+              }
+            : {}),
+        }}
+      >
         <Box
           sx={{
             display: "flex",
@@ -1804,6 +1884,7 @@ const EventSummaryPanel = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={!physicianAssigned}
+            inputRef={noteInputRef}
             onFocus={() => {
               if (!physicianAssigned) {
                 showSnackbar(
@@ -1812,7 +1893,7 @@ const EventSummaryPanel = ({
                 );
               }
             }}
-            sx={inputSx}
+            sx={noteInputSx}
           />
         </Box>
 
@@ -1879,109 +1960,135 @@ const EventSummaryPanel = ({
               </Typography>
             )}
 
-            {visibleNotes.map((note) => {
-              const isCrew =
-                note.sender === "crew" ||
-                note.is_local ||
-                note.note_type === "crew_note" ||
-                note.note_type === "crew_reply";
-              const noteManageable = !isCrew && canManageNote(note);
-              const ts =
-                note.created_at ||
-                note.createdAt ||
-                note.date ||
-                note.timestamp;
-              let formattedDate = "";
-              if (ts) {
-                const d = new Date(ts);
-                if (!isNaN(d.getTime())) {
-                  formattedDate = d.toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  });
+            {/* ⭐ WhatsApp-style thread: flex column so alignSelf on each
+                bubble (physicianBubbleSx = flex-start / left,
+                crewBubbleSx = flex-end / right) actually works. Without
+                this flex wrapper, alignSelf has no effect and every
+                bubble just stacks on the left. */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+              }}
+            >
+              {visibleNotes.map((note) => {
+                const isCrew =
+                  note.sender === "crew" ||
+                  note.is_local ||
+                  note.note_type === "crew_note" ||
+                  note.note_type === "crew_reply";
+                const noteManageable = !isCrew && canManageNote(note);
+                const ts =
+                  note.created_at ||
+                  note.createdAt ||
+                  note.date ||
+                  note.timestamp;
+                let formattedDate = "";
+                if (ts) {
+                  const d = new Date(ts);
+                  if (!isNaN(d.getTime())) {
+                    formattedDate = d.toLocaleString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                  }
                 }
-              }
-              return (
-                <Box
-                  key={String(note.id)}
-                  sx={isCrew ? crewBubbleSx : physicianBubbleSx}
-                >
+                return (
                   <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: "6px",
-                    }}
+                    key={String(note.id)}
+                    sx={isCrew ? crewBubbleSx : physicianBubbleSx}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: "10px",
-                        color: darkMode ? "#94A3B8" : "#64748B",
-                      }}
-                    >
-                      {formattedDate}
-                      {note.is_critical && (
-                        <span style={{ color: "#DC2626", fontWeight: 700 }}>
-                          {" "}
-                          • Critical
-                        </span>
-                      )}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontSize: "13px",
-                      lineHeight: 1.5,
-                      color: darkMode ? "#F8FAFC" : "#111827",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {note.content}
-                  </Typography>
-                  {noteManageable && (
                     <Box
                       sx={{
                         display: "flex",
-                        justifyContent: "flex-end",
-                        gap: "6px",
-                        mt: "8px",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "10px",
+                        mb: "6px",
                       }}
                     >
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditNote(note)}
+                      <Typography
                         sx={{
-                          background: "rgba(16, 185, 129, 0.08)",
-                          borderRadius: "6px",
-                          p: "4px",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          letterSpacing: 0.3,
+                          textTransform: "uppercase",
+                          color: isCrew ? "#F59E0B" : "#0A5FFF",
                         }}
                       >
-                        <EditIcon sx={{ fontSize: 16, color: "#10B981" }} />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteNote(note)}
+                        {isCrew ? "Crew" : "Physician"}
+                      </Typography>
+                      <Typography
                         sx={{
-                          background: "rgba(239, 68, 68, 0.08)",
-                          borderRadius: "6px",
-                          p: "4px",
+                          fontSize: "10px",
+                          color: darkMode ? "#94A3B8" : "#64748B",
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        <DeleteOutlineOutlinedIcon
-                          sx={{ fontSize: 16, color: "#EF4444" }}
-                        />
-                      </IconButton>
+                        {formattedDate}
+                        {note.is_critical && (
+                          <span style={{ color: "#DC2626", fontWeight: 700 }}>
+                            {" "}
+                            • Critical
+                          </span>
+                        )}
+                      </Typography>
                     </Box>
-                  )}
-                </Box>
-              );
-            })}
+                    <Typography
+                      sx={{
+                        fontSize: "13px",
+                        lineHeight: 1.5,
+                        color: darkMode ? "#F8FAFC" : "#111827",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {note.content}
+                    </Typography>
+                    {noteManageable && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: "6px",
+                          mt: "8px",
+                        }}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditNote(note)}
+                          sx={{
+                            background: "rgba(16, 185, 129, 0.08)",
+                            borderRadius: "6px",
+                            p: "4px",
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: 16, color: "#10B981" }} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteNote(note)}
+                          sx={{
+                            background: "rgba(239, 68, 68, 0.08)",
+                            borderRadius: "6px",
+                            p: "4px",
+                          }}
+                        >
+                          <DeleteOutlineOutlinedIcon
+                            sx={{ fontSize: 16, color: "#EF4444" }}
+                          />
+                        </IconButton>
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         )}
       </Box>
@@ -2244,7 +2351,13 @@ const EventSummaryPanel = ({
           >
             <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
-                <TableRow sx={{ background: darkMode ? "#1E293B" : "#F3F4F6" }}>
+                <TableRow
+                  sx={{
+                    background: darkMode ? "#1E293B" : "#F3F4F6",
+                    "& th": { height: "36px" },
+                  }}
+                >
+                  {/* No. — matches native tableColNo (width: 50) */}
                   <TableCell
                     align="center"
                     sx={{
@@ -2253,11 +2366,13 @@ const EventSummaryPanel = ({
                       fontWeight: 700,
                       textTransform: "uppercase",
                       py: "8px",
-                      width: "50px",
+                      width: ORDERS_TABLE_COL.no,
                     }}
                   >
                     No.
                   </TableCell>
+
+                  {/* Title — matches native tableColTitle (width: 110) */}
                   <TableCell
                     sx={{
                       color: darkMode ? "#F8FAFC" : "#111827",
@@ -2265,11 +2380,13 @@ const EventSummaryPanel = ({
                       fontWeight: 700,
                       textTransform: "uppercase",
                       py: "8px",
-                      width: "24%",
+                      width: ORDERS_TABLE_COL.title,
                     }}
                   >
                     Title
                   </TableCell>
+
+                  {/* Instructions — matches native tableColInstructions (flex: 1) */}
                   <TableCell
                     sx={{
                       color: darkMode ? "#F8FAFC" : "#111827",
@@ -2277,10 +2394,13 @@ const EventSummaryPanel = ({
                       fontWeight: 700,
                       textTransform: "uppercase",
                       py: "8px",
+                      minWidth: "60px",
                     }}
                   >
                     Instructions
                   </TableCell>
+
+                  {/* Status — matches native tableColStatus (width: 100) */}
                   <TableCell
                     align="center"
                     sx={{
@@ -2289,11 +2409,13 @@ const EventSummaryPanel = ({
                       fontWeight: 700,
                       textTransform: "uppercase",
                       py: "8px",
-                      width: "96px",
+                      width: ORDERS_TABLE_COL.status,
                     }}
                   >
                     Status
                   </TableCell>
+
+                  {/* Action — matches native tableColAction (width: 50) */}
                   <TableCell
                     align="center"
                     sx={{
@@ -2302,7 +2424,7 @@ const EventSummaryPanel = ({
                       fontWeight: 700,
                       textTransform: "uppercase",
                       py: "8px",
-                      width: "68px",
+                      width: ORDERS_TABLE_COL.action,
                     }}
                   >
                     Action
@@ -2411,34 +2533,41 @@ const EventSummaryPanel = ({
                       key={String(order.id)}
                       sx={{
                         background: darkMode ? "#111827" : "#FFFFFF",
+                        // NOTE: no blanket verticalAlign here on purpose —
+                        // it used to force every <td> to "top" and, because
+                        // that rule's selector is more specific than the
+                        // per-cell sx below, it silently overrode the
+                        // "middle" alignment set on the No./Status/Action
+                        // cells. Each TableCell now sets its own
+                        // verticalAlign (Title/Instructions = "top",
+                        // No./Status/Action = "middle") and that now wins.
                         "& td": {
                           borderBottom: `1px solid ${
                             darkMode ? "#1F2937" : "#E5E7EB"
                           }`,
-                          py: "10px",
-                          verticalAlign: "top",
+                          py: "8px",
+                          px: "10px",
                         },
                       }}
                     >
-                      {/* No. */}
+                      {/* No. — matches native tableColNo */}
                       <TableCell
                         align="center"
                         sx={{
-                          verticalAlign: "top",
+                          verticalAlign: "middle",
                           color: darkMode ? "#F8FAFC" : "#111827",
-                          fontSize: "12px",
+                          fontSize: "10px",
                           fontWeight: 700,
-                          width: "50px",
+                          width: ORDERS_TABLE_COL.no,
                         }}
                       >
                         {index + 1}
                       </TableCell>
 
-                      {/* Title */}
+                      {/* Title — matches native tableColTitle */}
                       <TableCell
                         sx={{
-                          width: "24%",
-                          minWidth: 120,
+                          width: ORDERS_TABLE_COL.title,
                           verticalAlign: "top",
                         }}
                       >
@@ -2446,16 +2575,18 @@ const EventSummaryPanel = ({
                           <Box
                             key={i}
                             sx={{
-                              minHeight: 22,
+                              minHeight: 40,
                               display: "flex",
-                              alignItems: "flex-start",
-                              mb: i < displayRows.length - 1 ? "6px" : 0,
+                              alignItems: "center",
+                              justifyContent: "flex-start",
+                              mb: i < displayRows.length - 1 ? "10px" : 0,
                             }}
                           >
                             <Typography
+                              noWrap={false}
                               sx={{
                                 fontSize: "12px",
-                                fontWeight: 600,
+                                fontWeight: 500,
                                 lineHeight: 1.4,
                                 color: darkMode ? "#F8FAFC" : "#111827",
                                 wordBreak: "break-word",
@@ -2467,9 +2598,11 @@ const EventSummaryPanel = ({
                         ))}
                       </TableCell>
 
-                      {/* Instructions */}
+                      {/* Instructions — matches native tableColInstructions */}
                       <TableCell
                         sx={{
+                          minWidth: "60px",
+                          maxWidth: "300px",
                           verticalAlign: "top",
                         }}
                       >
@@ -2479,14 +2612,15 @@ const EventSummaryPanel = ({
                               <Box
                                 key={`${ri}-${ii}`}
                                 sx={{
-                                  minHeight: 22,
+                                  minHeight: 40,
                                   display: "flex",
-                                  alignItems: "flex-start",
+                                  alignItems: "center",
+                                  justifyContent: "flex-start",
                                   mb:
                                     ri === displayRows.length - 1 &&
                                     ii === r.instructions.length - 1
                                       ? 0
-                                      : "6px",
+                                      : "10px",
                                 }}
                               >
                                 <Typography
@@ -2504,7 +2638,12 @@ const EventSummaryPanel = ({
                           ) : (
                             <Box
                               key={`${ri}-empty`}
-                              sx={{ minHeight: 22, mb: "6px" }}
+                              sx={{
+                                minHeight: 40,
+                                display: "flex",
+                                alignItems: "center",
+                                mb: "10px",
+                              }}
                             >
                               <Typography
                                 sx={{
@@ -2520,11 +2659,11 @@ const EventSummaryPanel = ({
                         )}
                       </TableCell>
 
-                      {/* ⭐ STATUS — centered horizontally AND vertically ⭐ */}
+                      {/* Status — matches native tableColStatus, centered horizontally & vertically */}
                       <TableCell
                         align="center"
                         sx={{
-                          width: "96px",
+                          width: ORDERS_TABLE_COL.status,
                           textAlign: "center",
                           verticalAlign: "middle",
                           p: 0,
@@ -2552,20 +2691,20 @@ const EventSummaryPanel = ({
                                 order.status === "Completed"
                                   ? "#166534"
                                   : "#92400E",
-                              fontSize: "10px",
+                              fontSize: "9px",
                               fontWeight: 700,
                               height: 22,
-                              minWidth: 70,
+                              minWidth: 48,
                             }}
                           />
                         </Box>
                       </TableCell>
 
-                      {/* ⭐ ACTION — centered horizontally AND vertically ⭐ */}
+                      {/* Action — matches native tableColAction, centered horizontally & vertically */}
                       <TableCell
                         align="center"
                         sx={{
-                          width: "68px",
+                          width: ORDERS_TABLE_COL.action,
                           textAlign: "center",
                           verticalAlign: "middle",
                           p: 0,
@@ -2592,6 +2731,7 @@ const EventSummaryPanel = ({
                               <MoreVertIcon
                                 sx={{
                                   color: darkMode ? "#F8FAFC" : "#111827",
+                                  fontSize: 20,
                                 }}
                               />
                             </IconButton>

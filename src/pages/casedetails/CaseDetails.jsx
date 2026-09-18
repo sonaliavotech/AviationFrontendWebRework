@@ -529,7 +529,9 @@ export const CaseDetails = () => {
 
   // UI state
   const [showTrends, setShowTrends] = useState(false);
-  const [chatVisible, setChatVisible] = useState(false);
+  const [chatVisible, setChatVisible] = useState(
+    !!location.state?.openChatOnLoad,
+  );
   const [chatMessage, setChatMessage] = useState("");
   const [pendingMedicines, setPendingMedicines] = useState([]);
   // One medicine-order draft holding ALL picked medicines from ANY kit
@@ -628,6 +630,25 @@ export const CaseDetails = () => {
     setMedicineOrderDraft(null);
     setPendingMedicines([]);
   }, [incidentId]);
+
+  // Opens the chat panel when a chat-notification banner is clicked while this
+  // case is already on screen (banner-to-chat deep link without a remount).
+  useEffect(() => {
+    const handleOpenCaseChat = (e) => {
+      const detail = e?.detail;
+      if (!detail) return;
+      if (
+        detail.incidentId &&
+        String(detail.incidentId) !== String(incidentId)
+      )
+        return;
+      setChatVisible(true);
+      if (isMobile) setMobilePanel("summary");
+    };
+    window.addEventListener("aviation:open-case-chat", handleOpenCaseChat);
+    return () =>
+      window.removeEventListener("aviation:open-case-chat", handleOpenCaseChat);
+  }, [incidentId, isMobile]);
 
   // Handle call error
   useEffect(() => {

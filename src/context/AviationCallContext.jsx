@@ -67,6 +67,10 @@ export function AviationCallProvider({ children }) {
     if (!userId) return;
     const inActiveCall =
       isInCall || callStatus === "ringing" || callStatus === "connected";
+    // Flag for other UIs (e.g. chat notification sound) to avoid clashing with the call ringtone.
+    if (typeof window !== "undefined") {
+      window.__AVIATION_CALL_ACTIVE = !!inActiveCall;
+    }
     if (inActiveCall) {
       PhysicianStatusService.markBusyOnCallAccept();
     } else {
