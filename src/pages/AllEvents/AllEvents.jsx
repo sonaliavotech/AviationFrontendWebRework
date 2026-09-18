@@ -279,6 +279,10 @@ export default function AllEvents() {
   const [activityLogPatient, setActivityLogPatient] = useState(null);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
 
+  // ✅ Persistent "seen" overrides keyed by row id.
+  // Lives outside `rows` so the 30s polling refresh cannot wipe it.
+  const [seenOverrides, setSeenOverrides] = useState({});
+
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
   };
@@ -396,10 +400,6 @@ export default function AllEvents() {
     ];
     if (uniqueIds.length === 0) return result;
 
-    // Authoritative presence comes from the physicians directory
-    // (GET /api/physicians), which mirrors the DB columns status / is_online
-    // that the socket-driven status emits update. The chat live lookup is only
-    // a fallback for physicians missing from that directory.
     const physicianDirectory = new Map();
     try {
       const list = await getPhysicians();
@@ -457,16 +457,22 @@ export default function AllEvents() {
       const liveStatuses = await fetchAssignedPhysicianLiveStatuses(baseRows);
 
       setRows((prevRows) => {
-        const prevById = new Map(
-          prevRows.map((r) => [String(r.id), r.physicianLiveStatus]),
-        );
-        return baseRows.map((row) => ({
-          ...row,
-          physicianLiveStatus:
-            liveStatuses.get(String(row.physicianId || "")) ??
-            prevById.get(String(row.id)) ??
-            null,
-        }));
+        const prevById = new Map(prevRows.map((r) => [String(r.id), r]));
+        return baseRows.map((row) => {
+          const prev = prevById.get(String(row.id));
+          return {
+            ...row,
+            physicianLiveStatus:
+              liveStatuses.get(String(row.physicianId || "")) ??
+              prev?.physicianLiveStatus ??
+              null,
+            visitStatus: prev?.visitStatus ?? row.visitStatus,
+            seenByRole: prev?.seenByRole ?? row.seenByRole,
+            is_sidelist: prev?.is_sidelist ?? row.is_sidelist,
+            is_marked: prev?.is_marked ?? row.is_marked,
+            sidelist_reason: prev?.sidelist_reason ?? row.sidelist_reason,
+          };
+        });
       });
     } catch (error) {
       console.error("FETCH INCIDENTS ERROR =>", error);
@@ -497,10 +503,6 @@ export default function AllEvents() {
   const [user, setUser] = useState(readStoredUser);
 
   // ---------- PROVIDER STATUS STATE ----------
-  // PhysicianStatusService now owns the live status (mirrors native
-  // EventsScreenTable.subscribe). Initial render defaults to Available so the
-  // UI never flashes Offline on reload; the service applies Available
-  // optimistically on start() and emits to the DB via the socket queue.
   const [providerLiveStatus, setProviderLiveStatus] = useState(
     PHYSICIAN_STATUS.AVAILABLE,
   );
@@ -513,8 +515,6 @@ export default function AllEvents() {
 
     const userId = String(session.id);
 
-    // Subscribe BEFORE start() so the first notification reflects the
-    // optimistic "available" applied inside start().
     const unsubscribe = PhysicianStatusService.subscribe((state) => {
       setProviderLiveStatus(state.status);
     });
@@ -593,14 +593,10 @@ export default function AllEvents() {
     if (newStatus === PHYSICIAN_STATUS.BUSY) return;
     setStatusMenuAnchor(null);
 
-    // Apply through the service (single source of truth). It returns false
-    // when a manual change is blocked (e.g. an active call is in progress).
     const accepted = PhysicianStatusService.setStatus(newStatus, {
       source: "manual",
     });
 
-    // Always reflect the service's authoritative state in the UI immediately
-    // so the chip can never drift from reality (no reload needed).
     setProviderLiveStatus(PhysicianStatusService.getState().status);
 
     showSnackbar(
@@ -800,6 +796,30 @@ export default function AllEvents() {
     setFilterModalOpen(false);
   };
 
+  // ✅ isRowSeen checks the persistent override map first.
+  const isRowSeen = (row) => {
+    if (!row) return false;
+    const key = String(row.id);
+    if (Object.prototype.hasOwnProperty.call(seenOverrides, key)) {
+      return seenOverrides[key] === true;
+    }
+    const status = String(row?.visitStatus || "")
+      .trim()
+      .toLowerCase();
+    const normalizedRole = normalizeSeenRole(
+      row?.seenByRole || row?.seen_by_role,
+    );
+    if (normalizedRole) return true;
+    return [
+      "seen",
+      "completed",
+      "in progress",
+      "in-progress",
+      "done",
+      "visited",
+    ].includes(status);
+  };
+
   const rowMatchesTableFilters = (row, filters) => {
     const roundingSelections = filters.roundingStatus || [];
 
@@ -859,7 +879,9 @@ export default function AllEvents() {
     return searchFilteredRows.filter((row) =>
       rowMatchesTableFilters(row, appliedTableFilters),
     );
-  }, [searchFilteredRows, appliedTableFilters]);
+    // seenOverrides in deps so filter (Seen/Unseen) re-evaluates on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchFilteredRows, appliedTableFilters, seenOverrides]);
 
   const sortedRows = React.useMemo(() => {
     const comparator = (a, b) => {
@@ -927,7 +949,10 @@ export default function AllEvents() {
   const dashboardStats = React.useMemo(() => {
     const scopedRows = rows;
     const eventsToday = scopedRows.length;
+
+    // ✅ Uses override-aware isRowSeen so the count persists across polls
     const patientsToSee = scopedRows.filter((row) => !isRowSeen(row)).length;
+
     const patientsToAssign = scopedRows.filter(
       (row) => !String(row.providerId || "").trim(),
     ).length;
@@ -952,7 +977,9 @@ export default function AllEvents() {
       criticalCases,
       openCases,
     };
-  }, [rows]);
+    // seenOverrides in deps so stat card re-computes on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, seenOverrides]);
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
@@ -991,7 +1018,6 @@ export default function AllEvents() {
   const [openSelectReasonModal, setOpenSelectReasonModal] = useState(false);
   const [assignType, setAssignType] = useState("doctor");
 
-  // Fetch physicians + their live status whenever the modal opens
   useEffect(() => {
     if (!openAssignModal || assignType !== "doctor") return;
 
@@ -1021,7 +1047,6 @@ export default function AllEvents() {
         if (cancelled) return;
         setProviderOptions(enriched);
 
-        // Preselect first assignable physician (mirrors native)
         const firstAssignable = enriched.find((d) =>
           isAssignable(d.status, d.isActive !== false),
         );
@@ -1047,7 +1072,6 @@ export default function AllEvents() {
     };
   }, [openAssignModal, assignType]);
 
-  // Match currently assigned physician to the row when modal opens
   useEffect(() => {
     if (
       !openAssignModal ||
@@ -1078,7 +1102,6 @@ export default function AllEvents() {
     }
   }, [openAssignModal, assignType, selectedRow, providerOptions]);
 
-  // Search + sort: assignable first, then by name
   const filteredAssignProviders = useMemo(() => {
     const q = assignSearch.trim().toLowerCase();
     const filtered = q
@@ -1158,6 +1181,9 @@ export default function AllEvents() {
       String(value || "").trim(),
     );
 
+  // ✅ Eye colors:
+  //  - Not seen  → transparent background, default icon color (plain icon like the app)
+  //  - Seen      → green pill + green icon
   const EYE_COLORS = {
     PHYSICIAN: {
       icon: "rgba(0, 153, 81, 1)",
@@ -1175,9 +1201,9 @@ export default function AllEvents() {
       hoverBg: "rgba(0, 153, 81, 0.75)",
     },
     DEFAULT: {
-      icon: "rgba(255, 107, 107, 1)",
-      bg: "rgba(255, 229, 229, 1)",
-      hoverBg: "rgba(255, 229, 229, 0.75)",
+      icon: "transparent",
+      bg: "transparent",
+      hoverBg: "rgba(0, 0, 0, 0.04)",
     },
   };
 
@@ -1236,51 +1262,48 @@ export default function AllEvents() {
     return "";
   };
 
-  function isRowSeen(row) {
-    const status = String(row?.visitStatus || "")
-      .trim()
-      .toLowerCase();
-    const normalizedRole = normalizeSeenRole(
-      row?.seenByRole || row?.seen_by_role,
-    );
-    if (normalizedRole) return true;
-    return [
-      "seen",
-      "completed",
-      "in progress",
-      "in-progress",
-      "done",
-      "visited",
-    ].includes(status);
-  }
-
   const getEyeColorsForRow = (row) => {
+    // Not seen → plain icon (no background) — matches the app
     if (!isRowSeen(row)) return EYE_COLORS.DEFAULT;
+
     const physicianRole = normalizeSeenRole(row?.providerRole);
     const residentRole = normalizeSeenRole(row?.residentRole);
     const seenRole = normalizeSeenRole(row?.seenByRole || row?.seen_by_role);
-    if (physicianRole === "DOCTOR" || physicianRole === "PROVIDER")
+
+    // Resident / APP → Orange
+    if (residentRole === "RESIDENT" || seenRole === "RESIDENT")
+      return EYE_COLORS.RESIDENT;
+
+    // Doctor → green-on-green
+    if (
+      physicianRole === "DOCTOR" ||
+      physicianRole === "PROVIDER" ||
+      seenRole === "DOCTOR" ||
+      seenRole === "PROVIDER"
+    )
       return EYE_COLORS.DOCTOR;
-    if (physicianRole === "PHYSICIAN") return EYE_COLORS.PHYSICIAN;
-    if (residentRole === "RESIDENT") return EYE_COLORS.RESIDENT;
-    if (seenRole === "DOCTOR" || seenRole === "PROVIDER")
-      return EYE_COLORS.DOCTOR;
-    if (seenRole === "PHYSICIAN") return EYE_COLORS.PHYSICIAN;
-    if (seenRole === "RESIDENT") return EYE_COLORS.RESIDENT;
-    return EYE_COLORS.DEFAULT;
+
+    // ✅ Seen but no explicit role → GREEN (PHYSICIAN)
+    return EYE_COLORS.PHYSICIAN;
   };
 
-  const handleToggleSeen = async (row) => {
+  // ✅ Toggle writes the persistent override map AND mirrors into rows.
+  const handleToggleSeen = (row) => {
+    const key = String(row.id);
     const nextSeen = !isRowSeen(row);
+
+    setSeenOverrides((prev) => ({ ...prev, [key]: nextSeen }));
+
     setRows((prev) =>
-      prev.map((r) => {
-        if ((r.encounterId || r.id) !== (row.encounterId || row.id)) return r;
-        return {
-          ...r,
-          visitStatus: nextSeen ? "Seen" : "Not Seen",
-          seenByRole: nextSeen ? getCurrentUserSeenRole() : "",
-        };
-      }),
+      prev.map((r) =>
+        String(r.id) === key
+          ? {
+              ...r,
+              visitStatus: nextSeen ? "Seen" : "Not Seen",
+              seenByRole: nextSeen ? getCurrentUserSeenRole() : "",
+            }
+          : r,
+      ),
     );
   };
 
@@ -2062,7 +2085,7 @@ export default function AllEvents() {
                       <TableCell
                         sx={{
                           width: "auto",
-                          minWidth: 280,
+                          minWidth: 100,
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -2476,6 +2499,21 @@ export default function AllEvents() {
                                         ...actionIconButtonSx,
                                         borderRadius: "50%",
                                         marginRight: "15px",
+                                        // Plain when not seen (transparent),
+                                        // green pill after click — matches the app
+                                        backgroundColor:
+                                          getEyeColorsForRow(row).bg,
+                                        "&:hover": {
+                                          backgroundColor:
+                                            getEyeColorsForRow(row).hoverBg,
+                                        },
+                                        "& svg path": {
+                                          fill:
+                                            getEyeColorsForRow(row).icon ===
+                                            "transparent"
+                                              ? "currentColor"
+                                              : getEyeColorsForRow(row).icon,
+                                        },
                                       }}
                                     >
                                       <VisibilityIcon />
@@ -2957,9 +2995,7 @@ export default function AllEvents() {
           </DialogContent>
         </Dialog>
 
-        {/* ============================================================ */}
-        {/* ASSIGN TO PROVIDER — mirrors iOS app                         */}
-        {/* ============================================================ */}
+        {/* ASSIGN TO PROVIDER */}
         <Dialog
           open={openAssignModal}
           onClose={() => setOpenAssignModal(false)}
@@ -3018,7 +3054,6 @@ export default function AllEvents() {
                 maxHeight: "65vh",
               }}
             >
-              {/* Search */}
               <Box
                 sx={{
                   display: "flex",
@@ -3049,7 +3084,6 @@ export default function AllEvents() {
                 />
               </Box>
 
-              {/* List */}
               <Box
                 sx={{
                   overflowY: "auto",
@@ -3167,7 +3201,6 @@ export default function AllEvents() {
                             </Typography>
                           )}
 
-                          {/* Status dot + label */}
                           <Box
                             sx={{
                               display: "flex",
@@ -3219,7 +3252,6 @@ export default function AllEvents() {
                 )}
               </Box>
 
-              {/* Assign button */}
               <Button
                 fullWidth
                 variant="contained"
