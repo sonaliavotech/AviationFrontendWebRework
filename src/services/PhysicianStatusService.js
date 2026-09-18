@@ -247,8 +247,8 @@ class PhysicianStatusService {
     AviationChatSocket.setInCall(false);
 
     const restore =
-      this.lastManualStatus === PHYSICIAN_STATUS.AWAY
-        ? PHYSICIAN_STATUS.AWAY
+      this.lastManualStatus === PHYSICIAN_STATUS.APPEAR_AWAY
+        ? PHYSICIAN_STATUS.APPEAR_AWAY
         : PHYSICIAN_STATUS.AVAILABLE;
 
     if (this.state.status === restore) return;
@@ -302,8 +302,10 @@ class PhysicianStatusService {
     if (AviationChatSocket.isInCall()) return;
     if (this.state.status !== PHYSICIAN_STATUS.AVAILABLE) return;
 
-    this._applyStatus(PHYSICIAN_STATUS.AWAY, { isActive: true });
-    this._emitStatus(PHYSICIAN_STATUS.AWAY);
+    // Emit `appear_away` (not `away`) so the backend actually persists the
+    // status — matches the native app's disconnect behavior.
+    this._applyStatus(PHYSICIAN_STATUS.APPEAR_AWAY, { isActive: true });
+    this._emitStatus(PHYSICIAN_STATUS.APPEAR_AWAY);
   }
 
   // Fires on initial login AND every (re)connect. Re-emit + re-read from DB.

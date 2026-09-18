@@ -36,10 +36,15 @@ export const PHYSICIAN_STATUS_SHORT_LABELS = {
 /**
  * Only two statuses can be picked manually.
  * Busy / On Call / In Call are set automatically by the call lifecycle.
+ *
+ * IMPORTANT (matches the native app): the value SENT to the server / stored in
+ * the DB for manual "Away" is `appear_away` — the backend does not recognize
+ * the plain `away` string. `PHYSICIAN_STATUS.AWAY` is kept only as a display
+ * alias; it must never be emitted on the socket.
  */
 export const MANUAL_PHYSICIAN_STATUSES = [
   PHYSICIAN_STATUS.AVAILABLE,
-  PHYSICIAN_STATUS.AWAY,
+  PHYSICIAN_STATUS.APPEAR_AWAY,
 ];
 
 // Statuses considered "assignable"
@@ -59,8 +64,10 @@ export function normalizePhysicianStatus(raw) {
   if (s === "available" || s === "online") return PHYSICIAN_STATUS.AVAILABLE;
   if (s === "busy") return PHYSICIAN_STATUS.BUSY;
   if (s === "on_call" || s === "oncall") return PHYSICIAN_STATUS.ON_CALL;
+  // Canonicalize every "away" variant to `appear_away` — the ONLY value the
+  // backend / DB accepts (mirrors the native app's normalizePhysicianStatus).
   if (s === "away" || s === "appear_away" || s === "appearaway")
-    return PHYSICIAN_STATUS.AWAY;
+    return PHYSICIAN_STATUS.APPEAR_AWAY;
   if (s === "do_not_disturb" || s === "dnd")
     return PHYSICIAN_STATUS.DO_NOT_DISTURB;
   if (s === "offline" || s === "off_line") return PHYSICIAN_STATUS.OFFLINE;
