@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -16,6 +16,7 @@ import AviationChatSocket from "../services/AviationChatSocket";
 import AviationCallSocket from "../services/AviationCallSocket";
 import PhysicianStatusService from "../services/PhysicianStatusService";
 import NotificationPanel from "../pages/AllEvents/Alert";
+import PhysicianDirectory from "./PhysicianDirectory";
 
 const ITEM_SIZE = 64;
 const ITEM_GAP = "12px";
@@ -26,6 +27,7 @@ const Sidebar = ({ onAiClick }) => {
   const currentPath = location.pathname || "/";
   const { darkMode, toggleTheme, tokens } = useThemeMode();
   const [openAlert, setOpenAlert] = useState(false);
+  const [openDirectory, setOpenDirectory] = useState(false);
 
   const mainItems = [
     {
@@ -45,6 +47,12 @@ const Sidebar = ({ onAiClick }) => {
       Icon: AppAssets.TiaAiIcon,
       isAi: true,
       hoverable: false,
+    },
+    {
+      label: "Directory",
+      Icon: AppAssets.DirectoryIcon,
+      isDirectory: true,
+      hoverable: true,
     },
     {
       label: "FAQs",
@@ -67,7 +75,7 @@ const Sidebar = ({ onAiClick }) => {
     showLabel: true,
   };
 
-  const handleNavigate = (path, isAi, isAlert) => {
+  const handleNavigate = (path, isAi, isAlert, isDirectory) => {
     if (isAi) {
       onAiClick?.();
       return;
@@ -75,6 +83,11 @@ const Sidebar = ({ onAiClick }) => {
 
     if (isAlert) {
       setOpenAlert(true);
+      return;
+    }
+
+    if (isDirectory) {
+      setOpenDirectory(true);
       return;
     }
 
@@ -182,13 +195,20 @@ const Sidebar = ({ onAiClick }) => {
 
     return (
       <TooltipWrap title={item.label}>
-        <Box
-          sx={itemSx(active, item.hoverable)}
-          onClick={() => handleNavigate(item.path, false, item.isAlert)}
-        >
-          <Icon />
-          <Typography sx={labelSx(active)}>{item.label}</Typography>
-        </Box>
+          <Box
+            sx={itemSx(active, item.hoverable)}
+            onClick={() =>
+              handleNavigate(
+                item.path,
+                item.isAi,
+                item.isAlert,
+                item.isDirectory,
+              )
+            }
+          >
+            <Icon />
+            <Typography sx={labelSx(active)}>{item.label}</Typography>
+          </Box>
       </TooltipWrap>
     );
   };
@@ -343,6 +363,11 @@ const Sidebar = ({ onAiClick }) => {
           onClose={() => setOpenAlert(false)}
         />
       )}
+
+      <PhysicianDirectory
+        open={openDirectory}
+        onClose={() => setOpenDirectory(false)}
+      />
     </>
   );
 };
