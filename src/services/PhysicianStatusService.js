@@ -123,7 +123,7 @@ class PhysicianStatusService {
   // GET /api/physicians returns the directory with DB columns
   // status / is_online / physician_is_active. We find our own row and apply
   // its status — same source the Assign modal uses, so both stay consistent.
-  async refreshFromServer() {
+  async refreshFromServer({ skipStaleBusy = false } = {}) {
     if (!this.state.userId || this._refreshing) return;
     this._refreshing = true;
     try {
@@ -146,6 +146,15 @@ class PhysicianStatusService {
       // Don't clobber an in-call "busy" with a stale DB row.
       if (AviationChatSocket.isInCall()) {
         this._applyStatus(PHYSICIAN_STATUS.BUSY, { isActive: true });
+        return;
+      }
+
+      // "busy" is ONLY ever written by the call lifecycle. The instant after a
+      // call ends the DB row can still contain the previous "busy" because the
+      // server may not have processed our just-emitted "available" yet. In that
+      // window the freshly restored status must win, otherwise the chip flips
+      // straight back to busy. Used only by markAvailableOnCallEnd().
+      if (skipStaleBusy && normalized === PHYSICIAN_STATUS.BUSY) {
         return;
       }
 
@@ -257,8 +266,10 @@ class PhysicianStatusService {
     this._emitStatus(restore);
 
     // Pull DB status again right after a call ends — matches what the
-    // Assign modal would see on its next open.
-    this.refreshFromServer();
+    // Assign modal would see on its next open. skipStaleBusy keeps the
+    // optimistic restore (available / away) from being clobbered by the old
+    // "busy" row if the server hasn't processed the emit above yet.
+    this.refreshFromServer({ skipStaleBusy: true });
   }
 
   markOfflineOnLogout() {
