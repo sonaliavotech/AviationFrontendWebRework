@@ -23,6 +23,11 @@ const TELEMEDICINE_TOOLBAR_BUTTONS = [
   "hangup",
 ];
 
+// Delay before we allow a fresh join after disposing a broken session.
+// Gives the old session's "participant left" time to reach the signaling
+// server so the crew side doesn't briefly see the web user twice.
+const RECONNECT_DELAY_MS = 800;
+
 const getParticipantId = (participant) =>
   participant?.id ||
   participant?.participantId ||
@@ -94,6 +99,11 @@ const JitsiCall = ({
   const windowCloseHandledRef = useRef(false);
   const joinedRoomRef = useRef(null);
 
+  // NEW: guards against duplicate/overlapping reconnect attempts, which is
+  // what was causing the web user to briefly appear twice in the room.
+  const reconnectingRef = useRef(false);
+  const reconnectTimeoutRef = useRef(null);
+
   const [user, setUser] = useState(null);
   const [isJitsiHidden, setIsJitsiHidden] = useState(false);
   const [jitsiRestartKey, setJitsiRestartKey] = useState(0);
@@ -108,13 +118,50 @@ const JitsiCall = ({
 
     if (jitsiApiRef.current) {
       try {
+        // executeCommand("hangup") first so the signaling server gets an
+        // explicit "leave" event before we tear the api object down, rather
+        // than relying purely on the socket disconnect to imply departure.
+        jitsiApiRef.current.executeCommand?.("hangup");
+      } catch (e) {
+        console.log("Error sending hangup command to Jitsi:", e);
+      }
+
+      try {
         jitsiApiRef.current.dispose();
       } catch (e) {
         console.log("Error disposing Jitsi:", e);
       }
       jitsiApiRef.current = null;
     }
+
+    joinedRoomRef.current = null;
   }, []);
+
+  // NEW: single funnel for every reconnect trigger. Both the errorOccurred
+  // and log listeners used to call disposeJitsi()+setJitsiRestartKey
+  // independently and immediately, which could fire twice for the same
+  // underlying event and rejoin before the old session had fully left the
+  // room — producing a duplicate participant tile on the other side.
+  const safeReconnect = useCallback(
+    (reason) => {
+      if (reconnectingRef.current) {
+        return;
+      }
+      reconnectingRef.current = true;
+      console.log("Reconnecting Jitsi due to:", reason);
+
+      disposeJitsi();
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectingRef.current = false;
+        setJitsiRestartKey((key) => key + 1);
+      }, RECONNECT_DELAY_MS);
+    },
+    [disposeJitsi],
+  );
 
   const endCallOnce = useCallback(() => {
     if (callEndHandledRef.current) {
@@ -163,18 +210,31 @@ const JitsiCall = ({
       return;
     }
 
+    // NEW: cancellation flag so an in-flight script load never calls
+    // initializeJitsi() after this effect instance has been torn down
+    // (e.g. dev-mode double-invoke, fast prop changes, or a reconnect
+    // racing a real unmount). Previously the early `return;` on the
+    // script-loading branch meant React never got a cleanup function for
+    // that run, so a late-arriving script.onload could still spin up and
+    // join a second live session into the room.
+    let cancelled = false;
+
+    const tryLoadScript = (url, onSuccess, onFail) => {
+      const script = document.createElement("script");
+      script.src = url;
+      script.async = true;
+      script.onload = () => {
+        if (!cancelled) onSuccess();
+      };
+      script.onerror = () => {
+        if (!cancelled) onFail();
+      };
+      document.head.appendChild(script);
+    };
+
     if (!window.JitsiMeetExternalAPI) {
       const primaryUrl = `https://${normalizedDomain}/external_api.js`;
       console.log("Loading Jitsi script from:", primaryUrl);
-
-      const tryLoadScript = (url, onSuccess, onFail) => {
-        const script = document.createElement("script");
-        script.src = url;
-        script.async = true;
-        script.onload = onSuccess;
-        script.onerror = onFail;
-        document.head.appendChild(script);
-      };
 
       tryLoadScript(
         primaryUrl,
@@ -193,12 +253,17 @@ const JitsiCall = ({
           );
         },
       );
-      return;
+
+      return () => {
+        cancelled = true;
+      };
     }
 
-    initializeJitsi(normalizedDomain);
+    return initializeJitsi(normalizedDomain);
 
     function initializeJitsi(activeDomain) {
+      if (cancelled) return undefined;
+
       const finalDomain = activeDomain || normalizedDomain;
       console.log("Initializing Jitsi with domain:", finalDomain);
 
@@ -210,7 +275,14 @@ const JitsiCall = ({
         parentNode: jitsiContainerRef.current,
         ...(jwt ? { jwt } : {}),
         configOverwrite: {
-          apiLogLevels: ["log", "error", "warn", "info", "debug"],
+          // Dropped "debug" and "info" — those levels emit large volumes of
+          // routine internal Jitsi log lines, some of which happened to
+          // contain substrings like "connection.error" or
+          // "CONFERENCE_FAILED" as part of benign, non-fatal internals
+          // (stats reporting, ICE candidate churn, etc.). Those false
+          // positives were triggering unnecessary reconnects, and each
+          // reconnect risked a brief double-join in the room.
+          apiLogLevels: ["log", "error", "warn"],
           resolution: 360,
           enableLayerSuspension: true,
           disableSimulcast: false,
@@ -294,6 +366,7 @@ const JitsiCall = ({
       api.addEventListener("videoConferenceJoined", (participant) => {
         localParticipantIdRef.current = getParticipantId(participant);
         setIsConnecting(false);
+        reconnectingRef.current = false;
         ensureLocalVideoEnabled(api);
         setTimeout(() => {
           if (jitsiApiRef.current === api) {
@@ -337,18 +410,19 @@ const JitsiCall = ({
           return;
         }
 
-        if (
+        // Only reconnect on genuine, explicitly-named connection failures —
+        // never on a loose substring match against error.message, which
+        // could match unrelated, non-fatal text and trigger a false
+        // reconnect (and a transient duplicate participant).
+        const isFatalConnectionError =
           error?.name === "connection.error" ||
           error?.name === "conference.connectionError" ||
           error?.error === "connection.error" ||
-          error?.error === "conference.connectionError" ||
-          String(error?.message || "")
-            .toLowerCase()
-            .includes("connection")
-        ) {
-          console.log("Connection error, attempting reconnect...");
-          disposeJitsi();
-          setJitsiRestartKey((key) => key + 1);
+          error?.error === "conference.connectionError";
+
+        if (isFatalConnectionError) {
+          console.log("Fatal connection error, attempting reconnect...");
+          safeReconnect(error);
         }
       });
 
@@ -365,16 +439,21 @@ const JitsiCall = ({
           return;
         }
 
-        if (
-          logText.includes("UnhandledError") ||
-          logText.includes("UnhandledRejection") ||
-          logText.includes("CONFERENCE_FAILED") ||
-          logText.includes("connection.error") ||
-          logText.includes("conference.connectionError")
-        ) {
-          console.log("Error detected, attempting reconnect...");
-          disposeJitsi();
-          setJitsiRestartKey((key) => key + 1);
+        // Narrowed: only react to an explicit, structured fatal failure
+        // code, not a bare substring match on any log line. The old check
+        // matched routine debug/info noise (now excluded via apiLogLevels
+        // above too), which was the main source of spurious reconnects
+        // that could leave a stale session briefly still in the room while
+        // a new one joined — the duplicate-user symptom.
+        const isFatalFailure =
+          logText.includes('"CONFERENCE_FAILED"') &&
+          (logText.includes('"NETWORK_ERROR"') ||
+            logText.includes('"connection.error"') ||
+            logText.includes('"conference.connectionError"'));
+
+        if (isFatalFailure) {
+          console.log("Fatal conference failure detected, attempting reconnect...");
+          safeReconnect(event);
         }
       });
 
@@ -385,6 +464,11 @@ const JitsiCall = ({
         clearTimeout(allowScreenCaptureTimer);
         clearTimeout(clearSelectionTimer);
         if (jitsiApiRef.current === api) {
+          try {
+            jitsiApiRef.current.executeCommand?.("hangup");
+          } catch (e) {
+            console.log("Error sending hangup command to Jitsi:", e);
+          }
           try {
             jitsiApiRef.current.dispose();
           } catch (e) {
@@ -402,8 +486,18 @@ const JitsiCall = ({
     disposeJitsi,
     endCallOnce,
     closeWindowOnce,
+    safeReconnect,
     jitsiRestartKey,
   ]);
+
+  // Clean up any pending reconnect timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Box
