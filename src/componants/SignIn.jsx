@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import rightImg from "../assets/signInBgimg.png";
-import logo2 from "../assets/logo4.png";
+import logo2 from "../assets/logo4.svg";
 import logo5 from "../assets/logo5.png";
 import { TitleRoundIcon } from "../assets/Assets";
 import { useNavigate } from "react-router-dom";
@@ -428,7 +428,7 @@ const SignInForm = () => {
                 src={isDark ? logo2 : logo5}
                 alt="Logo"
                 sx={{
-                  width: { xs: 100, sm: 120, md: 140 },
+                  width: { xs: 150, sm: 200, md: 220 },
                   height: "auto",
                 }}
               />

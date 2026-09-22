@@ -4,12 +4,14 @@ import callSocket from "../services/AviationCallSocket";
 
 const normalizeCallId = (value) => String(value || "").trim();
 
-// NEW: belt-and-braces dedup. If the backend ever emits an overlapping
-// "participant joined" event for the same user (e.g. a race between the
-// original join and a reconnect join before the old session's "left" event
-// has propagated — see the JitsiCall reconnect fix), this makes sure the
-// UI never ends up rendering the same participant twice regardless of
-// what the server sends.
+// How long the CALLER waits for an answer before the call auto-ends. The
+// callee side already has its own 30s auto-reject in IncomingCallScreen —
+// this is the missing counterpart for the person who placed the call.
+const NO_ANSWER_TIMEOUT_MS = 30000;
+
+// Belt-and-braces dedup: if the backend ever emits an overlapping
+// "participant joined" event for the same user, this makes sure the UI
+// never ends up rendering the same participant twice.
 const dedupeParticipants = (list = []) => {
   const byId = new Map();
   list.forEach((p) => {
@@ -17,7 +19,6 @@ const dedupeParticipants = (list = []) => {
       p.userId ?? p.id ?? p.participantId ?? p.jid ?? p.displayName ?? "",
     );
     if (!key) return;
-    // Last write wins, so the most recent info for that participant is kept.
     byId.set(key, p);
   });
   return Array.from(byId.values());
@@ -137,10 +138,6 @@ export const useAviationCall = (userId) => {
     };
     callSocket.on("aviation_call_ended", endedHandler);
 
-    // NEW: dedupe on every participant-list-affecting event. This is the
-    // defensive layer — even if a stale Jitsi session briefly re-announces
-    // itself (the race the JitsiCall fix addresses), the UI list itself
-    // can never contain the same participant id twice.
     const participantJoinedHandler = (data) => {
       setActiveCall((prev) => {
         if (!prev) return prev;
@@ -350,6 +347,68 @@ export const useAviationCall = (userId) => {
     },
     [userId, activeCall, incomingCall],
   );
+
+  // Always call the LATEST hangupCall from the timeout below without
+  // putting the (frequently-changing) hangupCall function itself in that
+  // effect's dependency array — otherwise every minor activeCall update
+  // (e.g. a participants-list tick) would reset the 30s countdown.
+  const hangupCallRef = useRef(hangupCall);
+  useEffect(() => {
+    hangupCallRef.current = hangupCall;
+  }, [hangupCall]);
+
+  // ── Auto-end an outbound call nobody answered within 30 seconds ────
+  // Only applies to the CALLER (the device that placed the call, i.e.
+  // activeCall.fromUserId === userId). The callee's own 30s ring timeout
+  // already lives in IncomingCallScreen and auto-rejects on their side;
+  // this is the caller-side counterpart so a web user who calls someone
+  // that never answers doesn't ring forever.
+  useEffect(() => {
+    const isOutboundRinging =
+      callStatus === "ringing" &&
+      activeCall &&
+      String(activeCall.fromUserId) === String(userId);
+
+    if (!isOutboundRinging) {
+      return undefined;
+    }
+
+    const callId = activeCall.callId;
+    const roomId = activeCall.roomId;
+
+    const timeoutId = setTimeout(() => {
+      // Re-check we're still ringing on the SAME call before acting —
+      // guards against a stale timer firing after the call already
+      // connected/ended/changed identity.
+      const current = activeCallRef.current;
+      if (
+        !current ||
+        normalizeCallId(current.callId) !== normalizeCallId(callId)
+      ) {
+        return;
+      }
+
+      console.log(
+        `No answer within ${NO_ANSWER_TIMEOUT_MS / 1000}s — auto-ending outbound call`,
+        callId,
+      );
+
+      hangupCallRef.current?.({
+        callId,
+        roomId,
+        endedBy: userId,
+        reason: "no-answer",
+      });
+    }, NO_ANSWER_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    callStatus,
+    activeCall?.callId,
+    activeCall?.fromUserId,
+    activeCall?.roomId,
+    userId,
+  ]);
 
   const getParticipants = useCallback((callId) => {
     return callSocket.getCallParticipants(callId);
