@@ -1750,107 +1750,106 @@ export default function AllEvents() {
             ))}
           </Box>
 
-          {/* Row 2: Search + Filter + Export */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              mb: 2,
-              width: "100%",
-              flexWrap: "wrap",
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                backgroundColor: theme.searchBg,
-                borderRadius: "10px",
-                border: `1px solid ${theme.searchBorder}`,
-                px: 1.5,
-                height: "40px",
-                gap: 1,
-                flex: { xs: "1 1 100%", lg: "0 0 350px" },
-                width: { xs: "100%", lg: "350px" },
-                minWidth: 0,
-                maxWidth: { xs: "100%", lg: "350px" },
-                transition: "background 0.3s, border 0.3s",
-              }}
-            >
-              <SearchIcon sx={{ color: theme.textSecondary, fontSize: 20 }} />
-              <InputBase
-                placeholder="Search flight route, patients by name or MRN..."
-                value={patientSearch}
-                onChange={(e) => setPatientSearch(e.target.value)}
-                sx={{
-                  width: "100%",
-                  fontSize: "14px",
-                  color: theme.textPrimary,
-                  "& input::placeholder": {
-                    color: theme.textSecondary,
-                    opacity: 1,
-                  },
-                }}
-              />
-            </Box>
+{/* Row 2: Search + Filter + Export */}
+<Box
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    gap: 1.5,
+    mb: 2,
+    width: "100%",
+    flexWrap: { xs: "wrap", lg: "nowrap" },
+  }}
+>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      backgroundColor: theme.searchBg,
+      borderRadius: "10px",
+      border: `1px solid ${theme.searchBorder}`,
+      px: 1.5,
+      height: "40px",
+      gap: 1,
+      flex: { xs: "1 1 100%", lg: "1 1 0" },
+      width: "100%",
+      minWidth: 0,
+      transition: "background 0.3s, border 0.3s",
+    }}
+  >
+    <SearchIcon sx={{ color: theme.textSecondary, fontSize: 20 }} />
+    <InputBase
+      placeholder="Search flight route, patients by name or MRN..."
+      value={patientSearch}
+      onChange={(e) => setPatientSearch(e.target.value)}
+      sx={{
+        width: "100%",
+        fontSize: "14px",
+        color: theme.textPrimary,
+        "& input::placeholder": {
+          color: theme.textSecondary,
+          opacity: 1,
+        },
+      }}
+    />
+  </Box>
 
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                ml: { xs: 0, lg: "auto" },
-                width: { xs: "100%", lg: "auto" },
-                justifyContent: { xs: "flex-start", lg: "flex-end" },
-                flexWrap: "wrap",
-              }}
-            >
-              <Button
-                onClick={handleOpenFilterModal}
-                startIcon={<FilterSortIcon />}
-                sx={{
-                  borderRadius: "10px",
-                  textTransform: "none",
-                  border: `1.5px solid ${theme.btnOutlineBorder}`,
-                  color: theme.btnOutlineText,
-                  backgroundColor: theme.inputBg,
-                  px: 2,
-                  height: "40px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  flexShrink: 0,
-                  transition: "background 0.3s, border 0.3s, color 0.3s",
-                  "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
-                  ...toolbarIconButtonSx,
-                }}
-              >
-                Filter
-              </Button>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1.5,
+      flexShrink: 0,
+      width: { xs: "100%", lg: "auto" },
+      justifyContent: { xs: "flex-start", lg: "flex-end" },
+      flexWrap: "nowrap",
+    }}
+  >
+    <Button
+      onClick={handleOpenFilterModal}
+      startIcon={<FilterSortIcon />}
+      sx={{
+        borderRadius: "10px",
+        textTransform: "none",
+        border: `1.5px solid ${theme.btnOutlineBorder}`,
+        color: theme.btnOutlineText,
+        backgroundColor: theme.inputBg,
+        px: 2,
+        height: "40px",
+        fontWeight: 600,
+        fontSize: "14px",
+        flexShrink: 0,
+        transition: "background 0.3s, border 0.3s, color 0.3s",
+        "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
+        ...toolbarIconButtonSx,
+      }}
+    >
+      Filter
+    </Button>
 
-              <Button
-                onClick={handleExportPatients}
-                startIcon={<ExportIcon />}
-                sx={{
-                  borderRadius: "10px",
-                  textTransform: "none",
-                  border: `1.5px solid ${theme.btnOutlineBorder}`,
-                  color: theme.btnOutlineText,
-                  backgroundColor: theme.inputBg,
-                  px: 2,
-                  height: "40px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  flexShrink: 0,
-                  transition: "background 0.3s, border 0.3s, color 0.3s",
-                  "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
-                  ...toolbarIconButtonSx,
-                }}
-              >
-                Export
-              </Button>
-            </Box>
-          </Box>
+    <Button
+      onClick={handleExportPatients}
+      startIcon={<ExportIcon />}
+      sx={{
+        borderRadius: "10px",
+        textTransform: "none",
+        border: `1.5px solid ${theme.btnOutlineBorder}`,
+        color: theme.btnOutlineText,
+        backgroundColor: theme.inputBg,
+        px: 2,
+        height: "40px",
+        fontWeight: 600,
+        fontSize: "14px",
+        flexShrink: 0,
+        transition: "background 0.3s, border 0.3s, color 0.3s",
+        "&:hover": { backgroundColor: "rgba(1,93,255,0.05)" },
+        ...toolbarIconButtonSx,
+      }}
+    >
+      Export
+    </Button>
+  </Box>
+</Box>
 
           {/* Table container */}
           <Box
