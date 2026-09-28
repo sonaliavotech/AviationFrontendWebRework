@@ -16,7 +16,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import rightImg from "../assets/signInBgimg.png";
+import rightImg from "../assets/doctor-p.png";
 import logo2 from "../assets/logo4.svg";
 import logo5 from "../assets/logo5.png";
 import { TitleRoundIcon } from "../assets/Assets";
@@ -681,9 +681,13 @@ const SignInForm = () => {
                     "&:hover": { backgroundColor: "#0145cc" },
                   }}
                 >
-                    {signInLoading ? (
-                      <LoadingSpinner size="sm" variant="inline" color="#FFFFFF" />
-                    ) : (
+                  {signInLoading ? (
+                    <LoadingSpinner
+                      size="sm"
+                      variant="inline"
+                      color="#FFFFFF"
+                    />
+                  ) : (
                     "Login"
                   )}
                 </Button>
