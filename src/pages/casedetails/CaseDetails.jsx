@@ -1,4 +1,10 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -41,6 +47,20 @@ import EventSummaryPanel from "./EventSummaryPanel";
 import MedicineModules from "./MedicineModules";
 import CaseDetailsChatPanel from "./CaseDetailsChatPanel";
 import { parseAiSummary } from "./caseDetailUtils";
+
+// Assignment / session helpers - decide whether the physician that is logged in
+// is the one this case is assigned to, and track unread crew messages.
+import { getPhysicianSession } from "../../utils/physicianSession";
+import {
+  resolveAssignedPhysicianId,
+  isAssignedPhysicianId,
+} from "../../utils/assignedPhysician";
+import { normalizeChatPayload } from "../../utils/chatMessageMapper";
+import AviationChatSocket from "../../services/AviationChatSocket";
+import {
+  getAviationMessages,
+  getCaseChatRoom,
+} from "../../services/aviationChatApi";
 
 // Import Call Context
 import { useAviationCallContext } from "../../context/AviationCallContext";
@@ -559,14 +579,30 @@ export const CaseDetails = () => {
   const isNarrow = useMediaQuery(muiTheme.breakpoints.down("xl"));
 
   // Compute derived values
-  const physicianAssigned = useMemo(
-    () =>
-      location.state?.physicianAssigned ||
-      !!eventData?.physicianId ||
-      !!eventData?.physician_id ||
-      !!tablePatient?.physicianId ||
-      tablePatient?.physicianStatus === "named",
-    [location.state?.physicianAssigned, eventData, tablePatient],
+  //
+  // The assigned physician can reach this page through the deep-link state,
+  // through a patients-list row, or only through the case detail payload, so we
+  // resolve the assignee from every source and compare it against the
+  // physician who is actually logged in. Chat and Call are actions of the
+  // assigned physician: everyone still sees the buttons, but they only light
+  // up and become clickable for that one physician.
+  const sessionUserId = getPhysicianSession()?.id;
+  const currentUserId =
+    sessionUserId != null && String(sessionUserId).trim()
+      ? String(sessionUserId)
+      : physicianUser?.id != null && String(physicianUser.id).trim()
+        ? String(physicianUser.id)
+        : null;
+
+  const assignedPhysicianId =
+    resolveAssignedPhysicianId(eventData) ||
+    resolveAssignedPhysicianId(tablePatient) ||
+    resolveAssignedPhysicianId(location.state);
+
+  // The current user is the physician this case is assigned to.
+  const isAssignedPhysician = isAssignedPhysicianId(
+    assignedPhysicianId,
+    currentUserId,
   );
 
   const crewUserId = useMemo(
@@ -599,7 +635,11 @@ export const CaseDetails = () => {
     [location.state?.roomId, tablePatient, eventData],
   );
 
-  const chatEnabled = physicianAssigned && !!crewUserId;
+  // Chat and the video call belong to the assigned physician, and both need a
+  // crew member on the other end of the conversation. When either condition is
+  // missing the buttons stay in the top bar, just dimmed and not clickable.
+  const chatEnabled = isAssignedPhysician && !!crewUserId;
+  const callEnabled = isAssignedPhysician && !!crewUserId;
 
   // Fetch case data
   useEffect(() => {
@@ -650,6 +690,145 @@ export const CaseDetails = () => {
       window.removeEventListener("aviation:open-case-chat", handleOpenCaseChat);
   }, [incidentId, isMobile]);
 
+  // ── Unread chat messages ─────────────────────────────────────────────────
+  // Crew can message the case at any time, so the Chat button carries a red
+  // dot and a small dot is pinned to the bottom-left of the screen while
+  // there are messages the physician has not opened yet. The count is seeded
+  // from the server, kept live through the socket, and cleared the moment the
+  // chat panel is opened.
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const chatVisibleRef = useRef(chatVisible);
+  chatVisibleRef.current = chatVisible;
+  // Local "read watermark": anything created before this moment has already
+  // been opened by the physician, so it must never raise the red dots again
+  // even when the server still reports it as unseen.
+  const lastChatSeenAtRef = useRef(0);
+
+  const openChatPanel = useCallback(() => {
+    if (isMobile) setMobilePanel("summary");
+    setChatVisible(true);
+  }, [isMobile]);
+
+  const handleChatOpened = useCallback(() => {
+    setUnreadChatCount(0);
+    lastChatSeenAtRef.current = Date.now();
+  }, []);
+
+  // Resolve the case chat room and seed the unread count from the server.
+  useEffect(() => {
+    if (!incidentId || !isAssignedPhysician || !currentUserId) {
+      setChatRoomId(null);
+      setUnreadChatCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setUnreadChatCount(0);
+
+    const loadUnread = async () => {
+      try {
+        const room = await getCaseChatRoom(incidentId, currentUserId).catch(
+          () => null,
+        );
+        if (cancelled) return;
+
+        const roomId = prefetchedRoomId || room?.id;
+        if (!roomId) {
+          setChatRoomId(null);
+          return;
+        }
+
+        setChatRoomId(String(roomId));
+
+        const history = await getAviationMessages(
+          String(roomId),
+          1,
+          50,
+          currentUserId,
+        );
+        if (cancelled || chatVisibleRef.current) return;
+
+        const unread = (Array.isArray(history) ? history : []).filter((msg) => {
+          const normalized = normalizeChatPayload(msg);
+          if (!normalized?.id) return false;
+          if (String(normalized.sender_id) === String(currentUserId))
+            return false;
+          // A message counts as unread only while the server still marks it
+          // unseen AND it arrived after the last time this physician opened
+          // the chat panel. Seen messages never light the dots up again.
+          if (normalized.is_seen) return false;
+          const created = normalized.created_at
+            ? Date.parse(normalized.created_at)
+            : NaN;
+          if (
+            !Number.isNaN(created) &&
+            created <= lastChatSeenAtRef.current
+          ) {
+            return false;
+          }
+          return true;
+        }).length;
+
+        setUnreadChatCount(unread);
+      } catch (err) {
+        console.warn("UNREAD CHAT SYNC ERROR =>", err);
+        if (!cancelled) setUnreadChatCount(0);
+      }
+    };
+
+    loadUnread();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [incidentId, isAssignedPhysician, currentUserId, prefetchedRoomId]);
+
+  // Keep the count live: any crew message that lands while the panel is closed
+  // marks the case as having unread messages again.
+  useEffect(() => {
+    if (!chatRoomId || !isAssignedPhysician) return undefined;
+
+    const handleIncomingMessage = (data) => {
+      if (!data) return;
+      const normalized = normalizeChatPayload(data);
+      const incomingRoom =
+        normalized?.room_id ?? data?.roomId ?? data?.room_id ?? null;
+      if (incomingRoom == null) return;
+      if (String(incomingRoom) !== String(chatRoomId)) return;
+      if (
+        normalized?.sender_id != null &&
+        currentUserId != null &&
+        String(normalized.sender_id) === String(currentUserId)
+      ) {
+        return;
+      }
+      if (chatVisibleRef.current) {
+        // The panel is open, so this message is already on screen and being
+        // read - push the read watermark past it so it never counts as
+        // unread on a later sync, instead of raising the dots.
+        lastChatSeenAtRef.current = Date.now();
+        return;
+      }
+      setUnreadChatCount((count) => count + 1);
+    };
+
+    AviationChatSocket.onNewMessage(handleIncomingMessage);
+    return () => AviationChatSocket.offNewMessage(handleIncomingMessage);
+  }, [chatRoomId, isAssignedPhysician, currentUserId]);
+
+  // Opening the panel means the physician is reading the thread - the red dots
+  // go away immediately, the panel itself marks the messages as seen, and the
+  // read watermark stops those messages from counting as unread again.
+  useEffect(() => {
+    if (chatVisible) {
+      lastChatSeenAtRef.current = Date.now();
+      setUnreadChatCount(0);
+    }
+  }, [chatVisible]);
+
+  const hasUnreadChat = isAssignedPhysician && unreadChatCount > 0;
+
   // Handle call error
   useEffect(() => {
     if (callError) {
@@ -659,8 +838,10 @@ export const CaseDetails = () => {
 
   // Handle Join Now click
   const handleJoinNow = useCallback(() => {
-    if (!physicianAssigned) {
-      console.warn("Physician not assigned");
+    if (!isAssignedPhysician) {
+      console.warn(
+        "Only the physician assigned to this case can start a call.",
+      );
       return;
     }
 
@@ -698,7 +879,7 @@ export const CaseDetails = () => {
       console.log("📞 Call initiated:", callData);
     }
   }, [
-    physicianAssigned,
+    isAssignedPhysician,
     crewUserId,
     incidentId,
     prefetchedRoomId,
@@ -835,10 +1016,7 @@ export const CaseDetails = () => {
         />
       </Box>
     ) : (
-      <MedicineModules
-        darkMode={darkMode}
-        onAddMedicine={queueMedicineOrder}
-      />
+      <MedicineModules darkMode={darkMode} onAddMedicine={queueMedicineOrder} />
     );
 
   const renderVitalsPanel = () => (
@@ -942,6 +1120,7 @@ export const CaseDetails = () => {
   const chatPanelProps = {
     visible: chatVisible,
     onClose: () => setChatVisible(false),
+    onChatOpened: handleChatOpened,
     chatTitle: crewDisplayName,
     incidentId,
     crewUserId,
@@ -1035,8 +1214,39 @@ export const CaseDetails = () => {
               width: { xs: "100%", md: "auto" },
             }}
           >
+            {/* Chat and the video call are always in the top bar so nothing
+                jumps around, but only the physician this case is assigned to
+                gets them at full brightness and clickable. For every other
+                physician they stay visible with reduced opacity and disabled. */}
             <Button
-              startIcon={<ChatIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
+              startIcon={
+                <Box
+                  sx={{
+                    position: "relative",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ChatIcon sx={{ fontSize: { xs: 16, md: 18 } }} />
+                  {hasUnreadChat && (
+                    <Box
+                      aria-label="Unread messages"
+                      sx={{
+                        position: "absolute",
+                        top: -3,
+                        right: -5,
+                        minWidth: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "#E53935",
+                        border: `1.5px solid ${darkMode ? "#0F172A" : "#0A5FFF"}`,
+                        boxShadow: "0 0 0 2px rgba(229,57,53,0.35)",
+                      }}
+                    />
+                  )}
+                </Box>
+              }
               disabled={!chatEnabled}
               onClick={() => {
                 if (!chatEnabled) return;
@@ -1056,11 +1266,16 @@ export const CaseDetails = () => {
                 fontSize: { xs: "11px", md: "12px" },
                 fontWeight: 600,
                 textTransform: "none",
-                opacity: chatEnabled ? 1 : 0.6,
+                opacity: chatEnabled ? 1 : 0.55,
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
                 "&:hover": {
                   background: chatEnabled ? "#0047cc" : undefined,
+                },
+                "&.Mui-disabled": {
+                  background: darkMode ? "#1E293B" : "#E2E8F0",
+                  color: C.textMuted,
+                  opacity: 0.55,
                 },
               }}
             >
@@ -1071,28 +1286,31 @@ export const CaseDetails = () => {
               startIcon={
                 <VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />
               }
-              disabled={!physicianAssigned || !crewUserId}
+              disabled={!callEnabled}
               onClick={handleJoinNow}
               sx={{
-                background:
-                  physicianAssigned && crewUserId
-                    ? "#0A5FFF"
-                    : darkMode
-                      ? "#1E293B"
-                      : "#E2E8F0",
-                color: physicianAssigned && crewUserId ? "#fff" : C.textMuted,
+                background: callEnabled
+                  ? "#0A5FFF"
+                  : darkMode
+                    ? "#1E293B"
+                    : "#E2E8F0",
+                color: callEnabled ? "#fff" : C.textMuted,
                 borderRadius: "8px",
                 px: { xs: "10px", sm: "14px" },
                 height: { xs: 36, md: 38 },
                 fontSize: { xs: "11px", md: "12px" },
                 fontWeight: 600,
                 textTransform: "none",
-                opacity: physicianAssigned && crewUserId ? 1 : 0.6,
+                opacity: callEnabled ? 1 : 0.55,
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
                 "&:hover": {
-                  background:
-                    physicianAssigned && crewUserId ? "#0047cc" : undefined,
+                  background: callEnabled ? "#0047cc" : undefined,
+                },
+                "&.Mui-disabled": {
+                  background: darkMode ? "#1E293B" : "#E2E8F0",
+                  color: C.textMuted,
+                  opacity: 0.55,
                 },
               }}
             >
@@ -1241,7 +1459,7 @@ export const CaseDetails = () => {
         </Box>
       </Box>
 
-      {/* Right — vitals sidebar */}
+      {/* Right - vitals sidebar */}
       <Box
         sx={{
           width: vitalsPanelWidth,
@@ -1354,7 +1572,7 @@ export const CaseDetails = () => {
               <Typography
                 sx={{ fontSize: "12px", fontWeight: 700, color: C.dangerText }}
               >
-                SpO₂ &lt; 90% - Critical threshold
+                SpO₂ {"<"} 90% - Critical threshold
               </Typography>
               <Typography
                 sx={{
@@ -1392,6 +1610,43 @@ export const CaseDetails = () => {
             Set Reminder
           </Button>
         </Box>
+      )}
+
+      {/* Small unread marker pinned to the bottom-left of the screen: it shows
+          that the crew sent a message this physician has not opened yet and
+          opens the chat on click. It disappears once the chat is open. */}
+      {hasUnreadChat && !chatVisible && (
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label="Open chat, new unread messages"
+          title="New unread messages"
+          onClick={openChatPanel}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openChatPanel();
+            }
+          }}
+          sx={{
+            position: "fixed",
+            left: { xs: 12, sm: 18 },
+            bottom: { xs: 18, sm: 26 },
+            zIndex: 1400,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: "#E53935",
+            border: `2px solid ${darkMode ? "#0B1525" : "#fff"}`,
+            boxShadow: "0 2px 10px rgba(229,57,53,0.55)",
+            cursor: "pointer",
+            animation: "caseUnreadPulse 1.6s ease-in-out infinite",
+            "@keyframes caseUnreadPulse": {
+              "0%, 100%": { transform: "scale(1)", opacity: 1 },
+              "50%": { transform: "scale(1.3)", opacity: 0.7 },
+            },
+          }}
+        />
       )}
 
       {loadingEvent && (

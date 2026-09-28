@@ -290,6 +290,7 @@ function ChatMessageBubble({
 const CaseDetailsChatPanel = ({
   visible,
   onClose,
+  onChatOpened,
   chatTitle = "Julia (Crew)",
   incidentId,
   crewUserId,
@@ -315,6 +316,7 @@ const CaseDetailsChatPanel = ({
     prefetchedRoomId,
     message,
     setMessage,
+    onChatOpened,
   });
 
   const handleVoiceRecorded = useCallback(
