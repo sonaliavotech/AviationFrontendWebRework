@@ -21,14 +21,14 @@
 // ═══════════════════════════════════════════════════════════════════
 
 // const API_ROOT = "http://localhost:5200/api";
-// const CALLING_HOST = "http://localhost:5100";
+const CALLING_HOST = "http://localhost:5100";
 
 // ═══════════════════════════════════════════════════════════════════
 // PRODUCTION
 // ═══════════════════════════════════════════════════════════════════
 
 const API_ROOT = "https://api.tiatele.databin.in/api";
-const CALLING_HOST = "https://tiacalling.tiamdplus.databin.in";
+// const CALLING_HOST = "https://tiacalling.tiamdplus.databin.in";
 
 // ═══════════════════════════════════════════════════════════════════
 // MAIN API

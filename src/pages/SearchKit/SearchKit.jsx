@@ -9,16 +9,24 @@ import {
   Typography,
   IconButton,
   Tooltip,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SyncIcon from "@mui/icons-material/Sync";
 import VideocamIcon from "@mui/icons-material/Videocam";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import MailIcon from "@mui/icons-material/Mail";
 import { AlertsIcon } from "../../assets/Assets";
 import { useThemeMode } from "../../context/ThemeContext";
 import LoadingSpinner from "../../componants/LoadingSpinner";
+import EmailReportDialog from "./EmailReportDialog";
+import { flattenAiSummary } from "./reportBuilder";
+import { generateReportPdf } from "../../services/reportPdf";
+import { getPhysicianSession } from "../../utils/physicianSession";
 
-const PRIMARY_BLUE  = "#015DFF";
-const ACTIVE_COLOR  = "#4DA3FF";
+const PRIMARY_BLUE = "#015DFF";
+const ACTIVE_COLOR = "#4DA3FF";
 
 const SearchKit = () => {
   const location = useLocation();
@@ -28,6 +36,13 @@ const SearchKit = () => {
   const [caseData, setCaseData] = useState(null);
   const [aiSummary, setAiSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     if (!incidentId) return;
@@ -50,6 +65,60 @@ const SearchKit = () => {
   }, [incidentId]);
 
   const patientName = caseData?.patientName || patient?.name || "Patient";
+  const physician = getPhysicianSession();
+
+  const showSnackbar = (message, severity = "success") =>
+    setSnackbar({ open: true, message, severity });
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackbar({ open: false, message: "", severity: "success" });
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!caseData) {
+      showSnackbar(
+        "No case data loaded yet — please wait for the summary.",
+        "warning",
+      );
+      return;
+    }
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const { buildFullReportHtml, buildReportFileName } =
+        await import("./reportBuilder");
+      const fileName = buildReportFileName(
+        patientName,
+        caseData.incidentId || incidentId,
+      );
+      const html = buildFullReportHtml({
+        caseData,
+        aiSummary,
+        patient,
+      });
+      await generateReportPdf(html, fileName);
+      showSnackbar(`Report PDF downloaded: ${fileName}`, "success");
+    } catch (err) {
+      console.error("PDF GENERATION ERROR =>", err);
+      showSnackbar(
+        "Failed to generate the report PDF. Please try again.",
+        "error",
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleEmailOpen = () => {
+    if (!caseData) {
+      showSnackbar(
+        "No case data loaded yet — please wait for the summary.",
+        "warning",
+      );
+      return;
+    }
+    setEmailOpen(true);
+  };
 
   return (
     <Box
@@ -97,7 +166,9 @@ const SearchKit = () => {
             icon={<SyncIcon sx={{ color: `${ACTIVE_COLOR} !important` }} />}
             label="Last Synced Today 12:00 PM"
             sx={{
-              background: darkMode ? "rgba(77,163,255,0.15)" : "rgba(1,93,255,0.08)",
+              background: darkMode
+                ? "rgba(77,163,255,0.15)"
+                : "rgba(1,93,255,0.08)",
               color: darkMode ? "#BFD8FF" : tokens.actionIconColor,
               border: darkMode
                 ? "1px solid rgba(77,163,255,0.25)"
@@ -194,6 +265,15 @@ const SearchKit = () => {
       >
         <Button
           variant="contained"
+          onClick={handleGeneratePdf}
+          disabled={pdfLoading || loading}
+          startIcon={
+            pdfLoading ? (
+              <LoadingSpinner size="sm" variant="inline" color="#FFFFFF" />
+            ) : (
+              <PictureAsPdfIcon />
+            )
+          }
           sx={{
             background: PRIMARY_BLUE,
             borderRadius: "12px",
@@ -205,13 +285,20 @@ const SearchKit = () => {
             "&:hover": {
               background: "#0048CC",
             },
+            "&:disabled": {
+              background: "rgba(1,93,255,0.45)",
+              color: "#FFFFFF",
+            },
           }}
         >
-          Generate Full Report PDF
+          {pdfLoading ? "Generating PDF…" : "Generate Full Report PDF"}
         </Button>
 
         <Button
           variant="outlined"
+          onClick={handleEmailOpen}
+          disabled={loading}
+          startIcon={<MailIcon />}
           sx={{
             borderRadius: "12px",
             textTransform: "none",
@@ -312,7 +399,6 @@ const SearchKit = () => {
             color: tokens.textPrimary,
             fontSize: "14px",
             lineHeight: 1.7,
-            whiteSpace: "pre-wrap",
           }}
         >
           {loading ? (
@@ -322,7 +408,46 @@ const SearchKit = () => {
               message="Generating AI summary..."
             />
           ) : (
-            aiSummary || "—"
+            (() => {
+              const rows = flattenAiSummary(aiSummary);
+              if (!rows.length) return "—";
+              return (
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                >
+                  {rows.map((row, idx) => (
+                    <Box key={idx}>
+                      <Typography
+                        sx={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: darkMode
+                            ? ACTIVE_COLOR
+                            : tokens.actionIconColor,
+                          mb: 0.5,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        {row.label}
+                      </Typography>
+                      {row.value.split("\n").map((part, i) => (
+                        <Typography
+                          key={i}
+                          sx={{
+                            fontSize: "13px",
+                            color: tokens.textPrimary,
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {part}
+                        </Typography>
+                      ))}
+                    </Box>
+                  ))}
+                </Box>
+              );
+            })()
           )}
         </Box>
         <Typography
@@ -336,16 +461,56 @@ const SearchKit = () => {
           Patient Vitals
         </Typography>
         {caseData?.vitals && (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, color: tokens.textSecondary, fontSize: "13px" }}>
-            {caseData.vitals.heartRate != null && <span>HR: {caseData.vitals.heartRate} bpm</span>}
-            {caseData.vitals.oxygen != null && <span>SpO₂: {caseData.vitals.oxygen}%</span>}
-            {caseData.vitals.bpSystolic != null && (
-              <span>BP: {caseData.vitals.bpSystolic}/{caseData.vitals.bpDiastolic}</span>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+              color: tokens.textSecondary,
+              fontSize: "13px",
+            }}
+          >
+            {caseData.vitals.heartRate != null && (
+              <span>HR: {caseData.vitals.heartRate} bpm</span>
             )}
-            {caseData.vitals.temperature != null && <span>Temp: {caseData.vitals.temperature}°C</span>}
+            {caseData.vitals.oxygen != null && (
+              <span>SpO₂: {caseData.vitals.oxygen}%</span>
+            )}
+            {caseData.vitals.bpSystolic != null && (
+              <span>
+                BP: {caseData.vitals.bpSystolic}/{caseData.vitals.bpDiastolic}
+              </span>
+            )}
+            {caseData.vitals.temperature != null && (
+              <span>Temp: {caseData.vitals.temperature}°C</span>
+            )}
           </Box>
         )}
       </Paper>
+
+      <EmailReportDialog
+        open={emailOpen}
+        handleClose={() => setEmailOpen(false)}
+        caseData={caseData}
+        aiSummary={aiSummary}
+        patient={patient}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
