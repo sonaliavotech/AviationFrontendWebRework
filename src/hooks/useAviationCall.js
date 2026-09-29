@@ -34,11 +34,46 @@ export const useAviationCall = (userId) => {
   const callStartTimeRef = useRef(null);
   const callTimerRef = useRef(null);
   const activeCallRef = useRef(null);
+  const incomingCallRef = useRef(null);
   const processedAcceptRef = useRef(null);
 
   useEffect(() => {
     activeCallRef.current = activeCall;
   }, [activeCall]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  // The call this user is currently involved in, in EITHER state. While a call
+  // is still ringing it only exists in `incomingCall`; once accepted it moves
+  // to `activeCall`. End/cancel/reject handlers must match against both,
+  // otherwise a cancel arriving during ringing matches nothing and the
+  // incoming-call screen never dismisses.
+  const currentCallId = useCallback(() => {
+    const incoming = incomingCallRef.current;
+    const active = activeCallRef.current;
+    return normalizeCallId(
+      (active && (active.callId || active.broadcastId)) ||
+        (incoming && (incoming.callId || incoming.broadcastId)) ||
+        "",
+    );
+  }, []);
+
+  // Shared teardown for every "this call is over" socket event.
+  const teardownCall = useCallback((data, { requireMatchingCallId = false } = {}) => {
+    if (requireMatchingCallId) {
+      const callId = normalizeCallId(data?.callId || data?.broadcastId);
+      if (callId && normalizeCallId(currentCallId()) !== callId) return false;
+    }
+    processedAcceptRef.current = null;
+    callStartTimeRef.current = null;
+    setCallStatus("idle");
+    setIsInCall(false);
+    setIncomingCall(null);
+    setActiveCall(null);
+    return true;
+  }, [currentCallId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -120,22 +155,15 @@ export const useAviationCall = (userId) => {
     };
     callSocket.on("aviation_call_accept_ack", acceptAckHandler);
 
-    const rejectedHandler = () => {
-      processedAcceptRef.current = null;
-      setCallStatus("idle");
-      setIsInCall(false);
-      setIncomingCall(null);
-      setActiveCall(null);
+    // Someone (another physician, or the caller) declined/ended. Must dismiss
+    // the ringing screen too, so no callId matching is required here.
+    const rejectedHandler = (data) => {
+      teardownCall(data);
     };
     callSocket.on("aviation_call_rejected", rejectedHandler);
 
-    const endedHandler = () => {
-      processedAcceptRef.current = null;
-      setCallStatus("idle");
-      setIsInCall(false);
-      setActiveCall(null);
-      setIncomingCall(null);
-      callStartTimeRef.current = null;
+    const endedHandler = (data) => {
+      teardownCall(data);
     };
     callSocket.on("aviation_call_ended", endedHandler);
 
@@ -177,24 +205,20 @@ export const useAviationCall = (userId) => {
     callSocket.on("aviation_call_participants_list", participantsListHandler);
 
     const errorHandler = (data) => {
-      setError(data.message);
-      setCallStatus("idle");
-      setIsInCall(false);
-      setIncomingCall(null);
-      setActiveCall(null);
+      setError(data?.message);
+      teardownCall(data);
     };
     callSocket.on("aviation_call_error", errorHandler);
 
+    // The caller (crew) hung up or cancelled while we were still ringing.
+    // This is the "incoming call screen won't go away" path: it has to match
+    // against the RINGING call, which lives in `incomingCallRef`, not just
+    // `activeCallRef` (empty until the call is accepted).
     const cancelledHandler = (data) => {
-      const callId = normalizeCallId(data.callId || data.broadcastId);
-      // Only clear if it's a call we're actually ringing on (avoid nuking an active call)
-      if (!callId || activeCallRef.current?.callId !== callId) return;
-      processedAcceptRef.current = null;
-      setCallStatus("idle");
-      setIsInCall(false);
-      setIncomingCall(null);
-      setActiveCall(null);
-      callStartTimeRef.current = null;
+      const callId = normalizeCallId(data?.callId || data?.broadcastId);
+      if (!callId) return;
+      if (normalizeCallId(currentCallId()) !== callId) return;
+      teardownCall(data, { requireMatchingCallId: true });
     };
     callSocket.on("aviation_call_cancelled", cancelledHandler);
 
@@ -216,7 +240,7 @@ export const useAviationCall = (userId) => {
       callSocket.off("aviation_call_error", errorHandler);
       callSocket.off("aviation_call_cancelled", cancelledHandler);
     };
-  }, [userId]);
+  }, [userId, currentCallId, teardownCall]);
 
   useEffect(() => {
     if (callStatus === "connected") {
