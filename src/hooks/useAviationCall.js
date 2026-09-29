@@ -303,20 +303,21 @@ export const useAviationCall = (userId) => {
         return false;
       }
 
-      const success = callSocket.acceptCall(acceptData);
-      if (success) {
-        processedAcceptRef.current = acceptData.callId;
-        setCallStatus("connected");
-        setIncomingCall(null);
-        setIsInCall(true);
-        callStartTimeRef.current = Date.now();
-        setActiveCall({
-          ...data,
-          ...acceptData,
-          roomName: acceptData.roomId,
-        });
-      }
-      return success;
+      // Jitsi is joined by the caller regardless of the emit result, so the
+      // local state has to move to "connected" even when the socket is down —
+      // otherwise the ringing screen would sit on top of the live Jitsi call.
+      const emitted = callSocket.acceptCall(acceptData);
+      processedAcceptRef.current = acceptData.callId;
+      setCallStatus("connected");
+      setIncomingCall(null);
+      setIsInCall(true);
+      callStartTimeRef.current = Date.now();
+      setActiveCall({
+        ...data,
+        ...acceptData,
+        roomName: acceptData.roomId,
+      });
+      return emitted;
     },
     [userId],
   );
@@ -334,17 +335,15 @@ export const useAviationCall = (userId) => {
         source: "web",
       };
 
-      const success = callSocket.rejectCall(rejectData);
-      if (success) {
-        processedAcceptRef.current = null;
-        setCallStatus("idle");
-        setIsInCall(false);
-        setIncomingCall(null);
-        setActiveCall(null);
-      }
-      return success;
+      // Best-effort emit: if the socket is down the server never hears about
+      // the decline, but the physician already tapped Decline. Always tear
+      // the UI down, otherwise a disconnected socket leaves the incoming-call
+      // screen stuck on screen with no way to dismiss it.
+      const emitted = callSocket.rejectCall(rejectData);
+      teardownCall(rejectData);
+      return emitted;
     },
-    [userId, incomingCall],
+    [userId, incomingCall, teardownCall],
   );
 
   const hangupCall = useCallback(
@@ -359,18 +358,13 @@ export const useAviationCall = (userId) => {
         source: "web",
       };
 
-      const success = callSocket.hangupCall(hangupData);
-      if (success) {
-        processedAcceptRef.current = null;
-        setCallStatus("idle");
-        setIsInCall(false);
-        setIncomingCall(null);
-        setActiveCall(null);
-        callStartTimeRef.current = null;
-      }
-      return success;
+      // Same rationale as rejectCall: local teardown must not depend on the
+      // emit succeeding, or a dropped socket leaves the call UI stuck.
+      const emitted = callSocket.hangupCall(hangupData);
+      teardownCall(hangupData);
+      return emitted;
     },
-    [userId, activeCall, incomingCall],
+    [userId, activeCall, incomingCall, teardownCall],
   );
 
   // Always call the LATEST hangupCall from the timeout below without
