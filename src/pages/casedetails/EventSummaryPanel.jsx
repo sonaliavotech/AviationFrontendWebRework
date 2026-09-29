@@ -996,22 +996,19 @@ const EventSummaryPanel = ({
           behavior: "smooth",
           block: "center",
         });
-        const focusTimer = setTimeout(
-          () => {
-            const el = noteInputRef.current;
-            if (el) {
-              el.focus();
-              // place the cursor at the end of the existing note text
-              const len = el.value?.length ?? 0;
-              try {
-                el.setSelectionRange(len, len);
-              } catch (_) {
-                // setSelectionRange can throw on some input types; safe to ignore
-              }
+        const focusTimer = setTimeout(() => {
+          const el = noteInputRef.current;
+          if (el) {
+            el.focus();
+            // place the cursor at the end of the existing note text
+            const len = el.value?.length ?? 0;
+            try {
+              el.setSelectionRange(len, len);
+            } catch (_) {
+              // setSelectionRange can throw on some input types; safe to ignore
             }
-          },
-          300,
-        );
+          }
+        }, 300);
         return () => clearTimeout(focusTimer);
       });
     },
@@ -2021,7 +2018,7 @@ const EventSummaryPanel = ({
                           color: isCrew ? "#F59E0B" : "#0A5FFF",
                         }}
                       >
-                        {isCrew ? "Crew" : "Physician"}
+                        {/* {isCrew ? "Crew" : "Physician"} */}
                       </Typography>
                       <Typography
                         sx={{

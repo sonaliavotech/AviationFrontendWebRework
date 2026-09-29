@@ -1,10 +1,4 @@
-import {
-  useState,
-  useMemo,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -535,6 +529,45 @@ const spo2Points = [98, 97, 96, 95, 93, 91, 89, 88, 87, 85, 84, 83];
 const hrPoints = [72, 74, 76, 80, 85, 88, 86, 90, 92, 88, 85, 88];
 const bpPoints = [120, 122, 125, 128, 130, 132, 135, 133, 136, 135, 137, 135];
 
+// ═══════════════════════════════════════════════════════════════════════
+// ✅ FIX: chat "seen" watermark, persisted in localStorage
+//
+// The old code kept the "already read up to this time" watermark ONLY in a
+// useRef. A useRef resets the moment this component unmounts, which
+// happens every time you leave the case (Back to All Events) and open it
+// again. On the next visit there was no memory of what you'd already read,
+// so the unread-sync effect fell back to the server's `is_seen` flag and
+// the red dot could reappear on messages you had already seen.
+//
+// Fix: mirror the watermark into localStorage, keyed by incident + user, so
+// it survives a remount. Only a message that arrives AFTER this saved
+// point will ever light the dot up again.
+// ═══════════════════════════════════════════════════════════════════════
+const chatSeenStorageKey = (incidentId, userId) =>
+  incidentId && userId ? `aviation_chat_seen_${incidentId}_${userId}` : null;
+
+const readPersistedChatSeenAt = (incidentId, userId) => {
+  const key = chatSeenStorageKey(incidentId, userId);
+  if (!key) return 0;
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const writePersistedChatSeenAt = (incidentId, userId, timestamp) => {
+  const key = chatSeenStorageKey(incidentId, userId);
+  if (!key) return;
+  try {
+    localStorage.setItem(key, String(timestamp));
+  } catch {
+    /* private mode / quota — ignore, in-memory ref still works this session */
+  }
+};
+
 export const CaseDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -677,10 +710,7 @@ export const CaseDetails = () => {
     const handleOpenCaseChat = (e) => {
       const detail = e?.detail;
       if (!detail) return;
-      if (
-        detail.incidentId &&
-        String(detail.incidentId) !== String(incidentId)
-      )
+      if (detail.incidentId && String(detail.incidentId) !== String(incidentId))
         return;
       setChatVisible(true);
       if (isMobile) setMobilePanel("summary");
@@ -703,7 +733,19 @@ export const CaseDetails = () => {
   // Local "read watermark": anything created before this moment has already
   // been opened by the physician, so it must never raise the red dots again
   // even when the server still reports it as unseen.
+  // ✅ Seeded from localStorage below so it survives a page remount, instead
+  //    of always starting at 0 (which was the bug: the dot reappeared every
+  //    time you reopened a case you had already read).
   const lastChatSeenAtRef = useRef(0);
+
+  // ✅ NEW: restore the persisted watermark whenever the case or the logged
+  //    in physician changes (also covers navigating between cases).
+  useEffect(() => {
+    lastChatSeenAtRef.current = readPersistedChatSeenAt(
+      incidentId,
+      currentUserId,
+    );
+  }, [incidentId, currentUserId]);
 
   const openChatPanel = useCallback(() => {
     if (isMobile) setMobilePanel("summary");
@@ -712,8 +754,10 @@ export const CaseDetails = () => {
 
   const handleChatOpened = useCallback(() => {
     setUnreadChatCount(0);
-    lastChatSeenAtRef.current = Date.now();
-  }, []);
+    const now = Date.now();
+    lastChatSeenAtRef.current = now;
+    writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
+  }, [incidentId, currentUserId]);
 
   // Resolve the case chat room and seed the unread count from the server.
   useEffect(() => {
@@ -761,10 +805,7 @@ export const CaseDetails = () => {
           const created = normalized.created_at
             ? Date.parse(normalized.created_at)
             : NaN;
-          if (
-            !Number.isNaN(created) &&
-            created <= lastChatSeenAtRef.current
-          ) {
+          if (!Number.isNaN(created) && created <= lastChatSeenAtRef.current) {
             return false;
           }
           return true;
@@ -807,7 +848,9 @@ export const CaseDetails = () => {
         // The panel is open, so this message is already on screen and being
         // read - push the read watermark past it so it never counts as
         // unread on a later sync, instead of raising the dots.
-        lastChatSeenAtRef.current = Date.now();
+        const now = Date.now();
+        lastChatSeenAtRef.current = now;
+        writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
         return;
       }
       setUnreadChatCount((count) => count + 1);
@@ -815,17 +858,19 @@ export const CaseDetails = () => {
 
     AviationChatSocket.onNewMessage(handleIncomingMessage);
     return () => AviationChatSocket.offNewMessage(handleIncomingMessage);
-  }, [chatRoomId, isAssignedPhysician, currentUserId]);
+  }, [chatRoomId, isAssignedPhysician, currentUserId, incidentId]);
 
   // Opening the panel means the physician is reading the thread - the red dots
   // go away immediately, the panel itself marks the messages as seen, and the
   // read watermark stops those messages from counting as unread again.
   useEffect(() => {
     if (chatVisible) {
-      lastChatSeenAtRef.current = Date.now();
+      const now = Date.now();
+      lastChatSeenAtRef.current = now;
+      writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
       setUnreadChatCount(0);
     }
-  }, [chatVisible]);
+  }, [chatVisible, incidentId, currentUserId]);
 
   const hasUnreadChat = isAssignedPhysician && unreadChatCount > 0;
 
@@ -907,69 +952,72 @@ export const CaseDetails = () => {
     [eventData],
   );
 
-  const queueMedicineOrder = useCallback((medicineOrMedicines) => {
-    const medicines = Array.isArray(medicineOrMedicines)
-      ? medicineOrMedicines
-      : [medicineOrMedicines];
-    const normalized = medicines
-      .map((m) =>
-        typeof m === "string"
-          ? {
-              moduleId: "",
-              moduleTitle: "",
-              medicineName: m,
-              usage: "",
-            }
-          : {
-              moduleId: m?.moduleId || "",
-              moduleTitle: m?.moduleTitle || "",
-              medicineName: m?.medicineName || m?.name || m?.title || "",
-              usage: m?.usage || "",
-            },
-      )
-      .filter((m) => m.medicineName && !m.outOfStock);
+  const queueMedicineOrder = useCallback(
+    (medicineOrMedicines) => {
+      const medicines = Array.isArray(medicineOrMedicines)
+        ? medicineOrMedicines
+        : [medicineOrMedicines];
+      const normalized = medicines
+        .map((m) =>
+          typeof m === "string"
+            ? {
+                moduleId: "",
+                moduleTitle: "",
+                medicineName: m,
+                usage: "",
+              }
+            : {
+                moduleId: m?.moduleId || "",
+                moduleTitle: m?.moduleTitle || "",
+                medicineName: m?.medicineName || m?.name || m?.title || "",
+                usage: m?.usage || "",
+              },
+        )
+        .filter((m) => m.medicineName && !m.outOfStock);
 
-    if (!normalized.length) return;
+      if (!normalized.length) return;
 
-    // Accumulate EVERY picked medicine into ONE order draft (grouped by kit
-    // module). EventSummaryPanel pre-fills the "Add Order" form with all the
-    // modules as Title and all their medicines as Instructions, so a single
-    // order can contain medicines from multiple modules. Clicking "Add Order"
-    // creates one real physician order with the normal Order Actions menu.
-    setMedicineOrderDraft((prev) => {
-      const next = {
-        groups: prev?.groups
-          ? prev.groups.map((g) => ({
-              key: g.key,
-              moduleTitle: g.moduleTitle,
-              medicines: [...g.medicines],
-            }))
-          : [],
-      };
-      normalized.forEach((medicine) => {
-        const key =
-          medicine.moduleId ||
-          medicine.moduleTitle ||
-          "Recommended Medicines";
-        const moduleTitle =
-          medicine.moduleTitle ||
-          medicine.moduleId ||
-          "Recommended Medicines";
-        let group = next.groups.find((g) => g.key === key);
-        if (!group) {
-          group = { key, moduleTitle, medicines: [] };
-          next.groups.push(group);
-        }
-        const name = medicine.medicineName;
-        if (!group.medicines.includes(name)) {
-          group.medicines.push(name);
-        }
+      // Accumulate EVERY picked medicine into ONE order draft (grouped by kit
+      // module). EventSummaryPanel pre-fills the "Add Order" form with all the
+      // modules as Title and all their medicines as Instructions, so a single
+      // order can contain medicines from multiple modules. Clicking "Add Order"
+      // creates one real physician order with the normal Order Actions menu.
+      setMedicineOrderDraft((prev) => {
+        const next = {
+          groups: prev?.groups
+            ? prev.groups.map((g) => ({
+                key: g.key,
+                moduleTitle: g.moduleTitle,
+                medicines: [...g.medicines],
+              }))
+            : [],
+        };
+        normalized.forEach((medicine) => {
+          const key =
+            medicine.moduleId ||
+            medicine.moduleTitle ||
+            "Recommended Medicines";
+          const moduleTitle =
+            medicine.moduleTitle ||
+            medicine.moduleId ||
+            "Recommended Medicines";
+          let group = next.groups.find((g) => g.key === key);
+          if (!group) {
+            group = { key, moduleTitle, medicines: [] };
+            next.groups.push(group);
+          }
+          const name = medicine.medicineName;
+          if (!group.medicines.includes(name)) {
+            group.medicines.push(name);
+          }
+        });
+        return next;
       });
-      return next;
-    });
 
-    if (isMobile) setMobilePanel("summary");
-  }, [isMobile]);
+      if (isMobile) setMobilePanel("summary");
+    },
+    [isMobile],
+  );
 
   // Clear the order draft after it has been converted into an order via the
   // "Add Order" button.
