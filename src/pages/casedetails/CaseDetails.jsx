@@ -897,6 +897,15 @@ export const CaseDetails = () => {
 
     const callId = `call_${incidentId}_${Date.now()}`;
 
+    // The receiving client's incoming-call screen shows the patient name, so it
+    // must ride along with the call payload.
+    const patientName =
+      eventData?.patientName ||
+      eventData?.full_name ||
+      eventData?.patient_name ||
+      tablePatient?.name ||
+      null;
+
     const callData = {
       callId,
       roomId: callId,
@@ -910,6 +919,7 @@ export const CaseDetails = () => {
       callerId: physicianUser?.id || "physician-web-user",
       incidentId: incidentId,
       organizationName: "Aviation Medical",
+      ...(patientName ? { patientName, full_name: patientName } : {}),
       participants: [
         {
           userId: crewUserId,
@@ -931,6 +941,10 @@ export const CaseDetails = () => {
     physicianUser,
     startCall,
     openJitsi,
+    eventData?.patientName,
+    eventData?.full_name,
+    eventData?.patient_name,
+    tablePatient?.name,
   ]);
 
   const aiSummary = useMemo(() => parseAiSummary(eventData), [eventData]);

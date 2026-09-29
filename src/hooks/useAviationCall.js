@@ -1,6 +1,7 @@
 // web/src/hooks/useAviationCall.js
 import { useState, useEffect, useCallback, useRef } from "react";
 import callSocket from "../services/AviationCallSocket";
+import { withResolvedPatientName } from "../utils/aviationCallDisplay";
 
 const normalizeCallId = (value) => String(value || "").trim();
 
@@ -51,7 +52,7 @@ export const useAviationCall = (userId) => {
 
       if (activeCallRef.current?.callId === callId) return;
 
-      setIncomingCall(data);
+      setIncomingCall(withResolvedPatientName(data));
       setCallStatus("ringing");
       setIsInCall(true);
     };
