@@ -163,8 +163,6 @@ const MyAppointmentsIcon = ({ isActive }) => (
   </svg>
 );
 
-// ❌ REMOVED: PhysicianStatusDot component (no longer needed)
-
 const INITIAL_TABLE_FILTERS = {
   roundingStatus: [],
   physician: [],
@@ -183,6 +181,11 @@ const ROUNDING_STATUS_OPTIONS = [
   { value: "Unseen", label: "Unseen" },
   { value: "Sidelist", label: "Sidelist" },
 ];
+
+// ✅ Column widths (single source of truth for header + body)
+const CHECKBOX_COL_WIDTH = 52;
+const ACTIONS_COL_WIDTH = 190;
+const REASONS_COL_WIDTH = 220;
 
 export default function AllEvents() {
   const { darkMode } = useThemeMode();
@@ -216,10 +219,12 @@ export default function AllEvents() {
     };
   };
 
+  // ✅ Smaller icon buttons (18px icons, 3px padding)
   const actionIconButtonSx = {
-    p: "4px",
+    p: "3px",
     flex: "0 0 auto",
     color: theme.actionIconColor,
+    "& svg": { width: 18, height: 18 },
     "& svg path": { fill: "currentColor" },
   };
 
@@ -1565,7 +1570,7 @@ export default function AllEvents() {
               gridTemplateColumns: {
                 xs: "repeat(2, minmax(0, 1fr))",
                 sm: "repeat(4, minmax(0, 1fr))",
-                lg: "repeat(5, minmax(0, 1fr))",
+                lg: "minmax(0, 1.2fr) repeat(4, minmax(0, 1fr))",
               },
               gap: 1.5,
               width: "100%",
@@ -1576,7 +1581,7 @@ export default function AllEvents() {
             <Box
               sx={{
                 minWidth: 0,
-                height: "80px",
+                minHeight: "80px",
                 gridColumn: { xs: "1 / -1", sm: "1 / -1", lg: "auto" },
               }}
             >
@@ -1608,7 +1613,14 @@ export default function AllEvents() {
                 >
                   {providerInitials}
                 </Avatar>
-                <Box sx={{ lineHeight: 1.15, overflow: "hidden" }}>
+                <Box
+                  sx={{
+                    lineHeight: 1.15,
+                    overflow: "hidden",
+                    minWidth: 0,
+                    flex: 1,
+                  }}
+                >
                   <Typography
                     variant="inherit"
                     noWrap
@@ -1623,24 +1635,31 @@ export default function AllEvents() {
                   </Typography>
                   <Typography
                     variant="inherit"
-                    noWrap
+                    title={providerDisplayName}
                     sx={{
                       fontWeight: 700,
-                      fontSize: "16px",
-                      lineHeight: 1.15,
+                      fontSize: "15px",
+                      lineHeight: 1.2,
                       color: "#fff",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
                     }}
                   >
                     {providerDisplayName}
                   </Typography>
                   <Typography
                     variant="inherit"
-                    noWrap
                     sx={{
                       fontSize: "11px",
-                      lineHeight: 1.15,
+                      lineHeight: 1.2,
                       opacity: 0.85,
                       color: "#fff",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
                     }}
                   >
                     {providerSubtitle}
@@ -1689,7 +1708,7 @@ export default function AllEvents() {
                 icon: CriticalCasesIcon,
               },
             ].map((item, i) => (
-              <Box key={i} sx={{ minWidth: 0, height: "80px" }}>
+              <Box key={i} sx={{ minWidth: 0, minHeight: "80px" }}>
                 <Box
                   sx={{
                     bgcolor: theme.statCardBg,
@@ -1887,12 +1906,13 @@ export default function AllEvents() {
                 msOverflowStyle: "none",
               }}
             >
+              {/* ✅ Fixed layout so every column keeps its explicit width */}
               <Table
                 stickyHeader
                 sx={{
                   width: "100%",
-                  minWidth: { xs: 920, sm: 1000 },
-                  tableLayout: "auto",
+                  minWidth: { xs: 960, sm: 1040 },
+                  tableLayout: "fixed",
                   borderCollapse: "separate",
                   borderSpacing: 0,
                 }}
@@ -1917,7 +1937,15 @@ export default function AllEvents() {
                   >
                     <TableCell
                       padding="checkbox"
-                      sx={{ width: "40px", minWidth: "40px" }}
+                      sx={{
+                        width: CHECKBOX_COL_WIDTH,
+                        minWidth: CHECKBOX_COL_WIDTH,
+                        maxWidth: CHECKBOX_COL_WIDTH,
+                        overflow: "visible !important",
+                        textOverflow: "clip !important",
+                        px: "0 !important",
+                        textAlign: "center",
+                      }}
                     >
                       <Checkbox
                         indeterminate={
@@ -1938,9 +1966,10 @@ export default function AllEvents() {
                       />
                     </TableCell>
 
+                    {/* Name / Age */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "14%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -1958,9 +1987,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Duration */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "9%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -1969,9 +1999,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Status */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "9%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -1991,9 +2022,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Route */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "11%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2011,9 +2043,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Physician */}
                     <TableCell
                       sx={{
-                        width: "12%",
+                        width: "15%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2035,9 +2068,10 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Crew */}
                     <TableCell
                       sx={{
-                        width: "12%",
+                        width: "16%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2059,19 +2093,29 @@ export default function AllEvents() {
                       </Box>
                     </TableCell>
 
+                    {/* Actions / Reasons */}
                     {activeTab === "Sidelist" ? (
-                      <TableCell sx={{ width: "25%", minWidth: "200px" }}>
+                      <TableCell
+                        sx={{
+                          width: REASONS_COL_WIDTH,
+                          minWidth: REASONS_COL_WIDTH,
+                        }}
+                      >
                         Reason
                       </TableCell>
                     ) : (
                       <TableCell
                         sx={{
-                          width: "auto",
-                          minWidth: 160,
+                          width: isSidelistFilterActive
+                            ? REASONS_COL_WIDTH
+                            : ACTIONS_COL_WIDTH,
+                          minWidth: isSidelistFilterActive
+                            ? REASONS_COL_WIDTH
+                            : ACTIONS_COL_WIDTH,
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {isSidelistFilterActive ? <>Reasons</> : <> Actions</>}
+                        {isSidelistFilterActive ? <>Reasons</> : <>Actions</>}
                       </TableCell>
                     )}
                   </TableRow>
@@ -2209,7 +2253,15 @@ export default function AllEvents() {
                           >
                             <TableCell
                               padding="checkbox"
-                              sx={{ width: "40px", minWidth: "40px" }}
+                              sx={{
+                                width: CHECKBOX_COL_WIDTH,
+                                minWidth: CHECKBOX_COL_WIDTH,
+                                maxWidth: CHECKBOX_COL_WIDTH,
+                                overflow: "visible !important",
+                                textOverflow: "clip !important",
+                                px: "0 !important",
+                                textAlign: "center",
+                              }}
                             >
                               <Checkbox
                                 checked={selectionModel.has(row.id)}
@@ -2326,6 +2378,7 @@ export default function AllEvents() {
                                   color: theme.actionIconColor,
                                   fontWeight: 500,
                                   display: "inline-block",
+                                  maxWidth: "100%",
                                   borderRadius: "4px",
                                 }}
                               >
@@ -2337,6 +2390,10 @@ export default function AllEvents() {
                                       gap: 0.6,
                                       px: 1.6,
                                       py: 0.8,
+                                      maxWidth: "100%",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
                                       borderRadius: "20px",
                                       fontSize: "12px",
                                       fontWeight: 600,
@@ -2344,7 +2401,6 @@ export default function AllEvents() {
                                       ...getPhysicianValueStyles(true),
                                     }}
                                   >
-                                    {/* ❌ REMOVED: <PhysicianStatusDot status={row.physicianLiveStatus} /> */}
                                     {row.physician}
                                   </Box>
                                 ) : (
@@ -2356,7 +2412,7 @@ export default function AllEvents() {
                                       borderRadius: "20px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      minWidth: "90px",
+                                      minWidth: "70px",
                                       textAlign: "center",
                                       ...getPhysicianValueStyles(false),
                                     }}
@@ -2367,6 +2423,7 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
+                            {/* Crew cell */}
                             <TableCell>
                               <Box
                                 sx={{
@@ -2374,6 +2431,7 @@ export default function AllEvents() {
                                   color: theme.actionIconColor,
                                   fontWeight: 400,
                                   display: "inline-block",
+                                  maxWidth: "100%",
                                   borderRadius: "4px",
                                 }}
                               >
@@ -2381,12 +2439,18 @@ export default function AllEvents() {
                                   <Box
                                     sx={{
                                       display: "inline-block",
-                                      px: 1.6,
-                                      py: 0.8,
-                                      borderRadius: "20px",
+                                      px: 1.4,
+                                      py: 0.7,
+                                      maxWidth: "100%",
+                                      whiteSpace: "normal",
+                                      wordBreak: "break-word",
+                                      overflow: "visible",
+                                      textOverflow: "clip",
+                                      textAlign: "center",
+                                      borderRadius: "14px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      lineHeight: 1,
+                                      lineHeight: 1.3,
                                       ...crewValueStyles,
                                     }}
                                   >
@@ -2401,7 +2465,7 @@ export default function AllEvents() {
                                       borderRadius: "8px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      minWidth: "90px",
+                                      minWidth: "70px",
                                       textAlign: "center",
                                       ...crewValueStyles,
                                     }}
@@ -2412,9 +2476,13 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
+                            {/* Reasons (sidelist filter) / Actions */}
                             {isSidelistFilterActive ? (
                               <TableCell
-                                sx={{ width: "25%", minWidth: "200px" }}
+                                sx={{
+                                  width: REASONS_COL_WIDTH,
+                                  minWidth: REASONS_COL_WIDTH,
+                                }}
                               >
                                 <Box
                                   sx={{
@@ -2453,19 +2521,19 @@ export default function AllEvents() {
                               <TableCell
                                 sx={{
                                   overflow: "visible !important",
-                                  width: "100%",
-                                  minWidth: { xs: 160, sm: 180, md: 160 },
+                                  width: ACTIONS_COL_WIDTH,
+                                  minWidth: ACTIONS_COL_WIDTH,
+                                  px: "4px !important",
                                 }}
                               >
                                 <Box
                                   sx={{
                                     display: "flex",
-                                    gap: 0.5,
+                                    gap: "12px",
                                     flexWrap: "nowrap",
                                     alignItems: "center",
-                                    justifyContent: "space-between",
+                                    justifyContent: "center",
                                     width: "100%",
-                                    minWidth: "fit-content",
                                   }}
                                 >
                                   <Tooltip arrow title="Toggle Seen">
@@ -2478,7 +2546,6 @@ export default function AllEvents() {
                                       sx={{
                                         ...actionIconButtonSx,
                                         borderRadius: "50%",
-                                        marginRight: "15px",
                                         // Plain when not seen (transparent),
                                         // green pill after click — matches the app
                                         backgroundColor:
@@ -2549,7 +2616,7 @@ export default function AllEvents() {
                                         handleMenuOpen(e, row.id);
                                       }}
                                     >
-                                      <MoreVertIcon fontSize="small" />
+                                      <MoreVertIcon sx={{ fontSize: 18 }} />
                                     </IconButton>
                                   </Tooltip>
                                 </Box>
