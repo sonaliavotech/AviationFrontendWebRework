@@ -48,6 +48,11 @@ export function AviationCallProvider({ children }) {
   });
   const jitsiCallDataRef = useRef(null);
 
+  // Tracks whether we've already restored the status for the CURRENT call
+  // cycle. Guards against firing markAvailableOnCallEnd multiple times for
+  // the same end event (e.g. hangup + aviation_call_ended + videoConferenceLeft).
+  const statusRestoredRef = useRef(false);
+
   useEffect(() => {
     if (!userId) return;
     AviationCallSocket.connect(userId);
@@ -69,50 +74,53 @@ export function AviationCallProvider({ children }) {
 
   useEffect(() => {
     if (!userId) return;
-    // The status service is normally started by AllEvents/SignIn, but this
-    // provider wraps EVERY page. Loading a deep link (e.g. /CaseDetails)
-    // directly skips those, which left the service without a userId and made
-    // every markBusy/markAvailable call below a silent no-op. start() is
-    // idempotent for an already-started user, so calling it here is safe.
     PhysicianStatusService.start(userId);
   }, [userId]);
 
   // Keep the physician presence status in sync with the active call on every
   // page (not just AllEvents). While a call is active the provider is "busy";
   // when it ends/rejects the last manual status (available/away) is restored.
-  // `callStatus` is included so the restore ALSO fires when the call UI goes
-  // back to idle even if the `isInCall` flag gets stuck (e.g. hangup/left_ack
-  // flows that don't flip the boolean).
   useEffect(() => {
     if (!userId) return;
     const inActiveCall =
       isInCall || callStatus === "ringing" || callStatus === "connected";
-    // Flag for other UIs (e.g. chat notification sound) to avoid clashing with the call ringtone.
     if (typeof window !== "undefined") {
       window.__AVIATION_CALL_ACTIVE = !!inActiveCall;
     }
     if (inActiveCall) {
+      // Reset the restore guard whenever a new call cycle begins.
+      statusRestoredRef.current = false;
       PhysicianStatusService.markBusyOnCallAccept();
-    } else {
+    } else if (!statusRestoredRef.current) {
+      // Only restore ONCE per call cycle.
+      statusRestoredRef.current = true;
       PhysicianStatusService.markAvailableOnCallEnd();
     }
   }, [isInCall, callStatus, userId]);
 
   // Belt-and-braces: some call-end signals only arrive as `left_ack` on the
   // socket (e.g. the physician leaving/hanging up on their side). Make sure
-  // the presence restore runs for those too.
+  // the presence restore runs for those too — and run it IMMEDIATELY, not
+  // waiting for the isInCall/callStatus effect to catch up.
   useEffect(() => {
     if (!userId) return;
-    const handleEnd = () => PhysicianStatusService.markAvailableOnCallEnd();
+
+    const restoreNow = () => {
+      if (statusRestoredRef.current) return;
+      statusRestoredRef.current = true;
+      PhysicianStatusService.markAvailableOnCallEnd();
+    };
+
     const events = [
       "aviation_call_left_ack",
       "aviation_call_cancelled",
       "aviation_call_ended",
       "aviation_call_rejected",
+      "aviation_call_reject_ack",
     ];
-    events.forEach((evt) => AviationCallSocket.on(evt, handleEnd));
+    events.forEach((evt) => AviationCallSocket.on(evt, restoreNow));
     return () =>
-      events.forEach((evt) => AviationCallSocket.off(evt, handleEnd));
+      events.forEach((evt) => AviationCallSocket.off(evt, restoreNow));
   }, [userId]);
 
   // Show snackbar when call is cancelled because another device answered
@@ -162,8 +170,6 @@ export function AviationCallProvider({ children }) {
   const togglePiP = useCallback(() => setIsPiP((prev) => !prev), []);
   const setPiPMode = useCallback((next) => setIsPiP(Boolean(next)), []);
 
-  // Declared before the call handlers below so they can reference it
-  // (temporal dead zone otherwise throws during the first render).
   const physicianUser = useMemo(
     () => mapPhysicianToWebUser(session),
     [session],
@@ -188,8 +194,6 @@ export function AviationCallProvider({ children }) {
         callerName: incomingCall?.callerName || data?.callerName,
         callerRole: incomingCall?.callerRole || data?.callerRole,
         toUserId: data?.toUserId || incomingCall?.toUserId || userId,
-        // Carry the patient name (resolved from the incoming payload aliases)
-        // into the accept message and the Jitsi hand-off.
         patientName:
           resolvePatientName(incomingCall) || resolvePatientName(data) || null,
         incidentId: data?.incidentId || incomingCall?.incidentId || null,
@@ -202,6 +206,9 @@ export function AviationCallProvider({ children }) {
         return false;
       }
 
+      // New call cycle begins — reset the restore guard.
+      statusRestoredRef.current = false;
+
       prepareJitsiSession(callPayload);
       return acceptCall(callPayload);
     },
@@ -211,6 +218,11 @@ export function AviationCallProvider({ children }) {
   const handleRejectCall = useCallback(
     (data) => {
       rejectCall(data);
+      // Restore status IMMEDIATELY on reject — don't wait for the effect.
+      if (!statusRestoredRef.current) {
+        statusRestoredRef.current = true;
+        PhysicianStatusService.markAvailableOnCallEnd();
+      }
       setShowJitsi(false);
       setIsPiP(false);
       setJitsiRoomId(null);
@@ -222,6 +234,11 @@ export function AviationCallProvider({ children }) {
   const handleHangup = useCallback(
     (data) => {
       hangupCall(data);
+      // Restore status IMMEDIATELY on hangup — don't wait for the effect.
+      if (!statusRestoredRef.current) {
+        statusRestoredRef.current = true;
+        PhysicianStatusService.markAvailableOnCallEnd();
+      }
       setShowJitsi(false);
       setIsPiP(false);
       setJitsiRoomId(null);

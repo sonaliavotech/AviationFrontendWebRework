@@ -61,19 +61,22 @@ export const useAviationCall = (userId) => {
   }, []);
 
   // Shared teardown for every "this call is over" socket event.
-  const teardownCall = useCallback((data, { requireMatchingCallId = false } = {}) => {
-    if (requireMatchingCallId) {
-      const callId = normalizeCallId(data?.callId || data?.broadcastId);
-      if (callId && normalizeCallId(currentCallId()) !== callId) return false;
-    }
-    processedAcceptRef.current = null;
-    callStartTimeRef.current = null;
-    setCallStatus("idle");
-    setIsInCall(false);
-    setIncomingCall(null);
-    setActiveCall(null);
-    return true;
-  }, [currentCallId]);
+  const teardownCall = useCallback(
+    (data, { requireMatchingCallId = false } = {}) => {
+      if (requireMatchingCallId) {
+        const callId = normalizeCallId(data?.callId || data?.broadcastId);
+        if (callId && normalizeCallId(currentCallId()) !== callId) return false;
+      }
+      processedAcceptRef.current = null;
+      callStartTimeRef.current = null;
+      setCallStatus("idle");
+      setIsInCall(false);
+      setIncomingCall(null);
+      setActiveCall(null);
+      return true;
+    },
+    [currentCallId],
+  );
 
   useEffect(() => {
     if (!userId) return;

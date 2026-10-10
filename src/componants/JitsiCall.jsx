@@ -503,7 +503,7 @@ const JitsiCall = ({
           error?.details === "conference.destroyed" ||
           error?.message === "The meeting has been terminated"
         ) {
-          closeWindowOnce();
+          endCallOnce();
           return;
         }
 
@@ -528,7 +528,7 @@ const JitsiCall = ({
           logText.includes("The meeting has been terminated")
         ) {
           console.log("Hiding terminated Jitsi dialog:", event);
-          closeWindowOnce();
+          endCallOnce();
           return;
         }
 
