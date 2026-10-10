@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Box, Typography, CircularProgress, IconButton } from "@mui/material";
 import {
-  Box,
-  Typography,
-  CircularProgress,
-  IconButton,
-  useTheme,
-} from "@mui/material";
-import { PictureInPicture, Fullscreen, Close } from "@mui/icons-material";
+  PictureInPicture,
+  Fullscreen,
+  Close,
+  DragIndicator,
+} from "@mui/icons-material";
 import {
   getPhysicianSession,
   mapPhysicianToWebUser,
@@ -27,6 +26,13 @@ const TELEMEDICINE_TOOLBAR_BUTTONS = [
 // Gives the old session's "participant left" time to reach the signaling
 // server so the crew side doesn't briefly see the web user twice.
 const RECONNECT_DELAY_MS = 800;
+
+// Default PiP size (unused when full-screen).
+const PIP_WIDTH = 320;
+const PIP_HEIGHT = 240;
+
+// Title bar height inside the PiP window (drag handle).
+const PIP_TITLEBAR_HEIGHT = 32;
 
 const getParticipantId = (participant) =>
   participant?.id ||
@@ -81,6 +87,16 @@ const ensureLocalVideoEnabled = async (api) => {
   }
 };
 
+// Clamp a PiP position so the window stays fully inside the viewport.
+const clampPosition = (x, y, width, height) => {
+  const maxX = Math.max(0, window.innerWidth - width);
+  const maxY = Math.max(0, window.innerHeight - height);
+  return {
+    x: Math.min(Math.max(0, x), maxX),
+    y: Math.min(Math.max(0, y), maxY),
+  };
+};
+
 const JitsiCall = ({
   broadcastId,
   callData,
@@ -99,7 +115,7 @@ const JitsiCall = ({
   const windowCloseHandledRef = useRef(false);
   const joinedRoomRef = useRef(null);
 
-  // NEW: guards against duplicate/overlapping reconnect attempts, which is
+  // Guards against duplicate/overlapping reconnect attempts, which is
   // what was causing the web user to briefly appear twice in the room.
   const reconnectingRef = useRef(false);
   const reconnectTimeoutRef = useRef(null);
@@ -108,6 +124,24 @@ const JitsiCall = ({
   const [isJitsiHidden, setIsJitsiHidden] = useState(false);
   const [jitsiRestartKey, setJitsiRestartKey] = useState(0);
   const [isConnecting, setIsConnecting] = useState(true);
+
+  // ── PiP drag state ───────────────────────────────────────────────────
+  // Initial position: bottom-right corner with a 20px inset.
+  const [pipPos, setPipPos] = useState(() => {
+    if (typeof window === "undefined") return { x: 20, y: 20 };
+    return {
+      x: Math.max(0, window.innerWidth - PIP_WIDTH - 20),
+      y: Math.max(0, window.innerHeight - PIP_HEIGHT - 20),
+    };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef({
+    pointerId: null,
+    offsetX: 0,
+    offsetY: 0,
+    startX: 0,
+    startY: 0,
+  });
 
   useEffect(() => {
     callDataRef.current = callData;
@@ -137,11 +171,7 @@ const JitsiCall = ({
     joinedRoomRef.current = null;
   }, []);
 
-  // NEW: single funnel for every reconnect trigger. Both the errorOccurred
-  // and log listeners used to call disposeJitsi()+setJitsiRestartKey
-  // independently and immediately, which could fire twice for the same
-  // underlying event and rejoin before the old session had fully left the
-  // room — producing a duplicate participant tile on the other side.
+  // Single funnel for every reconnect trigger.
   const safeReconnect = useCallback(
     (reason) => {
       if (reconnectingRef.current) {
@@ -193,6 +223,79 @@ const JitsiCall = ({
     });
   }, [domain]);
 
+  // ── PiP drag handlers ────────────────────────────────────────────────
+  // We use Pointer Events (works for mouse, touch, and pen). Drag is only
+  // allowed when isPiP === true, and only from the title bar so the Jitsi
+  // iframe's own controls remain fully clickable.
+
+  const handleDragStart = useCallback(
+    (event) => {
+      if (!isPiP) return;
+      // Only left mouse button / primary touch / pen.
+      if (event.button !== undefined && event.button !== 0) return;
+
+      const target = event.currentTarget;
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch (e) {
+        // Some browsers throw if the pointer was already released.
+      }
+
+      dragStateRef.current = {
+        pointerId: event.pointerId,
+        offsetX: event.clientX - pipPos.x,
+        offsetY: event.clientY - pipPos.y,
+        startX: pipPos.x,
+        startY: pipPos.y,
+      };
+      setIsDragging(true);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [isPiP, pipPos.x, pipPos.y],
+  );
+
+  const handleDragMove = useCallback(
+    (event) => {
+      if (!isDragging) return;
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
+
+      const { offsetX, offsetY } = dragStateRef.current;
+      const nextX = event.clientX - offsetX;
+      const nextY = event.clientY - offsetY;
+      const clamped = clampPosition(nextX, nextY, PIP_WIDTH, PIP_HEIGHT);
+      setPipPos(clamped);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [isDragging],
+  );
+
+  const handleDragEnd = useCallback((event) => {
+    if (dragStateRef.current.pointerId !== event.pointerId) return;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch (e) {
+      // ignore
+    }
+    dragStateRef.current.pointerId = null;
+    setIsDragging(false);
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  // Keep the PiP window inside the viewport if the user resizes the browser.
+  useEffect(() => {
+    if (!isPiP) return;
+    const onResize = () => {
+      setPipPos((prev) => clampPosition(prev.x, prev.y, PIP_WIDTH, PIP_HEIGHT));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isPiP]);
+
+  // ── Jitsi lifecycle (unchanged, guarded against duplicates) ──────────
   useEffect(() => {
     if (!user || !jitsiContainerRef.current) {
       return;
@@ -210,13 +313,10 @@ const JitsiCall = ({
       return;
     }
 
-    // NEW: cancellation flag so an in-flight script load never calls
+    // Cancellation flag so an in-flight script load never calls
     // initializeJitsi() after this effect instance has been torn down
     // (e.g. dev-mode double-invoke, fast prop changes, or a reconnect
-    // racing a real unmount). Previously the early `return;` on the
-    // script-loading branch meant React never got a cleanup function for
-    // that run, so a late-arriving script.onload could still spin up and
-    // join a second live session into the room.
+    // racing a real unmount).
     let cancelled = false;
 
     const tryLoadScript = (url, onSuccess, onFail) => {
@@ -278,10 +378,7 @@ const JitsiCall = ({
           // Dropped "debug" and "info" — those levels emit large volumes of
           // routine internal Jitsi log lines, some of which happened to
           // contain substrings like "connection.error" or
-          // "CONFERENCE_FAILED" as part of benign, non-fatal internals
-          // (stats reporting, ICE candidate churn, etc.). Those false
-          // positives were triggering unnecessary reconnects, and each
-          // reconnect risked a brief double-join in the room.
+          // "CONFERENCE_FAILED" as part of benign, non-fatal internals.
           apiLogLevels: ["log", "error", "warn"],
           resolution: 360,
           enableLayerSuspension: true,
@@ -410,10 +507,6 @@ const JitsiCall = ({
           return;
         }
 
-        // Only reconnect on genuine, explicitly-named connection failures —
-        // never on a loose substring match against error.message, which
-        // could match unrelated, non-fatal text and trigger a false
-        // reconnect (and a transient duplicate participant).
         const isFatalConnectionError =
           error?.name === "connection.error" ||
           error?.name === "conference.connectionError" ||
@@ -439,12 +532,6 @@ const JitsiCall = ({
           return;
         }
 
-        // Narrowed: only react to an explicit, structured fatal failure
-        // code, not a bare substring match on any log line. The old check
-        // matched routine debug/info noise (now excluded via apiLogLevels
-        // above too), which was the main source of spurious reconnects
-        // that could leave a stale session briefly still in the room while
-        // a new one joined — the duplicate-user symptom.
         const isFatalFailure =
           logText.includes('"CONFERENCE_FAILED"') &&
           (logText.includes('"NETWORK_ERROR"') ||
@@ -452,7 +539,9 @@ const JitsiCall = ({
             logText.includes('"conference.connectionError"'));
 
         if (isFatalFailure) {
-          console.log("Fatal conference failure detected, attempting reconnect...");
+          console.log(
+            "Fatal conference failure detected, attempting reconnect...",
+          );
           safeReconnect(event);
         }
       });
@@ -499,31 +588,135 @@ const JitsiCall = ({
     };
   }, []);
 
+  // ── Layout values ────────────────────────────────────────────────────
+  // Full-screen (non-PiP): fixed, fills viewport.
+  // PiP: fixed, small, positioned via `pipPos`, draggable from title bar.
+  const outerSx = isPiP
+    ? {
+        position: "fixed",
+        top: `${pipPos.y}px`,
+        left: `${pipPos.x}px`,
+        right: "auto",
+        bottom: "auto",
+        zIndex: 10000,
+        width: `${PIP_WIDTH}px`,
+        height: `${PIP_HEIGHT}px`,
+        cursor: isDragging ? "grabbing" : "default",
+        userSelect: "none",
+        touchAction: "none",
+      }
+    : {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10000,
+        width: "100%",
+        height: "100%",
+      };
+
   return (
     <Box
       sx={{
-        position: isPiP ? "fixed" : "fixed",
-        top: isPiP ? "auto" : 0,
-        left: isPiP ? "auto" : 0,
-        right: isPiP ? 20 : 0,
-        bottom: isPiP ? 20 : 0,
-        zIndex: 10000,
+        ...outerSx,
         background: darkMode ? "#0B1525" : "#F8FAFC",
         display: "flex",
         flexDirection: "column",
         borderRadius: isPiP ? "16px" : 0,
         boxShadow: isPiP ? "0 8px 32px rgba(0,0,0,0.5)" : "none",
-        width: isPiP ? "320px" : "100%",
-        height: isPiP ? "240px" : "100%",
+        overflow: "hidden",
+        // Prevent the underlying page from scrolling while dragging on touch.
+        transition: isDragging ? "none" : "box-shadow 0.15s ease",
       }}
     >
-      {/* PiP Controls */}
-      {togglePiP && (
+      {/* 
+        Title bar — drag handle.
+        Only visible in PiP mode; the Jitsi iframe lives below this bar so
+        Jitsi's own controls are never covered.
+      */}
+      {isPiP && (
+        <Box
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+          sx={{
+            height: `${PIP_TITLEBAR_HEIGHT}px`,
+            minHeight: `${PIP_TITLEBAR_HEIGHT}px`,
+            background: darkMode ? "#0B1525" : "#F8FAFC",
+            borderBottom: `1px solid ${
+              darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"
+            }`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 1,
+            cursor: isDragging ? "grabbing" : "grab",
+            // Critical: prevent the browser's native drag/select on the bar.
+            userSelect: "none",
+            touchAction: "none",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <DragIndicator
+              sx={{
+                fontSize: 18,
+                color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: darkMode ? "#fff" : "#0F172A",
+              }}
+            >
+              Video Call
+            </Typography>
+          </Box>
+
+          {/* Buttons on the title bar. These do NOT trigger drag because
+              pointerdown is stopped on the buttons themselves. */}
+          <Box
+            sx={{ display: "flex", gap: 0.5 }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <IconButton
+              size="small"
+              onClick={togglePiP}
+              title="Return to full screen"
+              sx={{
+                color: darkMode ? "#fff" : "#0F172A",
+                width: 24,
+                height: 24,
+              }}
+            >
+              <Fullscreen sx={{ fontSize: 16 }} />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={onClose}
+              title="Close"
+              sx={{
+                color: darkMode ? "#fff" : "#0F172A",
+                width: 24,
+                height: 24,
+              }}
+            >
+              <Close sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        </Box>
+      )}
+
+      {/* Full-screen mode controls (top-right) */}
+      {!isPiP && togglePiP && (
         <Box
           sx={{
             position: "absolute",
-            top: isPiP ? 8 : 16,
-            right: isPiP ? 8 : 16,
+            top: 16,
+            right: 16,
             zIndex: 100,
             display: "flex",
             gap: 1,
@@ -531,6 +724,7 @@ const JitsiCall = ({
         >
           <IconButton
             onClick={togglePiP}
+            title="Minimize to picture-in-picture"
             sx={{
               background: "rgba(0,0,0,0.5)",
               color: "#fff",
@@ -539,22 +733,8 @@ const JitsiCall = ({
               height: 36,
             }}
           >
-            {isPiP ? <Fullscreen /> : <PictureInPicture />}
+            <PictureInPicture />
           </IconButton>
-          {isPiP && (
-            <IconButton
-              onClick={onClose}
-              sx={{
-                background: "rgba(0,0,0,0.5)",
-                color: "#fff",
-                "&:hover": { background: "rgba(0,0,0,0.7)" },
-                width: 36,
-                height: 36,
-              }}
-            >
-              <Close />
-            </IconButton>
-          )}
         </Box>
       )}
 
@@ -577,15 +757,20 @@ const JitsiCall = ({
           }}
         >
           <CircularProgress
-            size={isPiP ? 40 : 60}
+            size={isPiP ? 32 : 60}
             sx={{ color: "#015DFF", mb: 2 }}
           />
-          <Typography sx={{ color: "#fff", fontSize: isPiP ? "14px" : "16px" }}>
+          <Typography sx={{ color: "#fff", fontSize: isPiP ? "12px" : "16px" }}>
             Connecting to call...
           </Typography>
         </Box>
       )}
 
+      {/*
+        Jitsi container. While dragging, we set pointer-events:none so the
+        iframe doesn't swallow the pointermove events — the drag continues
+        smoothly even if the cursor passes over the video.
+      */}
       <Box
         ref={jitsiContainerRef}
         id="jitsi-container"
@@ -593,11 +778,13 @@ const JitsiCall = ({
           flex: 1,
           width: "100%",
           height: "100%",
+          minHeight: 0,
           position: "relative",
           overflow: "hidden",
           background: darkMode ? "#0B1525" : "#F1F5F9",
           display: isJitsiHidden ? "none" : "block",
-          borderRadius: isPiP ? "16px" : 0,
+          borderRadius: isPiP ? "0 0 16px 16px" : 0,
+          pointerEvents: isDragging ? "none" : "auto",
         }}
       />
     </Box>

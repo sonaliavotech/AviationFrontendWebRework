@@ -21,7 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 // const API_ROOT = "http://localhost:5200/api";
-const CALLING_HOST = "http://localhost:5100";
+// const CALLING_HOST = "http://localhost:5100";
 
 // Allows a test/dev harness to point the calling socket at a local mock
 // without editing this file. Ignored in production builds.
@@ -32,7 +32,7 @@ const CALLING_HOST_OVERRIDE = import.meta.env?.VITE_CALLING_HOST;
 // ═══════════════════════════════════════════════════════════════════
 
 const API_ROOT = "https://api.tiatele.databin.in/api";
-// const CALLING_HOST = "https://tiacalling.tiamdplus.databin.in";
+const CALLING_HOST = "https://tiacalling.tiamdplus.databin.in";
 
 // ═══════════════════════════════════════════════════════════════════
 // MAIN API

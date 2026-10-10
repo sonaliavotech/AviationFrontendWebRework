@@ -1,4 +1,6 @@
-import React, {
+// AviationCallContext
+
+import {
   createContext,
   useContext,
   useState,
@@ -7,7 +9,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { Box, Button } from "@mui/material";
+import { Snackbar, Alert } from "@mui/material";
 import { useAviationCall } from "../hooks/useAviationCall";
 import AviationCallSocket from "../services/AviationCallSocket";
 import PhysicianStatusService from "../services/PhysicianStatusService";
@@ -20,6 +22,10 @@ import JitsiCall from "../componants/JitsiCall";
 import LoadingSpinner from "../componants/LoadingSpinner";
 import { useThemeMode } from "./ThemeContext";
 import { JITSI_SERVER_URL } from "../config/appConfig";
+import {
+  resolvePatientName,
+  resolvePatientAvatar,
+} from "../utils/aviationCallDisplay";
 
 const AviationCallContext = createContext(null);
 
@@ -36,6 +42,10 @@ export function AviationCallProvider({ children }) {
   const [showJitsi, setShowJitsi] = useState(false);
   const [isPiP, setIsPiP] = useState(false);
   const [jitsiRoomId, setJitsiRoomId] = useState(null);
+  const [cancelledSnackbar, setCancelledSnackbar] = useState({
+    open: false,
+    message: "",
+  });
   const jitsiCallDataRef = useRef(null);
 
   useEffect(() => {
@@ -56,6 +66,16 @@ export function AviationCallProvider({ children }) {
     getParticipants,
     clearError,
   } = useAviationCall(userId);
+
+  useEffect(() => {
+    if (!userId) return;
+    // The status service is normally started by AllEvents/SignIn, but this
+    // provider wraps EVERY page. Loading a deep link (e.g. /CaseDetails)
+    // directly skips those, which left the service without a userId and made
+    // every markBusy/markAvailable call below a silent no-op. start() is
+    // idempotent for an already-started user, so calling it here is safe.
+    PhysicianStatusService.start(userId);
+  }, [userId]);
 
   // Keep the physician presence status in sync with the active call on every
   // page (not just AllEvents). While a call is active the provider is "busy";
@@ -83,10 +103,32 @@ export function AviationCallProvider({ children }) {
   // the presence restore runs for those too.
   useEffect(() => {
     if (!userId) return;
-    const handleLeftAck = () =>
-      PhysicianStatusService.markAvailableOnCallEnd();
-    AviationCallSocket.on("aviation_call_left_ack", handleLeftAck);
-    return () => AviationCallSocket.off("aviation_call_left_ack", handleLeftAck);
+    const handleEnd = () => PhysicianStatusService.markAvailableOnCallEnd();
+    const events = [
+      "aviation_call_left_ack",
+      "aviation_call_cancelled",
+      "aviation_call_ended",
+      "aviation_call_rejected",
+    ];
+    events.forEach((evt) => AviationCallSocket.on(evt, handleEnd));
+    return () =>
+      events.forEach((evt) => AviationCallSocket.off(evt, handleEnd));
+  }, [userId]);
+
+  // Show snackbar when call is cancelled because another device answered
+  useEffect(() => {
+    if (!userId) return;
+    const handleCancelled = (data) => {
+      if (data?.reason === "answered_on_other_device") {
+        setCancelledSnackbar({
+          open: true,
+          message: data?.message || "Call answered on another device",
+        });
+      }
+    };
+    AviationCallSocket.on("aviation_call_cancelled", handleCancelled);
+    return () =>
+      AviationCallSocket.off("aviation_call_cancelled", handleCancelled);
   }, [userId]);
 
   const prepareJitsiSession = useCallback((callPayload) => {
@@ -102,6 +144,7 @@ export function AviationCallProvider({ children }) {
   useEffect(() => {
     if (callStatus === "idle" && !isInCall) {
       setShowJitsi(false);
+      setIsPiP(false);
       setJitsiRoomId(null);
       jitsiCallDataRef.current = null;
     }
@@ -117,6 +160,14 @@ export function AviationCallProvider({ children }) {
 
   const closeJitsi = useCallback(() => setShowJitsi(false), []);
   const togglePiP = useCallback(() => setIsPiP((prev) => !prev), []);
+  const setPiPMode = useCallback((next) => setIsPiP(Boolean(next)), []);
+
+  // Declared before the call handlers below so they can reference it
+  // (temporal dead zone otherwise throws during the first render).
+  const physicianUser = useMemo(
+    () => mapPhysicianToWebUser(session),
+    [session],
+  );
 
   const handleAcceptCall = useCallback(
     (data) => {
@@ -137,6 +188,12 @@ export function AviationCallProvider({ children }) {
         callerName: incomingCall?.callerName || data?.callerName,
         callerRole: incomingCall?.callerRole || data?.callerRole,
         toUserId: data?.toUserId || incomingCall?.toUserId || userId,
+        // Carry the patient name (resolved from the incoming payload aliases)
+        // into the accept message and the Jitsi hand-off.
+        patientName:
+          resolvePatientName(incomingCall) || resolvePatientName(data) || null,
+        incidentId: data?.incidentId || incomingCall?.incidentId || null,
+        acceptedByName: physicianUser?.name || "Physician",
       };
 
       const roomId = resolveRoomId(callPayload);
@@ -148,13 +205,14 @@ export function AviationCallProvider({ children }) {
       prepareJitsiSession(callPayload);
       return acceptCall(callPayload);
     },
-    [acceptCall, incomingCall, prepareJitsiSession, userId],
+    [acceptCall, incomingCall, physicianUser, prepareJitsiSession, userId],
   );
 
   const handleRejectCall = useCallback(
     (data) => {
       rejectCall(data);
       setShowJitsi(false);
+      setIsPiP(false);
       setJitsiRoomId(null);
       jitsiCallDataRef.current = null;
     },
@@ -165,15 +223,11 @@ export function AviationCallProvider({ children }) {
     (data) => {
       hangupCall(data);
       setShowJitsi(false);
+      setIsPiP(false);
       setJitsiRoomId(null);
       jitsiCallDataRef.current = null;
     },
     [hangupCall],
-  );
-
-  const physicianUser = useMemo(
-    () => mapPhysicianToWebUser(session),
-    [session],
   );
 
   const value = useMemo(
@@ -196,6 +250,7 @@ export function AviationCallProvider({ children }) {
       openJitsi,
       closeJitsi,
       togglePiP,
+      setIsPiP: setPiPMode,
       handleAcceptCall,
       handleRejectCall,
       handleHangup,
@@ -219,6 +274,7 @@ export function AviationCallProvider({ children }) {
       openJitsi,
       closeJitsi,
       togglePiP,
+      setPiPMode,
       handleAcceptCall,
       handleRejectCall,
       handleHangup,
@@ -237,6 +293,7 @@ export function AviationCallProvider({ children }) {
           onAccept={handleAcceptCall}
           onReject={handleRejectCall}
           onHangup={handleHangup}
+          callerImage={resolvePatientAvatar(incomingCall)}
           isRinging
         />
       )}
@@ -247,6 +304,10 @@ export function AviationCallProvider({ children }) {
           broadcastId={jitsiRoomId}
           callData={{
             ...stableJitsiCallData,
+            patientName:
+              resolvePatientName(stableJitsiCallData) ||
+              stableJitsiCallData.patientName ||
+              null,
             callerName:
               stableJitsiCallData.callerName ||
               physicianUser?.name ||
@@ -258,10 +319,30 @@ export function AviationCallProvider({ children }) {
           onClose={closeJitsi}
           isPiP={isPiP}
           togglePiP={togglePiP}
+          setIsPiP={setPiPMode}
           domain={JITSI_SERVER_URL}
           darkMode={darkMode}
         />
       )}
+
+      <Snackbar
+        open={cancelledSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() =>
+          setCancelledSnackbar({ ...cancelledSnackbar, open: false })
+        }
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity="info"
+          onClose={() =>
+            setCancelledSnackbar({ ...cancelledSnackbar, open: false })
+          }
+          sx={{ width: "100%", maxWidth: 400 }}
+        >
+          {cancelledSnackbar.message}
+        </Alert>
+      </Snackbar>
     </AviationCallContext.Provider>
   );
 }
