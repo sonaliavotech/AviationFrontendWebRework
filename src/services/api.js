@@ -11,14 +11,25 @@
 // ============================================
 // Import from appConfig
 // ============================================
-import { API_BASE_URL as APP_API_BASE_URL, AI_SUMMARY_URL as APP_AI_SUMMARY_URL } from "../config/appConfig";
+import {
+  API_BASE_URL as APP_API_BASE_URL,
+  AI_SUMMARY_URL as APP_AI_SUMMARY_URL,
+  CHAT_API_URL,
+} from "../config/appConfig";
+
+import {
+  normalizePhysicianStatus,
+  PHYSICIAN_STATUS,
+  isPhysicianAssignable,
+} from "../types/physicianStatus";
 
 // ============================================
 // Use imported values with fallback
 // ============================================
 // const API_BASE_URL = APP_API_BASE_URL|| "https://api.tiatele.databin.in/api";
 const API_BASE_URL = APP_API_BASE_URL;
-const AI_SUMMARY_URL = APP_AI_SUMMARY_URL || "https://aisum.databin.in/case-summary";
+const AI_SUMMARY_URL =
+  APP_AI_SUMMARY_URL || "https://aisum.databin.in/case-summary";
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -96,10 +107,20 @@ export async function getEcgFiles(incidentId) {
 
 // ─── 5. Login ──────────────────────────────────────────────────────────────
 /** POST /api/auth/login — crew kit login */
-export async function crewLogin({ company_name, tail_number, kit_number, secure_access_code }) {
+export async function crewLogin({
+  company_name,
+  tail_number,
+  kit_number,
+  secure_access_code,
+}) {
   return request(`${API_BASE_URL}/auth/login`, {
     method: "POST",
-    body: JSON.stringify({ company_name, tail_number, kit_number, secure_access_code }),
+    body: JSON.stringify({
+      company_name,
+      tail_number,
+      kit_number,
+      secure_access_code,
+    }),
   });
 }
 
@@ -185,6 +206,26 @@ export function getCaseDurationFromIncident(incident) {
  * Map API incident (nested or flat) → AllEvents table row.
  * Matches tab EventsScreenTable formatting.
  */
+
+export async function getPhysicianLiveStatus(userId) {
+  const json = await request(
+    `${CHAT_API_URL}/users/${encodeURIComponent(userId)}`,
+  );
+  const data = json?.data;
+
+  // The chat service actually returns the FULL user directory (an array)
+  // for this route instead of a single user. Pick the entry that matches
+  // the requested physician so callers never treat the truthy directory
+  // array itself as a single user's live presence — that bug downgraded
+  // every physician to "offline" in the Assign to Provider modal.
+  if (Array.isArray(data)) {
+    const match = data.find((u) => u && String(u.id) === String(userId));
+    return match || null;
+  }
+  if (data && typeof data === "object") return data;
+  return null;
+}
+
 export function mapIncidentToTableRow(incident) {
   const patient = incident?.patient || {};
   const flight = incident?.flight || {};
@@ -260,13 +301,55 @@ export function mapIncidentToTableRow(incident) {
 }
 
 /** Map GET /api/physicians item → assign modal option (tab AssignPhysicianModal) */
-export function mapPhysicianFromApi(doctor) {
-  const name = [doctor.first_name, doctor.last_name].filter(Boolean).join(" ").trim();
+export function mapPhysicianFromApi(doctor, live = null) {
+  const name = [doctor.first_name, doctor.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  // The physicians directory (GET /api/physicians) already carries the
+  // DB-backed presence columns (status / physician_is_active / is_online),
+  // so it is the authoritative source for a physician's presence.
+  const fallbackStatus = normalizePhysicianStatus(
+    doctor.status || (doctor.is_online ? "available" : null),
+  );
+
+  // Live presence from the chat service is only trusted when it exposes a
+  // real status string. The chat user records otherwise only keep a stale
+  // is_online flag that does NOT reflect the physician presence DB, so we
+  // never let it downgrade an authoritative "available" to "offline".
+  const liveHasStatus =
+    live &&
+    typeof live === "object" &&
+    !Array.isArray(live) &&
+    String(live.status || "").trim() !== "";
+  const liveStatus = liveHasStatus
+    ? normalizePhysicianStatus(live.status)
+    : null;
+
+  const isActive =
+    doctor.physician_is_active === true ||
+    String(doctor.physician_is_active || "").toLowerCase() === "true" ||
+    // If backend doesn't return the flag at all, treat as active
+    doctor.physician_is_active === undefined;
+
+  // When we have no explicit status at all, an active physician is treated
+  // as Available (mirrors the native directory: active staff are assignable).
+  // This prevents the modal from showing zero online physicians when the
+  // per-user live lookup fails.
+  const finalStatus =
+    liveStatus ||
+    fallbackStatus ||
+    (isActive ? PHYSICIAN_STATUS.AVAILABLE : PHYSICIAN_STATUS.OFFLINE);
+  const assignable = isPhysicianAssignable(finalStatus, isActive);
+
   return {
     id: doctor.id,
     name: name || doctor.name || "Unknown",
     specialty: doctor.specialty || "Physician",
-    status: "Available",
+    status: finalStatus,
+    isActive,
+    assignable,
     isProvider: true,
     isPcpPhysician: true,
     isAdmittingPhysician: false,
@@ -281,30 +364,64 @@ export function mapVitalsToPatientData(caseData, tableRow) {
     v.bpSystolic != null && v.bpDiastolic != null
       ? `${v.bpSystolic}/${v.bpDiastolic} mmHg`
       : "—";
-  const genderChar = (caseData?.patientAge != null && tableRow?.gender)
-    ? String(tableRow.gender).charAt(0).toUpperCase()
-    : tableRow?.gender?.charAt(0)?.toUpperCase() || "—";
+  const genderChar =
+    caseData?.patientAge != null && tableRow?.gender
+      ? String(tableRow.gender).charAt(0).toUpperCase()
+      : tableRow?.gender?.charAt(0)?.toUpperCase() || "—";
 
   return {
     patient: {
       name: caseData?.patientName || tableRow?.name || "—",
       age: caseData?.patientAge ?? tableRow?.age?.replace("y", "") ?? "—",
       gender: genderChar,
-      flight: caseData?.flight || tableRow?.flightNumber || tableRow?.room || "—",
-      origin: caseData?.route?.split("→")?.[0]?.trim() || tableRow?.originIata || "",
-      destination: caseData?.route?.split("→")?.[1]?.trim() || tableRow?.destinationIata || "",
+      flight:
+        caseData?.flight || tableRow?.flightNumber || tableRow?.room || "—",
+      origin:
+        caseData?.route?.split("→")?.[0]?.trim() || tableRow?.originIata || "",
+      destination:
+        caseData?.route?.split("→")?.[1]?.trim() ||
+        tableRow?.destinationIata ||
+        "",
     },
     vitals: {
-      heartRate: { value: v.heartRate ?? null, display: v.heartRate != null ? `${v.heartRate} bpm` : "—", key: "heartRate" },
+      heartRate: {
+        value: v.heartRate ?? null,
+        display: v.heartRate != null ? `${v.heartRate} bpm` : "—",
+        key: "heartRate",
+      },
       sweating: { value: null, display: v.sweating || "—", key: null },
       bloodPressure: { value: null, display: bp, key: null },
       ecg: { value: null, display: v.ecg || "—", key: null },
-      oxygen: { value: v.oxygen ?? null, display: v.oxygen != null ? `${v.oxygen}%` : "—", key: "oxygen" },
-      painScore: { value: v.painScore ?? null, display: v.painScore != null ? `${v.painScore}/10` : "—", key: "painScore" },
-      respiratoryRate: { value: v.respiratoryRate ?? null, display: v.respiratoryRate != null ? `${v.respiratoryRate} mins.` : "—", key: "respiratoryRate" },
-      bloodGlucose: { value: v.bloodGlucose ?? null, display: v.bloodGlucose != null ? `${v.bloodGlucose} mg/dl` : "—", key: "bloodGlucose" },
-      temperature: { value: v.temperature ?? null, display: v.temperature != null ? `${v.temperature} C` : "—", key: "temperature" },
-      avpu: { value: v.avpuScore ?? null, display: v.avpuScore != null ? String(v.avpuScore) : "—", key: "avpu" },
+      oxygen: {
+        value: v.oxygen ?? null,
+        display: v.oxygen != null ? `${v.oxygen}%` : "—",
+        key: "oxygen",
+      },
+      painScore: {
+        value: v.painScore ?? null,
+        display: v.painScore != null ? `${v.painScore}/10` : "—",
+        key: "painScore",
+      },
+      respiratoryRate: {
+        value: v.respiratoryRate ?? null,
+        display: v.respiratoryRate != null ? `${v.respiratoryRate} mins.` : "—",
+        key: "respiratoryRate",
+      },
+      bloodGlucose: {
+        value: v.bloodGlucose ?? null,
+        display: v.bloodGlucose != null ? `${v.bloodGlucose} mg/dl` : "—",
+        key: "bloodGlucose",
+      },
+      temperature: {
+        value: v.temperature ?? null,
+        display: v.temperature != null ? `${v.temperature} C` : "—",
+        key: "temperature",
+      },
+      avpu: {
+        value: v.avpuScore ?? null,
+        display: v.avpuScore != null ? String(v.avpuScore) : "—",
+        key: "avpu",
+      },
       skinColour: { value: null, display: v.skinColor || "—", key: null },
     },
   };

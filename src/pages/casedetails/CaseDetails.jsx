@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -40,11 +40,21 @@ import { getVitalsSidebarTheme } from "../../theme/appStyles";
 import EventSummaryPanel from "./EventSummaryPanel";
 import MedicineModules from "./MedicineModules";
 import CaseDetailsChatPanel from "./CaseDetailsChatPanel";
+import { parseAiSummary } from "./caseDetailUtils";
+
+// Assignment / session helpers - decide whether the physician that is logged in
+// is the one this case is assigned to, and track unread crew messages.
+import { getPhysicianSession } from "../../utils/physicianSession";
 import {
-  parseAiSummary,
-  getMedicineKey,
-  formatMedicineLine,
-} from "./caseDetailUtils";
+  resolveAssignedPhysicianId,
+  isAssignedPhysicianId,
+} from "../../utils/assignedPhysician";
+import { normalizeChatPayload } from "../../utils/chatMessageMapper";
+import AviationChatSocket from "../../services/AviationChatSocket";
+import {
+  getAviationMessages,
+  getCaseChatRoom,
+} from "../../services/aviationChatApi";
 
 // Import Call Context
 import { useAviationCallContext } from "../../context/AviationCallContext";
@@ -519,6 +529,45 @@ const spo2Points = [98, 97, 96, 95, 93, 91, 89, 88, 87, 85, 84, 83];
 const hrPoints = [72, 74, 76, 80, 85, 88, 86, 90, 92, 88, 85, 88];
 const bpPoints = [120, 122, 125, 128, 130, 132, 135, 133, 136, 135, 137, 135];
 
+// ═══════════════════════════════════════════════════════════════════════
+// ✅ FIX: chat "seen" watermark, persisted in localStorage
+//
+// The old code kept the "already read up to this time" watermark ONLY in a
+// useRef. A useRef resets the moment this component unmounts, which
+// happens every time you leave the case (Back to All Events) and open it
+// again. On the next visit there was no memory of what you'd already read,
+// so the unread-sync effect fell back to the server's `is_seen` flag and
+// the red dot could reappear on messages you had already seen.
+//
+// Fix: mirror the watermark into localStorage, keyed by incident + user, so
+// it survives a remount. Only a message that arrives AFTER this saved
+// point will ever light the dot up again.
+// ═══════════════════════════════════════════════════════════════════════
+const chatSeenStorageKey = (incidentId, userId) =>
+  incidentId && userId ? `aviation_chat_seen_${incidentId}_${userId}` : null;
+
+const readPersistedChatSeenAt = (incidentId, userId) => {
+  const key = chatSeenStorageKey(incidentId, userId);
+  if (!key) return 0;
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const writePersistedChatSeenAt = (incidentId, userId, timestamp) => {
+  const key = chatSeenStorageKey(incidentId, userId);
+  if (!key) return;
+  try {
+    localStorage.setItem(key, String(timestamp));
+  } catch {
+    /* private mode / quota — ignore, in-memory ref still works this session */
+  }
+};
+
 export const CaseDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -533,10 +582,16 @@ export const CaseDetails = () => {
 
   // UI state
   const [showTrends, setShowTrends] = useState(false);
-  const [chatVisible, setChatVisible] = useState(false);
+  const [chatVisible, setChatVisible] = useState(
+    !!location.state?.openChatOnLoad,
+  );
   const [chatMessage, setChatMessage] = useState("");
   const [pendingMedicines, setPendingMedicines] = useState([]);
-  const [recommendedMedicines, setRecommendedMedicines] = useState([]);
+  // One medicine-order draft holding ALL picked medicines from ANY kit
+  // module. EventSummaryPanel pre-fills the "Add Order" form with every
+  // module (Title) and their medicines (Instructions), so a single order
+  // can contain multiple modules at once.
+  const [medicineOrderDraft, setMedicineOrderDraft] = useState(null);
   const [mobilePanel, setMobilePanel] = useState("summary");
 
   // Call state (UI overlays handled globally by AviationCallProvider)
@@ -557,14 +612,30 @@ export const CaseDetails = () => {
   const isNarrow = useMediaQuery(muiTheme.breakpoints.down("xl"));
 
   // Compute derived values
-  const physicianAssigned = useMemo(
-    () =>
-      location.state?.physicianAssigned ||
-      !!eventData?.physicianId ||
-      !!eventData?.physician_id ||
-      !!tablePatient?.physicianId ||
-      tablePatient?.physicianStatus === "named",
-    [location.state?.physicianAssigned, eventData, tablePatient],
+  //
+  // The assigned physician can reach this page through the deep-link state,
+  // through a patients-list row, or only through the case detail payload, so we
+  // resolve the assignee from every source and compare it against the
+  // physician who is actually logged in. Chat and Call are actions of the
+  // assigned physician: everyone still sees the buttons, but they only light
+  // up and become clickable for that one physician.
+  const sessionUserId = getPhysicianSession()?.id;
+  const currentUserId =
+    sessionUserId != null && String(sessionUserId).trim()
+      ? String(sessionUserId)
+      : physicianUser?.id != null && String(physicianUser.id).trim()
+        ? String(physicianUser.id)
+        : null;
+
+  const assignedPhysicianId =
+    resolveAssignedPhysicianId(eventData) ||
+    resolveAssignedPhysicianId(tablePatient) ||
+    resolveAssignedPhysicianId(location.state);
+
+  // The current user is the physician this case is assigned to.
+  const isAssignedPhysician = isAssignedPhysicianId(
+    assignedPhysicianId,
+    currentUserId,
   );
 
   const crewUserId = useMemo(
@@ -597,7 +668,11 @@ export const CaseDetails = () => {
     [location.state?.roomId, tablePatient, eventData],
   );
 
-  const chatEnabled = physicianAssigned && !!crewUserId;
+  // Chat and the video call belong to the assigned physician, and both need a
+  // crew member on the other end of the conversation. When either condition is
+  // missing the buttons stay in the top bar, just dimmed and not clickable.
+  const chatEnabled = isAssignedPhysician && !!crewUserId;
+  const callEnabled = isAssignedPhysician && !!crewUserId;
 
   // Fetch case data
   useEffect(() => {
@@ -622,6 +697,183 @@ export const CaseDetails = () => {
       .finally(() => setLoadingEcg(false));
   }, [incidentId]);
 
+  // Reset case-specific medicine state when the incident changes so the
+  // Recommended Medicines table never shows medicines from another case.
+  useEffect(() => {
+    setMedicineOrderDraft(null);
+    setPendingMedicines([]);
+  }, [incidentId]);
+
+  // Opens the chat panel when a chat-notification banner is clicked while this
+  // case is already on screen (banner-to-chat deep link without a remount).
+  useEffect(() => {
+    const handleOpenCaseChat = (e) => {
+      const detail = e?.detail;
+      if (!detail) return;
+      if (detail.incidentId && String(detail.incidentId) !== String(incidentId))
+        return;
+      setChatVisible(true);
+      if (isMobile) setMobilePanel("summary");
+    };
+    window.addEventListener("aviation:open-case-chat", handleOpenCaseChat);
+    return () =>
+      window.removeEventListener("aviation:open-case-chat", handleOpenCaseChat);
+  }, [incidentId, isMobile]);
+
+  // ── Unread chat messages ─────────────────────────────────────────────────
+  // Crew can message the case at any time, so the Chat button carries a red
+  // dot and a small dot is pinned to the bottom-left of the screen while
+  // there are messages the physician has not opened yet. The count is seeded
+  // from the server, kept live through the socket, and cleared the moment the
+  // chat panel is opened.
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const chatVisibleRef = useRef(chatVisible);
+  chatVisibleRef.current = chatVisible;
+  // Local "read watermark": anything created before this moment has already
+  // been opened by the physician, so it must never raise the red dots again
+  // even when the server still reports it as unseen.
+  // ✅ Seeded from localStorage below so it survives a page remount, instead
+  //    of always starting at 0 (which was the bug: the dot reappeared every
+  //    time you reopened a case you had already read).
+  const lastChatSeenAtRef = useRef(0);
+
+  // ✅ NEW: restore the persisted watermark whenever the case or the logged
+  //    in physician changes (also covers navigating between cases).
+  useEffect(() => {
+    lastChatSeenAtRef.current = readPersistedChatSeenAt(
+      incidentId,
+      currentUserId,
+    );
+  }, [incidentId, currentUserId]);
+
+  const openChatPanel = useCallback(() => {
+    if (isMobile) setMobilePanel("summary");
+    setChatVisible(true);
+  }, [isMobile]);
+
+  const handleChatOpened = useCallback(() => {
+    setUnreadChatCount(0);
+    const now = Date.now();
+    lastChatSeenAtRef.current = now;
+    writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
+  }, [incidentId, currentUserId]);
+
+  // Resolve the case chat room and seed the unread count from the server.
+  useEffect(() => {
+    if (!incidentId || !isAssignedPhysician || !currentUserId) {
+      setChatRoomId(null);
+      setUnreadChatCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setUnreadChatCount(0);
+
+    const loadUnread = async () => {
+      try {
+        const room = await getCaseChatRoom(incidentId, currentUserId).catch(
+          () => null,
+        );
+        if (cancelled) return;
+
+        const roomId = prefetchedRoomId || room?.id;
+        if (!roomId) {
+          setChatRoomId(null);
+          return;
+        }
+
+        setChatRoomId(String(roomId));
+
+        const history = await getAviationMessages(
+          String(roomId),
+          1,
+          50,
+          currentUserId,
+        );
+        if (cancelled || chatVisibleRef.current) return;
+
+        const unread = (Array.isArray(history) ? history : []).filter((msg) => {
+          const normalized = normalizeChatPayload(msg);
+          if (!normalized?.id) return false;
+          if (String(normalized.sender_id) === String(currentUserId))
+            return false;
+          // A message counts as unread only while the server still marks it
+          // unseen AND it arrived after the last time this physician opened
+          // the chat panel. Seen messages never light the dots up again.
+          if (normalized.is_seen) return false;
+          const created = normalized.created_at
+            ? Date.parse(normalized.created_at)
+            : NaN;
+          if (!Number.isNaN(created) && created <= lastChatSeenAtRef.current) {
+            return false;
+          }
+          return true;
+        }).length;
+
+        setUnreadChatCount(unread);
+      } catch (err) {
+        console.warn("UNREAD CHAT SYNC ERROR =>", err);
+        if (!cancelled) setUnreadChatCount(0);
+      }
+    };
+
+    loadUnread();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [incidentId, isAssignedPhysician, currentUserId, prefetchedRoomId]);
+
+  // Keep the count live: any crew message that lands while the panel is closed
+  // marks the case as having unread messages again.
+  useEffect(() => {
+    if (!chatRoomId || !isAssignedPhysician) return undefined;
+
+    const handleIncomingMessage = (data) => {
+      if (!data) return;
+      const normalized = normalizeChatPayload(data);
+      const incomingRoom =
+        normalized?.room_id ?? data?.roomId ?? data?.room_id ?? null;
+      if (incomingRoom == null) return;
+      if (String(incomingRoom) !== String(chatRoomId)) return;
+      if (
+        normalized?.sender_id != null &&
+        currentUserId != null &&
+        String(normalized.sender_id) === String(currentUserId)
+      ) {
+        return;
+      }
+      if (chatVisibleRef.current) {
+        // The panel is open, so this message is already on screen and being
+        // read - push the read watermark past it so it never counts as
+        // unread on a later sync, instead of raising the dots.
+        const now = Date.now();
+        lastChatSeenAtRef.current = now;
+        writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
+        return;
+      }
+      setUnreadChatCount((count) => count + 1);
+    };
+
+    AviationChatSocket.onNewMessage(handleIncomingMessage);
+    return () => AviationChatSocket.offNewMessage(handleIncomingMessage);
+  }, [chatRoomId, isAssignedPhysician, currentUserId, incidentId]);
+
+  // Opening the panel means the physician is reading the thread - the red dots
+  // go away immediately, the panel itself marks the messages as seen, and the
+  // read watermark stops those messages from counting as unread again.
+  useEffect(() => {
+    if (chatVisible) {
+      const now = Date.now();
+      lastChatSeenAtRef.current = now;
+      writePersistedChatSeenAt(incidentId, currentUserId, now); // ✅ persist
+      setUnreadChatCount(0);
+    }
+  }, [chatVisible, incidentId, currentUserId]);
+
+  const hasUnreadChat = isAssignedPhysician && unreadChatCount > 0;
+
   // Handle call error
   useEffect(() => {
     if (callError) {
@@ -631,8 +883,10 @@ export const CaseDetails = () => {
 
   // Handle Join Now click
   const handleJoinNow = useCallback(() => {
-    if (!physicianAssigned) {
-      console.warn("Physician not assigned");
+    if (!isAssignedPhysician) {
+      console.warn(
+        "Only the physician assigned to this case can start a call.",
+      );
       return;
     }
 
@@ -642,6 +896,15 @@ export const CaseDetails = () => {
     }
 
     const callId = `call_${incidentId}_${Date.now()}`;
+
+    // The receiving client's incoming-call screen shows the patient name, so it
+    // must ride along with the call payload.
+    const patientName =
+      eventData?.patientName ||
+      eventData?.full_name ||
+      eventData?.patient_name ||
+      tablePatient?.name ||
+      null;
 
     const callData = {
       callId,
@@ -656,12 +919,13 @@ export const CaseDetails = () => {
       callerId: physicianUser?.id || "physician-web-user",
       incidentId: incidentId,
       organizationName: "Aviation Medical",
+      ...(patientName ? { patientName, full_name: patientName } : {}),
       participants: [
         {
           userId: crewUserId,
-          role: "crew"
-        }
-      ]
+          role: "crew",
+        },
+      ],
     };
 
     const success = startCall(callData);
@@ -669,7 +933,19 @@ export const CaseDetails = () => {
       openJitsi(callData);
       console.log("📞 Call initiated:", callData);
     }
-  }, [physicianAssigned, crewUserId, incidentId, prefetchedRoomId, physicianUser, startCall, openJitsi]);
+  }, [
+    isAssignedPhysician,
+    crewUserId,
+    incidentId,
+    prefetchedRoomId,
+    physicianUser,
+    startCall,
+    openJitsi,
+    eventData?.patientName,
+    eventData?.full_name,
+    eventData?.patient_name,
+    tablePatient?.name,
+  ]);
 
   const aiSummary = useMemo(() => parseAiSummary(eventData), [eventData]);
 
@@ -690,72 +966,92 @@ export const CaseDetails = () => {
     [eventData],
   );
 
-  const addPendingMedicine = useCallback((medicineOrMedicines) => {
-    const medicines = Array.isArray(medicineOrMedicines)
-      ? medicineOrMedicines
-      : [medicineOrMedicines];
-    const normalized = medicines
-      .map((m) =>
-        typeof m === "string"
-          ? { moduleId: "", moduleTitle: "", medicineName: m, usage: "" }
-          : {
-            moduleId: m?.moduleId || "",
-            moduleTitle: m?.moduleTitle || "",
-            medicineName: m?.medicineName || m?.name || m?.title || "",
-            usage: m?.usage || "",
-          },
-      )
-      .filter((m) => m.medicineName);
+  const queueMedicineOrder = useCallback(
+    (medicineOrMedicines) => {
+      const medicines = Array.isArray(medicineOrMedicines)
+        ? medicineOrMedicines
+        : [medicineOrMedicines];
+      const normalized = medicines
+        .map((m) =>
+          typeof m === "string"
+            ? {
+                moduleId: "",
+                moduleTitle: "",
+                medicineName: m,
+                usage: "",
+              }
+            : {
+                moduleId: m?.moduleId || "",
+                moduleTitle: m?.moduleTitle || "",
+                medicineName: m?.medicineName || m?.name || m?.title || "",
+                usage: m?.usage || "",
+              },
+        )
+        .filter((m) => m.medicineName && !m.outOfStock);
 
-    if (!normalized.length) return;
+      if (!normalized.length) return;
 
-    setPendingMedicines((prev) => {
-      const existingKeys = new Set(prev.map(getMedicineKey));
-      const next = [...prev];
-      normalized.forEach((medicine) => {
-        const key = getMedicineKey(medicine);
-        if (!existingKeys.has(key)) {
-          next.push(medicine);
-          existingKeys.add(key);
-        }
-      });
-      return next;
-    });
-
-    setChatMessage((prev) => {
-      const existingLines = prev.split("\n").filter(Boolean);
-      const newLines = normalized
-        .map(formatMedicineLine)
-        .filter(Boolean)
-        .filter((line) => !existingLines.includes(line));
-      return [...existingLines, ...newLines].join("\n");
-    });
-
-    setChatVisible(true);
-    if (isMobile) setMobilePanel("summary");
-  }, [isMobile]);
-
-  const handleSendChatMedicines = useCallback(() => {
-    if (pendingMedicines.length === 0 && !chatMessage.trim()) return;
-
-    if (pendingMedicines.length > 0) {
-      setRecommendedMedicines((prev) => {
-        const existingKeys = new Set(prev.map(getMedicineKey));
-        const next = [...prev];
-        pendingMedicines.forEach((medicine) => {
-          const key = getMedicineKey(medicine);
-          if (!existingKeys.has(key)) {
-            next.push(medicine);
-            existingKeys.add(key);
+      // Accumulate EVERY picked medicine into ONE order draft (grouped by kit
+      // module). EventSummaryPanel pre-fills the "Add Order" form with all the
+      // modules as Title and all their medicines as Instructions, so a single
+      // order can contain medicines from multiple modules. Clicking "Add Order"
+      // creates one real physician order with the normal Order Actions menu.
+      setMedicineOrderDraft((prev) => {
+        const next = {
+          groups: prev?.groups
+            ? prev.groups.map((g) => ({
+                key: g.key,
+                moduleTitle: g.moduleTitle,
+                medicines: [...g.medicines],
+              }))
+            : [],
+        };
+        normalized.forEach((medicine) => {
+          const key =
+            medicine.moduleId ||
+            medicine.moduleTitle ||
+            "Recommended Medicines";
+          const moduleTitle =
+            medicine.moduleTitle ||
+            medicine.moduleId ||
+            "Recommended Medicines";
+          let group = next.groups.find((g) => g.key === key);
+          if (!group) {
+            group = { key, moduleTitle, medicines: [] };
+            next.groups.push(group);
+          }
+          const name = medicine.medicineName;
+          if (!group.medicines.includes(name)) {
+            group.medicines.push(name);
           }
         });
         return next;
       });
-    }
 
+      if (isMobile) setMobilePanel("summary");
+    },
+    [isMobile],
+  );
+
+  // Clear the order draft after it has been converted into an order via the
+  // "Add Order" button.
+  const consumeMedicineOrderDraft = useCallback(() => {
+    setMedicineOrderDraft(null);
+  }, []);
+
+  // Drop the order draft when the physician cancels/closes the pre-filled
+  // "Add Order" form without submitting.
+  const clearMedicineOrderDraft = useCallback(() => {
+    setMedicineOrderDraft(null);
+  }, []);
+
+  const handleSendChatMedicines = useCallback(() => {
+    // Medicines now go straight to the Recommended Medicines table, so
+    // sending a chat message simply clears the pending list (kept for
+    // backward compatibility with the chat panel receiving pendingMedicines).
     setPendingMedicines([]);
     setChatMessage("");
-  }, [pendingMedicines, chatMessage]);
+  }, []);
 
   const handleEcgClick = (item) => {
     const url = `https://files.tiamdplus.databin.in/${item.storage_url}`;
@@ -782,7 +1078,7 @@ export const CaseDetails = () => {
         />
       </Box>
     ) : (
-      <MedicineModules darkMode={darkMode} onAddMedicine={addPendingMedicine} />
+      <MedicineModules darkMode={darkMode} onAddMedicine={queueMedicineOrder} />
     );
 
   const renderVitalsPanel = () => (
@@ -868,7 +1164,11 @@ export const CaseDetails = () => {
               color: active ? "#fff" : C.textMuted,
               background: active ? "#0A5FFF" : "transparent",
               "&:hover": {
-                background: active ? "#0047cc" : darkMode ? "#1E293B" : "#F1F5F9",
+                background: active
+                  ? "#0047cc"
+                  : darkMode
+                    ? "#1E293B"
+                    : "#F1F5F9",
               },
             }}
           >
@@ -882,6 +1182,7 @@ export const CaseDetails = () => {
   const chatPanelProps = {
     visible: chatVisible,
     onClose: () => setChatVisible(false),
+    onChatOpened: handleChatOpened,
     chatTitle: crewDisplayName,
     incidentId,
     crewUserId,
@@ -975,8 +1276,39 @@ export const CaseDetails = () => {
               width: { xs: "100%", md: "auto" },
             }}
           >
+            {/* Chat and the video call are always in the top bar so nothing
+                jumps around, but only the physician this case is assigned to
+                gets them at full brightness and clickable. For every other
+                physician they stay visible with reduced opacity and disabled. */}
             <Button
-              startIcon={<ChatIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
+              startIcon={
+                <Box
+                  sx={{
+                    position: "relative",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ChatIcon sx={{ fontSize: { xs: 16, md: 18 } }} />
+                  {hasUnreadChat && (
+                    <Box
+                      aria-label="Unread messages"
+                      sx={{
+                        position: "absolute",
+                        top: -3,
+                        right: -5,
+                        minWidth: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "#E53935",
+                        border: `1.5px solid ${darkMode ? "#0F172A" : "#0A5FFF"}`,
+                        boxShadow: "0 0 0 2px rgba(229,57,53,0.35)",
+                      }}
+                    />
+                  )}
+                </Box>
+              }
               disabled={!chatEnabled}
               onClick={() => {
                 if (!chatEnabled) return;
@@ -996,11 +1328,16 @@ export const CaseDetails = () => {
                 fontSize: { xs: "11px", md: "12px" },
                 fontWeight: 600,
                 textTransform: "none",
-                opacity: chatEnabled ? 1 : 0.6,
+                opacity: chatEnabled ? 1 : 0.55,
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
                 "&:hover": {
                   background: chatEnabled ? "#0047cc" : undefined,
+                },
+                "&.Mui-disabled": {
+                  background: darkMode ? "#1E293B" : "#E2E8F0",
+                  color: C.textMuted,
+                  opacity: 0.55,
                 },
               }}
             >
@@ -1008,34 +1345,47 @@ export const CaseDetails = () => {
             </Button>
 
             <Button
-              startIcon={<VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
-              disabled={!physicianAssigned || !crewUserId}
+              startIcon={
+                <VideoCallIcon sx={{ fontSize: { xs: 16, md: 18 } }} />
+              }
+              disabled={!callEnabled}
               onClick={handleJoinNow}
               sx={{
-                background: physicianAssigned && crewUserId
+                background: callEnabled
                   ? "#0A5FFF"
                   : darkMode
                     ? "#1E293B"
                     : "#E2E8F0",
-                color: physicianAssigned && crewUserId ? "#fff" : C.textMuted,
+                color: callEnabled ? "#fff" : C.textMuted,
                 borderRadius: "8px",
                 px: { xs: "10px", sm: "14px" },
                 height: { xs: 36, md: 38 },
                 fontSize: { xs: "11px", md: "12px" },
                 fontWeight: 600,
                 textTransform: "none",
-                opacity: physicianAssigned && crewUserId ? 1 : 0.6,
+                opacity: callEnabled ? 1 : 0.55,
                 flex: { xs: 1, sm: "none" },
                 minWidth: 0,
                 "&:hover": {
-                  background: physicianAssigned && crewUserId ? "#0047cc" : undefined,
+                  background: callEnabled ? "#0047cc" : undefined,
+                },
+                "&.Mui-disabled": {
+                  background: darkMode ? "#1E293B" : "#E2E8F0",
+                  color: C.textMuted,
+                  opacity: 0.55,
                 },
               }}
             >
-              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
                 Join Now
               </Box>
-              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              <Box
+                component="span"
+                sx={{ display: { xs: "inline", sm: "none" } }}
+              >
                 Join
               </Box>
             </Button>
@@ -1106,7 +1456,9 @@ export const CaseDetails = () => {
                   loadingEvent={loadingEvent}
                   loadingEcg={loadingEcg}
                   ecgFiles={ecgFiles}
-                  recommendedMedicines={recommendedMedicines}
+                  medicineOrderDraft={medicineOrderDraft}
+                  onMedicineOrderConsumed={consumeMedicineOrderDraft}
+                  onClearMedicineOrderDraft={clearMedicineOrderDraft}
                   aiSummary={aiSummary}
                   darkMode={darkMode}
                   onBack={() => navigate("/all-events")}
@@ -1169,7 +1521,7 @@ export const CaseDetails = () => {
         </Box>
       </Box>
 
-      {/* Right — vitals sidebar */}
+      {/* Right - vitals sidebar */}
       <Box
         sx={{
           width: vitalsPanelWidth,
@@ -1282,7 +1634,7 @@ export const CaseDetails = () => {
               <Typography
                 sx={{ fontSize: "12px", fontWeight: 700, color: C.dangerText }}
               >
-                SpO₂ &lt; 90% - Critical threshold
+                SpO₂ {"<"} 90% - Critical threshold
               </Typography>
               <Typography
                 sx={{
@@ -1322,12 +1674,45 @@ export const CaseDetails = () => {
         </Box>
       )}
 
-      {loadingEvent && (
-        <LoadingSpinner
-          variant="overlay"
-          size="lg"
-          message="Loading case..."
+      {/* Small unread marker pinned to the bottom-left of the screen: it shows
+          that the crew sent a message this physician has not opened yet and
+          opens the chat on click. It disappears once the chat is open. */}
+      {hasUnreadChat && !chatVisible && (
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label="Open chat, new unread messages"
+          title="New unread messages"
+          onClick={openChatPanel}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openChatPanel();
+            }
+          }}
+          sx={{
+            position: "fixed",
+            left: { xs: 12, sm: 18 },
+            bottom: { xs: 18, sm: 26 },
+            zIndex: 1400,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: "#E53935",
+            border: `2px solid ${darkMode ? "#0B1525" : "#fff"}`,
+            boxShadow: "0 2px 10px rgba(229,57,53,0.55)",
+            cursor: "pointer",
+            animation: "caseUnreadPulse 1.6s ease-in-out infinite",
+            "@keyframes caseUnreadPulse": {
+              "0%, 100%": { transform: "scale(1)", opacity: 1 },
+              "50%": { transform: "scale(1.3)", opacity: 0.7 },
+            },
+          }}
         />
+      )}
+
+      {loadingEvent && (
+        <LoadingSpinner variant="overlay" size="lg" message="Loading case..." />
       )}
     </Box>
   );

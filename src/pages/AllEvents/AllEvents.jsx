@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+// AllEventScreen
+
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import * as XLSX from "xlsx";
@@ -38,6 +40,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -63,6 +66,7 @@ import CallIcon from "@mui/icons-material/Call";
 import CloseIcon from "@mui/icons-material/Close";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import CheckIcon from "@mui/icons-material/Check";
 
 // SVG assets
 import {
@@ -95,6 +99,7 @@ import {
   createCaseLog,
   mapIncidentToTableRow,
   mapPhysicianFromApi,
+  getPhysicianLiveStatus,
 } from "../../services/api";
 import LoadingSpinner from "../../componants/LoadingSpinner";
 import {
@@ -102,6 +107,26 @@ import {
   mapPhysicianToWebUser,
 } from "../../utils/physicianSession";
 import AviationChatSocket from "../../services/AviationChatSocket";
+import AviationCallSocket from "../../services/AviationCallSocket";
+import PhysicianStatusService from "../../services/PhysicianStatusService";
+import {
+  normalizePhysicianStatus,
+  PHYSICIAN_STATUS_COLORS,
+  PHYSICIAN_STATUS_SHORT_LABELS,
+  PHYSICIAN_STATUS,
+  MANUAL_PHYSICIAN_STATUSES,
+} from "../../types/physicianStatus";
+
+// Local mirror of native `isPhysicianAssignable(status, isActive)`
+const ASSIGNABLE_STATUSES = new Set([
+  PHYSICIAN_STATUS.AVAILABLE,
+  PHYSICIAN_STATUS.ON_CALL,
+  PHYSICIAN_STATUS.BUSY,
+]);
+const isAssignable = (status, isActive = true) => {
+  if (!isActive) return false;
+  return ASSIGNABLE_STATUSES.has(normalizePhysicianStatus(status));
+};
 
 const SidelistTabIcon = ({ isActive }) => (
   <svg
@@ -131,360 +156,12 @@ const MyAppointmentsIcon = ({ isActive }) => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    {/* Patient Profile */}
     <path d="M11 19v-1a3 3 0 0 0-3-3H3a3 3 0 0 0-3 3v1" />
     <circle cx="5.5" cy="9.5" r="2.5" />
-    {/* Clock Circle Intersecting */}
     <circle cx="16" cy="11" r="5" />
-    {/* Clock Hands */}
     <polyline points="16 8 16 11 18 11" />
   </svg>
 );
-
-// Static patient data
-const staticPatientData = [
-  {
-    id: "enc_1",
-    patientDbId: "pat_101",
-    encounterId: "enc_1",
-    room: "AA1234",
-    bed: "A15",
-    name: "Jennie M",
-    age: "35y",
-    gender: "Female",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "",
-    providerId: "",
-    providerRole: "",
-    resident: "Julia R",
-    residentId: "res_1",
-    residentRole: "RESIDENT",
-    visitStatus: "",
-    seenByRole: "",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12345",
-    facesheet: "",
-    noteStatus: "Final",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T10:30:00Z",
-    created_at: "2026-06-01T08:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_2",
-    patientDbId: "pat_102",
-    encounterId: "enc_2",
-    room: "AA1234",
-    bed: "A15",
-    name: "Illy",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_2",
-    providerRole: "DOCTOR",
-    resident: "Julia R",
-    residentId: "res_1",
-    residentRole: "RESIDENT",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12346",
-    facesheet: "",
-    noteStatus: "Draft",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T09:15:00Z",
-    created_at: "2026-06-01T09:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_3",
-    patientDbId: "pat_103",
-    encounterId: "enc_3",
-    room: "AA1234",
-    bed: "A15",
-    name: "Lisha Cook",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_3",
-    providerRole: "PHYSICIAN",
-    resident: "Julia R",
-    residentId: "res_2",
-    residentRole: "RESIDENT",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12347",
-    facesheet: "",
-    noteStatus: "",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T11:00:00Z",
-    created_at: "2026-06-01T10:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_4",
-    patientDbId: "pat_104",
-    encounterId: "enc_4",
-    room: "AA1234",
-    bed: "A15",
-    name: "Lisha Cook",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_4",
-    providerRole: "PHYSICIAN",
-    resident: "Julia R",
-    residentId: "",
-    residentRole: "",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12348",
-    facesheet: "",
-    noteStatus: "",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T08:00:00Z",
-    created_at: "2026-06-01T11:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_5",
-    patientDbId: "pat_105",
-    encounterId: "enc_5",
-    room: "AA1234",
-    bed: "A15",
-    name: "Lisha Cook",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_4",
-    providerRole: "PHYSICIAN",
-    resident: "Julia R",
-    residentId: "res_3",
-    residentRole: "RESIDENT",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-02",
-    fin: "FIN12349",
-    facesheet: "",
-    noteStatus: "Final",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T12:00:00Z",
-    created_at: "2026-06-01T12:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_6",
-    patientDbId: "pat_106",
-    encounterId: "enc_6",
-    room: "AA1234",
-    bed: "A15",
-    name: "Lisha Cook",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_5",
-    providerRole: "DOCTOR",
-    resident: "Julia R",
-    residentId: "",
-    residentRole: "",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12350",
-    facesheet: "",
-    noteStatus: "Draft",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T10:00:00Z",
-    created_at: "2026-06-01T13:00:00Z",
-    duration: "Just now",
-  },
-  {
-    id: "enc_1",
-    patientDbId: "pat_101",
-    encounterId: "enc_1",
-    room: "AA1234",
-    bed: "A15",
-    name: "Jennie M",
-    age: "35y",
-    gender: "Female",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "",
-    providerId: "",
-    providerRole: "",
-    resident: "Julia R",
-    residentId: "res_1",
-    residentRole: "RESIDENT",
-    visitStatus: "",
-    seenByRole: "",
-    visitType: "IP",
-    dos: "2026-06-02",
-    fin: "FIN12345",
-    facesheet: "",
-    noteStatus: "Final",
-    is_sidelist: false,
-    sidelist_reason: "",
-    is_marked: false,
-    updated_at: "2026-06-02T10:30:00Z",
-    created_at: "2026-06-01T08:00:00Z",
-    duration: "Just now",
-  },
-
-  {
-    id: "enc_7",
-    patientDbId: "pat_107",
-    encounterId: "enc_7",
-    room: "AA1234",
-    bed: "A15",
-    name: "John Cook",
-    age: "45y",
-    gender: "male",
-    mrn: "719471345",
-    status: "Critical",
-    location: "SYD → LAX",
-    physician: "Alex Tobar",
-    providerId: "prov_6", // New provider ID
-    providerRole: "DOCTOR",
-    resident: "Julia R",
-    residentId: "",
-    residentRole: "",
-    visitStatus: "Seen",
-    seenByRole: "PHYSICIAN",
-    visitType: "IP",
-    dos: "2026-06-09",
-    fin: "FIN12351",
-    facesheet: "",
-    noteStatus: "Draft",
-    is_sidelist: false, // New is_sidelist value
-    sidelist_reason: "", // New sidelist_reason value
-    is_marked: false, // New is_marked value
-    updated_at: "2026-06-02T11:00:00Z",
-    created_at: "2026-06-01T14:00:00Z",
-    duration: "Just now",
-  },
-];
-
-// Static provider options for assign modal
-const staticProviderOptions = [
-  {
-    id: "prov_1",
-    name: "Alex Tobar",
-    specialty: "Flight Physician",
-    status: "Available",
-    isProvider: true,
-    isPcpPhysician: true,
-    isAdmittingPhysician: false,
-    isResident: false,
-  },
-  {
-    id: "prov_2",
-    name: "Dr. James Oktar",
-    specialty: "Aviation Medicine",
-    status: "Available",
-    isProvider: true,
-    isPcpPhysician: false,
-    isAdmittingPhysician: true,
-    isResident: false,
-  },
-  {
-    id: "prov_3",
-    name: "Dr. Sarah Malik",
-    specialty: "Emergency Medicine",
-    status: "On Duty",
-    isProvider: true,
-    isPcpPhysician: true,
-    isAdmittingPhysician: false,
-    isResident: false,
-  },
-  {
-    id: "prov_4",
-    name: "Dr. Kevin Ross",
-    specialty: "Critical Care",
-    status: "Available",
-    isProvider: true,
-    isPcpPhysician: false,
-    isAdmittingPhysician: true,
-    isResident: false,
-  },
-  {
-    id: "prov_5",
-    name: "Dr. Priya Nair",
-    specialty: "Cardiology",
-    status: "In Flight",
-    isProvider: true,
-    isPcpPhysician: true,
-    isAdmittingPhysician: false,
-    isResident: false,
-  },
-  // {
-  //   id: "res_1",
-  //   name: "Julia R",
-  //   specialty: "Cabin Crew",
-  //   status: "Available",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
-  // {
-  //   id: "res_2",
-  //   name: "Mark Davis",
-  //   specialty: "Cabin Crew",
-  //   status: "Available",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
-  // {
-  //   id: "res_3",
-  //   name: "Lisa Anderson",
-  //   specialty: "Senior Crew",
-  //   status: "On Call",
-  //   isProvider: false,
-  //   isPcpPhysician: false,
-  //   isAdmittingPhysician: false,
-  //   isResident: true,
-  // },
-];
 
 const INITIAL_TABLE_FILTERS = {
   roundingStatus: [],
@@ -494,7 +171,6 @@ const INITIAL_TABLE_FILTERS = {
 };
 
 const FILTER_CATEGORIES = [
-  // { id: "roundingStatus", label: "Rounding status", section: "Sort by" },
   { id: "physician", label: "Physician", section: "Filter by" },
   { id: "crew", label: "Crew", section: "Filter by" },
   { id: "status", label: "Status", section: "Filter by" },
@@ -505,6 +181,11 @@ const ROUNDING_STATUS_OPTIONS = [
   { value: "Unseen", label: "Unseen" },
   { value: "Sidelist", label: "Sidelist" },
 ];
+
+// ✅ Column widths (single source of truth for header + body)
+const CHECKBOX_COL_WIDTH = 52;
+const ACTIONS_COL_WIDTH = 190;
+const REASONS_COL_WIDTH = 220;
 
 export default function AllEvents() {
   const { darkMode } = useThemeMode();
@@ -538,10 +219,12 @@ export default function AllEvents() {
     };
   };
 
+  // ✅ Smaller icon buttons (18px icons, 3px padding)
   const actionIconButtonSx = {
-    p: "4px",
+    p: "3px",
     flex: "0 0 auto",
     color: theme.actionIconColor,
+    "& svg": { width: 18, height: 18 },
     "& svg path": { fill: "currentColor" },
   };
 
@@ -550,6 +233,12 @@ export default function AllEvents() {
     "& .MuiButton-startIcon": { color: theme.actionIconColor },
     "& .MuiButton-startIcon svg path": { fill: "currentColor" },
   };
+
+  // ---------- STABLE SESSION ID (ref-based) ----------
+  const sessionRef = useRef(getPhysicianSession());
+  const currentUserIdRef = useRef(
+    sessionRef.current?.id ? String(sessionRef.current.id) : "",
+  );
 
   const [activeTab, setActiveTab] = useState("Rounding List");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -576,41 +265,37 @@ export default function AllEvents() {
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [activityLogPatient, setActivityLogPatient] = useState(null);
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
+
+  // ✅ Persistent "seen" overrides keyed by row id.
+  // Lives outside `rows` so the 30s polling refresh cannot wipe it.
+  const [seenOverrides, setSeenOverrides] = useState({});
 
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
   };
 
   const handleCloseSnackbar = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
+    if (reason === "clickaway") return;
     setSnackbar({ open: false, message: "", severity: "success" });
   };
 
-  const handleActionsMenuOpen = (event) => {
+  const handleActionsMenuOpen = (event) =>
     setActionsMenuAnchor(event.currentTarget);
-  };
-
-  const handleActionsMenuClose = () => {
-    setActionsMenuAnchor(null);
-  };
+  const handleActionsMenuClose = () => setActionsMenuAnchor(null);
 
   const handleMarkNotSeen = async () => {
     const selectedIds = Array.from(selectionModel);
-
     if (selectedIds.length === 0) {
       showSnackbar("Please select patients first", "warning");
       handleActionsMenuClose();
       return;
     }
-
     setRows((prev) =>
       prev.map((row) =>
         selectedIds.includes(row.id) ? { ...row, is_marked: true } : row,
       ),
     );
-
     setSelectionModel(new Set());
     showSnackbar(
       `${selectedIds.length} patient(s) marked as Not Seen`,
@@ -626,7 +311,6 @@ export default function AllEvents() {
       handleActionsMenuClose();
       return;
     }
-
     setSelectedIdsForBulkAdd(selectedIds);
     const firstRow = displayRows.find((r) => r.id === selectedIds[0]);
     setSelectedRow(firstRow);
@@ -636,19 +320,16 @@ export default function AllEvents() {
 
   const handleDiscardMarked = async () => {
     const selectedIds = Array.from(selectionModel);
-
     if (selectedIds.length === 0) {
       showSnackbar("Please select patients first", "warning");
       handleActionsMenuClose();
       return;
     }
-
     setRows((prev) =>
       prev.map((row) =>
         selectedIds.includes(row.id) ? { ...row, is_marked: false } : row,
       ),
     );
-
     setSelectionModel(new Set());
     showSnackbar(
       `${selectedIds.length} patient(s) removed from Marked Not Seen`,
@@ -659,13 +340,11 @@ export default function AllEvents() {
 
   const handleDiscardSidelist = async () => {
     const selectedIds = Array.from(selectionModel);
-
     if (selectedIds.length === 0) {
       showSnackbar("Please select patients first", "warning");
       handleActionsMenuClose();
       return;
     }
-
     setRows((prev) =>
       prev.map((row) =>
         selectedIds.includes(row.id)
@@ -673,7 +352,6 @@ export default function AllEvents() {
           : row,
       ),
     );
-
     setSelectionModel(new Set());
     showSnackbar(
       `${selectedIds.length} patient(s) discarded from Sidelist`,
@@ -697,16 +375,96 @@ export default function AllEvents() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
+  // ---------- FETCH HELPERS ----------
+  const fetchAssignedPhysicianLiveStatuses = async (rows) => {
+    const result = new Map();
+    const uniqueIds = [
+      ...new Set(
+        rows
+          .map((r) => r.physicianId)
+          .filter((id) => id != null)
+          .map((id) => String(id)),
+      ),
+    ];
+    if (uniqueIds.length === 0) return result;
+
+    const physicianDirectory = new Map();
+    try {
+      const list = await getPhysicians();
+      (Array.isArray(list) ? list : []).forEach((doc) => {
+        if (!doc?.id) return;
+        physicianDirectory.set(
+          String(doc.id),
+          normalizePhysicianStatus(
+            doc.status || (doc.is_online ? "available" : null),
+          ),
+        );
+      });
+    } catch {
+      /* non-fatal — fall back to chat live lookup */
+    }
+
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        const directoryStatus = physicianDirectory.get(id);
+        if (directoryStatus) {
+          result.set(id, directoryStatus);
+          return;
+        }
+        try {
+          const live = await getPhysicianLiveStatus(id);
+          if (
+            live &&
+            typeof live === "object" &&
+            (live.status != null || typeof live.is_online === "boolean")
+          ) {
+            result.set(
+              id,
+              normalizePhysicianStatus(
+                live.status || (live.is_online ? "available" : "offline"),
+              ),
+            );
+          }
+        } catch {
+          /* keep null — caller preserves previous value */
+        }
+      }),
+    );
+    return result;
+  };
+
   const fetchIncidents = async ({ showError = false, silent = false } = {}) => {
     try {
       if (!silent) setLoadingPatients(true);
       const incidents = await getMedicalIncidents();
-      setRows(incidents.map(mapIncidentToTableRow));
+      const baseRows = incidents.map((incident) => ({
+        ...mapIncidentToTableRow(incident),
+        physicianLiveStatus: null,
+      }));
+
+      const liveStatuses = await fetchAssignedPhysicianLiveStatuses(baseRows);
+
+      setRows((prevRows) => {
+        const prevById = new Map(prevRows.map((r) => [String(r.id), r]));
+        return baseRows.map((row) => {
+          const prev = prevById.get(String(row.id));
+          return {
+            ...row,
+            physicianLiveStatus:
+              liveStatuses.get(String(row.physicianId || "")) ??
+              prev?.physicianLiveStatus ??
+              null,
+            visitStatus: prev?.visitStatus ?? row.visitStatus,
+            seenByRole: prev?.seenByRole ?? row.seenByRole,
+            is_sidelist: prev?.is_sidelist ?? row.is_sidelist,
+            is_marked: prev?.is_marked ?? row.is_marked,
+            sidelist_reason: prev?.sidelist_reason ?? row.sidelist_reason,
+          };
+        });
+      });
     } catch (error) {
       console.error("FETCH INCIDENTS ERROR =>", error);
-      if (showError) {
-        showSnackbar("Failed to load events", "error");
-      }
+      if (showError) showSnackbar("Failed to load events", "error");
     } finally {
       if (!silent) setLoadingPatients(false);
     }
@@ -718,14 +476,7 @@ export default function AllEvents() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyPatients = () => {
-    navigate("/copy-patients", {
-      state: {
-        dos: selectedDate,
-      },
-    });
-  };
-
+  // ---------- USER STATE ----------
   const readStoredUser = () => {
     const session = getPhysicianSession();
     if (session) return mapPhysicianToWebUser(session);
@@ -739,17 +490,116 @@ export default function AllEvents() {
 
   const [user, setUser] = useState(readStoredUser);
 
+  // ---------- PROVIDER STATUS STATE ----------
+  const [providerLiveStatus, setProviderLiveStatus] = useState(
+    PHYSICIAN_STATUS.AVAILABLE,
+  );
+
   useEffect(() => {
     const session = getPhysicianSession();
-    if (!session) return;
+    if (!session?.id) return;
     const webUser = mapPhysicianToWebUser(session);
     if (webUser) setUser(webUser);
-    if (session.id) {
-      AviationChatSocket.connect(session.id);
-    }
+
+    const userId = String(session.id);
+
+    const unsubscribe = PhysicianStatusService.subscribe((state) => {
+      setProviderLiveStatus(state.status);
+    });
+
+    AviationChatSocket.connect(userId);
+    PhysicianStatusService.start(userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  const hasPermission = () => true; // Mock permission function
+  useEffect(() => {
+    const currentUserId = currentUserIdRef.current;
+    if (!currentUserId) return;
+
+    const handleUserStatus = ({ userId, status, is_online }) => {
+      const normalized = normalizePhysicianStatus(
+        status || (is_online ? "available" : "offline"),
+      );
+      setRows((prev) =>
+        prev.map((row) =>
+          row.physicianId &&
+          String(row.physicianId) === String(userId) &&
+          String(userId) !== currentUserId
+            ? { ...row, physicianLiveStatus: normalized }
+            : row,
+        ),
+      );
+    };
+
+    AviationChatSocket.onUserStatus(handleUserStatus);
+
+    const callStartEvents = [
+      "aviation_incoming_call",
+      "aviation_call_accepted",
+    ];
+
+    const handleCallStarted = (payload) => {
+      const involvesMe =
+        !payload?.toUserId ||
+        String(payload.toUserId) === currentUserId ||
+        String(payload.fromUserId) === currentUserId ||
+        String(payload.callerId) === currentUserId ||
+        String(payload.acceptedBy) === currentUserId;
+
+      if (!involvesMe) return;
+      PhysicianStatusService.markBusyOnCallAccept();
+    };
+
+    const handleCallEnded = () => {
+      PhysicianStatusService.markAvailableOnCallEnd();
+    };
+
+    callStartEvents.forEach((evt) =>
+      AviationCallSocket.on(evt, handleCallStarted),
+    );
+    AviationCallSocket.on("aviation_call_ended", handleCallEnded);
+    AviationCallSocket.on("aviation_call_rejected", handleCallEnded);
+    AviationCallSocket.on("aviation_call_left_ack", handleCallEnded);
+    AviationCallSocket.on("aviation_call_cancelled", handleCallEnded);
+
+    return () => {
+      AviationChatSocket.offUserStatus(handleUserStatus);
+      callStartEvents.forEach((evt) =>
+        AviationCallSocket.off(evt, handleCallStarted),
+      );
+      AviationCallSocket.off("aviation_call_ended", handleCallEnded);
+      AviationCallSocket.off("aviation_call_rejected", handleCallEnded);
+      AviationCallSocket.off("aviation_call_left_ack", handleCallEnded);
+      AviationCallSocket.off("aviation_call_cancelled", handleCallEnded);
+    };
+  }, []);
+
+  const handleChangeStatus = (newStatus) => {
+    if (newStatus === PHYSICIAN_STATUS.BUSY) return;
+    setStatusMenuAnchor(null);
+
+    const accepted = PhysicianStatusService.setStatus(newStatus, {
+      source: "manual",
+    });
+
+    setProviderLiveStatus(PhysicianStatusService.getState().status);
+
+    showSnackbar(
+      accepted
+        ? `Status updated to ${PHYSICIAN_STATUS_SHORT_LABELS[newStatus] || newStatus}`
+        : "Cannot change status while in a call",
+      accepted ? "success" : "warning",
+    );
+  };
+
+  const handleCopyPatients = () => {
+    navigate("/copy-patients", { state: { dos: selectedDate } });
+  };
+
+  const hasPermission = () => true;
   const canAddPatient = true;
   const canEditFacesheet = true;
   const canUseNotesEditor = true;
@@ -760,7 +610,6 @@ export default function AllEvents() {
   const [providerProfile, setProviderProfile] = useState(null);
   const roleList = Array.isArray(user?.roles) ? user.roles : [];
 
-  // Check if facesheet has been modified for a row
   const isFacesheetModified = (row) => {
     if (!row?.facesheet || row?.facesheet === "") return false;
     return row.facesheet && row.facesheet.trim() !== "";
@@ -807,6 +656,11 @@ export default function AllEvents() {
     : "Care Team Member";
   const greetingText = getGreetingByTime();
 
+  const providerStatusColor =
+    PHYSICIAN_STATUS_COLORS[providerLiveStatus] || "#64748B";
+  const providerStatusLabel =
+    PHYSICIAN_STATUS_SHORT_LABELS[providerLiveStatus] || "Offline";
+
   const specializationText =
     providerProfile?.specialty ||
     providerProfile?.resident_specialty ||
@@ -820,8 +674,6 @@ export default function AllEvents() {
     : "Clinical Team • On Duty";
   const providerInitials = getAvatarInitials(user?.name || providerDisplayName);
 
-  console.log("selectionModel :", selectionModel);
-
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === "asc";
     setOrder(isAsc ? "desc" : "asc");
@@ -834,16 +686,7 @@ export default function AllEvents() {
     return dayjs(value).tz(APP_TIMEZONE).format("YYYY-MM-DD");
   };
 
-  const dateFilteredRows = React.useMemo(() => {
-    const selectedDateStr = dayjs(selectedDate)
-      .tz(APP_TIMEZONE)
-      .format("YYYY-MM-DD");
-
-    return rows.filter((row) => {
-      const dosStr = toDateOnly(row.dos || row.incidentStartAt);
-      return dosStr === selectedDateStr;
-    });
-  }, [rows, selectedDate]);
+  const dateFilteredRows = React.useMemo(() => rows, [rows]);
 
   const tabFilteredRows = React.useMemo(() => {
     if (activeTab === "In Patient") {
@@ -853,7 +696,6 @@ export default function AllEvents() {
           .includes("ip"),
       );
     }
-
     if (activeTab === "Out Patient") {
       return rows.filter((row) =>
         String(row.visitType || "")
@@ -861,7 +703,6 @@ export default function AllEvents() {
           .includes("op"),
       );
     }
-
     return dateFilteredRows;
   }, [dateFilteredRows, activeTab]);
 
@@ -908,7 +749,6 @@ export default function AllEvents() {
     const statuses = uniqueValues(searchFilteredRows.map((row) => row.status));
 
     return {
-      // roundingStatus: ROUNDING_STATUS_OPTIONS,
       physician: [
         ...physicians.map((name) => ({ value: name, label: name })),
         { value: "__unassigned__", label: "Unassigned" },
@@ -944,12 +784,35 @@ export default function AllEvents() {
     setFilterModalOpen(false);
   };
 
+  // ✅ isRowSeen checks the persistent override map first.
+  const isRowSeen = (row) => {
+    if (!row) return false;
+    const key = String(row.id);
+    if (Object.prototype.hasOwnProperty.call(seenOverrides, key)) {
+      return seenOverrides[key] === true;
+    }
+    const status = String(row?.visitStatus || "")
+      .trim()
+      .toLowerCase();
+    const normalizedRole = normalizeSeenRole(
+      row?.seenByRole || row?.seen_by_role,
+    );
+    if (normalizedRole) return true;
+    return [
+      "seen",
+      "completed",
+      "in progress",
+      "in-progress",
+      "done",
+      "visited",
+    ].includes(status);
+  };
+
   const rowMatchesTableFilters = (row, filters) => {
     const roundingSelections = filters.roundingStatus || [];
 
     if (roundingSelections.length > 0) {
       let roundingMatch = false;
-
       if (
         roundingSelections.includes("Seen") &&
         !row.is_sidelist &&
@@ -958,7 +821,6 @@ export default function AllEvents() {
       ) {
         roundingMatch = true;
       }
-
       if (
         roundingSelections.includes("Unseen") &&
         !row.is_sidelist &&
@@ -967,7 +829,6 @@ export default function AllEvents() {
       ) {
         roundingMatch = true;
       }
-
       if (
         roundingSelections.includes("Sidelist") &&
         row.is_sidelist === true &&
@@ -975,10 +836,7 @@ export default function AllEvents() {
       ) {
         roundingMatch = true;
       }
-
-      if (!roundingMatch) {
-        return false;
-      }
+      if (!roundingMatch) return false;
     } else if (row.is_sidelist || row.is_marked) {
       return false;
     }
@@ -989,24 +847,17 @@ export default function AllEvents() {
         physicianName && filters.physician.includes(physicianName);
       const unassignedMatch =
         !physicianName && filters.physician.includes("__unassigned__");
-
-      if (!physicianMatch && !unassignedMatch) {
-        return false;
-      }
+      if (!physicianMatch && !unassignedMatch) return false;
     }
 
     if (filters.crew?.length > 0) {
       const crewName = String(row.crew || row.resident || "").trim();
-      if (!crewName || !filters.crew.includes(crewName)) {
-        return false;
-      }
+      if (!crewName || !filters.crew.includes(crewName)) return false;
     }
 
     if (filters.status?.length > 0) {
       const status = String(row.status || "").trim();
-      if (!status || !filters.status.includes(status)) {
-        return false;
-      }
+      if (!status || !filters.status.includes(status)) return false;
     }
 
     return true;
@@ -1016,7 +867,9 @@ export default function AllEvents() {
     return searchFilteredRows.filter((row) =>
       rowMatchesTableFilters(row, appliedTableFilters),
     );
-  }, [searchFilteredRows, appliedTableFilters]);
+    // seenOverrides in deps so filter (Seen/Unseen) re-evaluates on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchFilteredRows, appliedTableFilters, seenOverrides]);
 
   const sortedRows = React.useMemo(() => {
     const comparator = (a, b) => {
@@ -1082,24 +935,21 @@ export default function AllEvents() {
   };
 
   const dashboardStats = React.useMemo(() => {
-    const scopedRows = dateFilteredRows;
-
+    const scopedRows = rows;
     const eventsToday = scopedRows.length;
 
+    // ✅ Uses override-aware isRowSeen so the count persists across polls
     const patientsToSee = scopedRows.filter((row) => !isRowSeen(row)).length;
 
     const patientsToAssign = scopedRows.filter(
       (row) => !String(row.providerId || "").trim(),
     ).length;
-
     const patientsAssigned = scopedRows.filter((row) =>
       String(row.providerId || "").trim(),
     ).length;
-
     const criticalCases = scopedRows.filter(
       (row) => String(row.status || "").toLowerCase() === "critical",
     ).length;
-
     const openCases = scopedRows.filter((row) => {
       const status = String(row.status || "").toLowerCase();
       return status !== "closed" && status !== "archived";
@@ -1115,12 +965,13 @@ export default function AllEvents() {
       criticalCases,
       openCases,
     };
-  }, [dateFilteredRows]);
+    // seenOverrides in deps so stat card re-computes on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, seenOverrides]);
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelected = new Set(sortedRows.map((row) => row.id));
-      setSelectionModel(newSelected);
+      setSelectionModel(new Set(sortedRows.map((row) => row.id)));
     } else {
       setSelectionModel(new Set());
     }
@@ -1128,11 +979,8 @@ export default function AllEvents() {
 
   const handleRowCheckboxClick = (id) => {
     const newSelected = new Set(selectionModel);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
     setSelectionModel(newSelected);
   };
 
@@ -1152,6 +1000,8 @@ export default function AllEvents() {
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
   const [providerOptions, setProviderOptions] = useState([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState("");
   const [openEncounterModal, setOpenEncounterModal] = useState(false);
   const [openSelectReasonModal, setOpenSelectReasonModal] = useState(false);
   const [assignType, setAssignType] = useState("doctor");
@@ -1159,30 +1009,69 @@ export default function AllEvents() {
   useEffect(() => {
     if (!openAssignModal || assignType !== "doctor") return;
 
+    let cancelled = false;
+    setAssignSearch("");
+    setAssignError("");
+    setAssignLoading(true);
+    setProviderOptions([]);
+
     const fetchDoctors = async () => {
       try {
         const data = await getPhysicians();
-        setProviderOptions((data || []).map(mapPhysicianFromApi));
+        const list = Array.isArray(data) ? data : [];
+
+        const enriched = await Promise.all(
+          list.map(async (doc) => {
+            let live = null;
+            try {
+              live = await getPhysicianLiveStatus(doc.id);
+            } catch {
+              /* non-fatal */
+            }
+            return mapPhysicianFromApi(doc, live);
+          }),
+        );
+
+        if (cancelled) return;
+        setProviderOptions(enriched);
+
+        const firstAssignable = enriched.find((d) =>
+          isAssignable(d.status, d.isActive !== false),
+        );
+        setSelectedDoctorId(firstAssignable?.id ?? "");
+        setSelectedDoctor(firstAssignable?.name ?? "");
       } catch (error) {
         console.error("FETCH PHYSICIANS ERROR =>", error);
-        showSnackbar("Failed to load physicians", "error");
+        if (!cancelled) {
+          setProviderOptions([]);
+          setSelectedDoctorId("");
+          setSelectedDoctor("");
+          setAssignError("Failed to load physicians. Please try again.");
+        }
+      } finally {
+        if (!cancelled) setAssignLoading(false);
       }
     };
 
     fetchDoctors();
+
+    return () => {
+      cancelled = true;
+    };
   }, [openAssignModal, assignType]);
 
   useEffect(() => {
-    if (!openAssignModal || assignType !== "doctor" || !selectedRow) return;
+    if (
+      !openAssignModal ||
+      assignType !== "doctor" ||
+      !selectedRow ||
+      providerOptions.length === 0
+    )
+      return;
 
     const assignedName = String(selectedRow.physician || "").trim();
     const assignedId = String(selectedRow.providerId || "").trim();
-
-    if (!assignedName && !assignedId) {
-      setSelectedDoctor("");
-      setSelectedDoctorId("");
-      return;
-    }
+    if (!assignedName && !assignedId) return;
 
     const matchById = assignedId
       ? providerOptions.find((doc) => doc.id === assignedId)
@@ -1195,18 +1084,55 @@ export default function AllEvents() {
           )
         : null;
     const match = matchById || matchByName;
-
     if (match) {
       setSelectedDoctor(match.name);
       setSelectedDoctorId(match.id);
-    } else if (assignedId) {
-      setSelectedDoctor(assignedName || "");
-      setSelectedDoctorId(assignedId);
-    } else {
-      setSelectedDoctor(assignedName);
-      setSelectedDoctorId("");
     }
   }, [openAssignModal, assignType, selectedRow, providerOptions]);
+
+  const filteredAssignProviders = useMemo(() => {
+    const q = assignSearch.trim().toLowerCase();
+    const filtered = q
+      ? providerOptions.filter((doc) => {
+          const name = String(doc.name || "").toLowerCase();
+          const specialty = String(doc.specialty || "").toLowerCase();
+          const label = String(
+            PHYSICIAN_STATUS_SHORT_LABELS[doc.status] || "",
+          ).toLowerCase();
+          return name.includes(q) || specialty.includes(q) || label.includes(q);
+        })
+      : providerOptions;
+
+    return [...filtered].sort((a, b) => {
+      const aA = isAssignable(a.status, a.isActive !== false) ? 0 : 1;
+      const bA = isAssignable(b.status, b.isActive !== false) ? 0 : 1;
+      if (aA !== bA) return aA - bA;
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+  }, [providerOptions, assignSearch]);
+
+  const selectedDoctorObj = useMemo(
+    () => providerOptions.find((d) => d.id === selectedDoctorId) || null,
+    [providerOptions, selectedDoctorId],
+  );
+
+  const canAssign = Boolean(
+    selectedDoctorObj &&
+    isAssignable(
+      selectedDoctorObj.status,
+      selectedDoctorObj.isActive !== false,
+    ),
+  );
+
+  const handleOpenAssignModalForRow = (row) => {
+    if (!canAssignProvider) return;
+    setSelectedRow(row);
+    setSelectedDoctor("");
+    setSelectedDoctorId("");
+    setAssignSearch("");
+    setAssignType("doctor");
+    setOpenAssignModal(true);
+  };
 
   const [selectedLocation] = useState("");
   const [patientTab, setPatientTab] = useState("all");
@@ -1222,17 +1148,14 @@ export default function AllEvents() {
     if (!status) return "";
     const birthDate = new Date(status);
     const today = new Date();
-
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-
     if (
       monthDiff < 0 ||
       (monthDiff === 0 && today.getDate() < birthDate.getDate())
     ) {
       age--;
     }
-
     return `${age}y`;
   };
 
@@ -1246,6 +1169,9 @@ export default function AllEvents() {
       String(value || "").trim(),
     );
 
+  // ✅ Eye colors:
+  //  - Not seen  → transparent background, default icon color (plain icon like the app)
+  //  - Seen      → green pill + green icon
   const EYE_COLORS = {
     PHYSICIAN: {
       icon: "rgba(0, 153, 81, 1)",
@@ -1263,9 +1189,9 @@ export default function AllEvents() {
       hoverBg: "rgba(0, 153, 81, 0.75)",
     },
     DEFAULT: {
-      icon: "rgba(255, 107, 107, 1)",
-      bg: "rgba(255, 229, 229, 1)",
-      hoverBg: "rgba(255, 229, 229, 0.75)",
+      icon: "transparent",
+      bg: "transparent",
+      hoverBg: "rgba(0, 0, 0, 0.04)",
     },
   };
 
@@ -1274,31 +1200,18 @@ export default function AllEvents() {
       .trim()
       .toUpperCase();
     if (!role) return "";
-
-    if (role.includes("RESIDENT") || role.includes("APP")) {
-      return "RESIDENT";
-    }
-
-    if (role.includes("DOCTOR") || role === "DR" || role.startsWith("DR_")) {
+    if (role.includes("RESIDENT") || role.includes("APP")) return "RESIDENT";
+    if (role.includes("DOCTOR") || role === "DR" || role.startsWith("DR_"))
       return "DOCTOR";
-    }
-
     if (
       role.includes("PHYSICIAN") ||
       role.includes("PROVIDER") ||
       role.includes("ATTENDING")
-    ) {
+    )
       return "PHYSICIAN";
-    }
-
-    if (["RESIDENT", "APP", "RESIDENT/APP", "RESIDENT_APP"].includes(role)) {
+    if (["RESIDENT", "APP", "RESIDENT/APP", "RESIDENT_APP"].includes(role))
       return "RESIDENT";
-    }
-
-    if (["DOCTOR", "DR"].includes(role)) {
-      return "DOCTOR";
-    }
-
+    if (["DOCTOR", "DR"].includes(role)) return "DOCTOR";
     if (
       [
         "PHYSICIAN",
@@ -1307,10 +1220,8 @@ export default function AllEvents() {
         "ADMITTING_PHYSICIAN",
         "ATTENDING",
       ].includes(role)
-    ) {
+    )
       return "PHYSICIAN";
-    }
-
     return role;
   }
 
@@ -1320,102 +1231,67 @@ export default function AllEvents() {
         .trim()
         .toUpperCase(),
     );
-
     if (
       normalizedUserRoles.some((role) =>
         ["RESIDENT", "APP", "RESIDENT/APP", "RESIDENT_APP"].includes(role),
       )
-    ) {
+    )
       return "RESIDENT";
-    }
-
-    if (normalizedUserRoles.some((role) => ["DOCTOR", "DR"].includes(role))) {
+    if (normalizedUserRoles.some((role) => ["DOCTOR", "DR"].includes(role)))
       return "DOCTOR";
-    }
-
-    if (normalizedUserRoles.some((role) => role === "PROVIDER")) {
+    if (normalizedUserRoles.some((role) => role === "PROVIDER"))
       return "DOCTOR";
-    }
-
     if (
       normalizedUserRoles.some((role) =>
         ["PHYSICIAN", "ATTENDING"].includes(role),
       )
-    ) {
+    )
       return "PHYSICIAN";
-    }
-
     return "";
   };
 
-  function isRowSeen(row) {
-    const status = String(row?.visitStatus || "")
-      .trim()
-      .toLowerCase();
-    const normalizedRole = normalizeSeenRole(
-      row?.seenByRole || row?.seen_by_role,
-    );
-
-    if (normalizedRole) return true;
-
-    return [
-      "seen",
-      "completed",
-      "in progress",
-      "in-progress",
-      "done",
-      "visited",
-    ].includes(status);
-  }
-
   const getEyeColorsForRow = (row) => {
-    if (!isRowSeen(row)) {
-      return EYE_COLORS.DEFAULT;
-    }
+    // Not seen → plain icon (no background) — matches the app
+    if (!isRowSeen(row)) return EYE_COLORS.DEFAULT;
 
     const physicianRole = normalizeSeenRole(row?.providerRole);
     const residentRole = normalizeSeenRole(row?.residentRole);
     const seenRole = normalizeSeenRole(row?.seenByRole || row?.seen_by_role);
 
-    if (physicianRole === "DOCTOR" || physicianRole === "PROVIDER") {
-      return EYE_COLORS.DOCTOR;
-    }
-
-    if (physicianRole === "PHYSICIAN") {
-      return EYE_COLORS.PHYSICIAN;
-    }
-
-    if (residentRole === "RESIDENT") {
+    // Resident / APP → Orange
+    if (residentRole === "RESIDENT" || seenRole === "RESIDENT")
       return EYE_COLORS.RESIDENT;
-    }
 
-    if (seenRole === "DOCTOR" || seenRole === "PROVIDER") {
+    // Doctor → green-on-green
+    if (
+      physicianRole === "DOCTOR" ||
+      physicianRole === "PROVIDER" ||
+      seenRole === "DOCTOR" ||
+      seenRole === "PROVIDER"
+    )
       return EYE_COLORS.DOCTOR;
-    }
 
-    if (seenRole === "PHYSICIAN") {
-      return EYE_COLORS.PHYSICIAN;
-    }
-
-    if (seenRole === "RESIDENT") {
-      return EYE_COLORS.RESIDENT;
-    }
-
-    return EYE_COLORS.DEFAULT;
+    // ✅ Seen but no explicit role → GREEN (PHYSICIAN)
+    return EYE_COLORS.PHYSICIAN;
   };
 
-  const handleToggleSeen = async (row) => {
+  // ✅ Toggle writes the persistent override map AND mirrors into rows.
+  const handleToggleSeen = (row) => {
+    const key = String(row.id);
     const nextSeen = !isRowSeen(row);
 
+    setSeenOverrides((prev) => ({ ...prev, [key]: nextSeen }));
+
     setRows((prev) =>
-      prev.map((r) => {
-        if ((r.encounterId || r.id) !== (row.encounterId || row.id)) return r;
-        return {
-          ...r,
-          visitStatus: nextSeen ? "Seen" : "Not Seen",
-          seenByRole: nextSeen ? getCurrentUserSeenRole() : "",
-        };
-      }),
+      prev.map((r) =>
+        String(r.id) === key
+          ? {
+              ...r,
+              visitStatus: nextSeen ? "Seen" : "Not Seen",
+              seenByRole: nextSeen ? getCurrentUserSeenRole() : "",
+            }
+          : r,
+      ),
     );
   };
 
@@ -1478,11 +1354,7 @@ export default function AllEvents() {
     setRows((prevRows) =>
       prevRows.map((r) => {
         if (idsToUpdate.includes(r.id)) {
-          return {
-            ...r,
-            is_sidelist: true,
-            sidelist_reason: reason,
-          };
+          return { ...r, is_sidelist: true, sidelist_reason: reason };
         }
         return r;
       }),
@@ -1506,37 +1378,12 @@ export default function AllEvents() {
     setTranscribeModalOpen(true);
   };
 
-  const filteredAssignProviders = providerOptions.filter((doc) => {
-    if (assignType === "resident") {
-      if (!doc.isResident) return false;
-    }
-
-    if (assignType === "doctor") {
-      if (!doc.isProvider && !doc.isPcpPhysician && !doc.isAdmittingPhysician) {
-        return false;
-      }
-    }
-
-    const search = assignSearch.trim().toLowerCase();
-    if (!search) return true;
-    const byName = String(doc.name || "")
-      .toLowerCase()
-      .includes(search);
-    const bySpecialty = String(doc.specialty || "")
-      .toLowerCase()
-      .includes(search);
-    return byName || bySpecialty;
-  });
-
   const handleOpenNoteEditor = (row) => {
     if (!canUseNotesEditor) return;
-    console.log("Opening note editor row:", row);
-
     if (!row.encounterId) {
       alert("Encounter ID missing for this patient.");
       return;
     }
-
     navigate("/view_details?tab=Notes", {
       state: {
         encounterId: row.encounterId,
@@ -1556,10 +1403,8 @@ export default function AllEvents() {
     const attestationIndex = children.findIndex((node) =>
       ATTESTATION_REGEX.test(node.textContent || ""),
     );
-
     if (attestationIndex === -1) return div.innerHTML;
     div.innerHTML = "";
-
     if (mode === "attestation") {
       children
         .slice(attestationIndex)
@@ -1569,7 +1414,6 @@ export default function AllEvents() {
         .slice(0, attestationIndex)
         .forEach((node) => div.appendChild(node.cloneNode(true)));
     }
-
     return div.innerHTML;
   };
 
@@ -1593,35 +1437,25 @@ export default function AllEvents() {
     const successful = document.execCommand("copy");
     selection.removeAllRanges();
     document.body.removeChild(copyDiv);
-
-    if (!successful) {
-      throw new Error("Copy command failed");
-    }
-
+    if (!successful) throw new Error("Copy command failed");
     showSnackbar(successMessage, "success");
   };
 
   const handleCopyNoteFromRL = async (row, mode = "all") => {
     try {
       const encounterId = row?.encounterId || row?.encounter_id || row?.id;
-
       if (!encounterId) {
         showSnackbar("Encounter ID missing", "warning");
         return;
       }
-
-      // Mock note data
       const mockSummaryHtml = `<div><p>Patient presented with symptoms. Examination revealed normal findings.</p><p>RESIDENT ATTESTATION: This note has been reviewed and approved by the attending physician.</p><p>Plan: Follow up in 2 weeks.</p></div>`;
-
       const copyHtml = getCopyHtmlByMode(mockSummaryHtml, mode);
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = copyHtml;
-
       if (!(tempDiv.innerText || tempDiv.textContent || "").trim()) {
         showSnackbar("No text found to copy", "warning");
         return;
       }
-
       copyHtmlLikeNoteEditor(
         copyHtml,
         mode === "attestation"
@@ -1634,7 +1468,6 @@ export default function AllEvents() {
     }
   };
 
-  // Handle menu actions
   const handleViewVitalTrends = (row) => {
     setSelectedPatient(row);
     setOpenVitalTrends(true);
@@ -1718,7 +1551,6 @@ export default function AllEvents() {
           transition: "background 0.3s, color 0.3s",
         }}
       >
-        {/* Main content area – no scrollbars */}
         <Box
           sx={{
             flex: 1,
@@ -1732,14 +1564,13 @@ export default function AllEvents() {
           }}
         >
           {/* Header Cards */}
-          {/* Row 1: Doctor card + 4 stat cards */}
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: {
                 xs: "repeat(2, minmax(0, 1fr))",
                 sm: "repeat(4, minmax(0, 1fr))",
-                lg: "repeat(5, minmax(0, 1fr))",
+                lg: "minmax(0, 1.2fr) repeat(4, minmax(0, 1fr))",
               },
               gap: 1.5,
               width: "100%",
@@ -1750,7 +1581,7 @@ export default function AllEvents() {
             <Box
               sx={{
                 minWidth: 0,
-                height: "80px",
+                minHeight: "80px",
                 gridColumn: { xs: "1 / -1", sm: "1 / -1", lg: "auto" },
               }}
             >
@@ -1782,7 +1613,14 @@ export default function AllEvents() {
                 >
                   {providerInitials}
                 </Avatar>
-                <Box sx={{ lineHeight: 1.15, overflow: "hidden" }}>
+                <Box
+                  sx={{
+                    lineHeight: 1.15,
+                    overflow: "hidden",
+                    minWidth: 0,
+                    flex: 1,
+                  }}
+                >
                   <Typography
                     variant="inherit"
                     noWrap
@@ -1797,28 +1635,52 @@ export default function AllEvents() {
                   </Typography>
                   <Typography
                     variant="inherit"
-                    noWrap
+                    title={providerDisplayName}
                     sx={{
                       fontWeight: 700,
-                      fontSize: "16px",
-                      lineHeight: 1.15,
+                      fontSize: "15px",
+                      lineHeight: 1.2,
                       color: "#fff",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
                     }}
                   >
                     {providerDisplayName}
                   </Typography>
                   <Typography
                     variant="inherit"
-                    noWrap
                     sx={{
                       fontSize: "11px",
-                      lineHeight: 1.15,
+                      lineHeight: 1.2,
                       opacity: 0.85,
                       color: "#fff",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
                     }}
                   >
                     {providerSubtitle}
                   </Typography>
+                  <Chip
+                    size="small"
+                    label={providerStatusLabel}
+                    onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+                    sx={{
+                      mt: 0.4,
+                      height: 18,
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      bgcolor: providerStatusColor,
+                      color: "#fff",
+                      borderRadius: "10px",
+                      border: `1px solid ${providerStatusColor}`,
+                      cursor: "pointer",
+                      "&:hover": { opacity: 0.85 },
+                    }}
+                  />
                 </Box>
               </Box>
             </Box>
@@ -1846,7 +1708,7 @@ export default function AllEvents() {
                 icon: CriticalCasesIcon,
               },
             ].map((item, i) => (
-              <Box key={i} sx={{ minWidth: 0, height: "80px" }}>
+              <Box key={i} sx={{ minWidth: 0, minHeight: "80px" }}>
                 <Box
                   sx={{
                     bgcolor: theme.statCardBg,
@@ -1907,7 +1769,7 @@ export default function AllEvents() {
             ))}
           </Box>
 
-          {/* Row 2: Date picker + Search + Filter + Export */}
+          {/* Row 2: Search + Filter + Export */}
           <Box
             sx={{
               display: "flex",
@@ -1915,153 +1777,9 @@ export default function AllEvents() {
               gap: 1.5,
               mb: 2,
               width: "100%",
-              flexWrap: "wrap",
+              flexWrap: { xs: "wrap", lg: "nowrap" },
             }}
           >
-            {/* Date Picker */}
-            {/* <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-
-                backgroundColor: theme.inputBg,
-                borderRadius: "10px",
-                border: `1px solid ${theme.borderColor}`,
-                px: 1.5,
-                py: 0.8,
-                gap: 0.5,
-                flexShrink: 0,
-                cursor: "pointer",
-                height: "40px",
-                color: theme.textPrimary,
-                transition: "background 0.3s, border 0.3s",
-              }}
-            >
-              <ChevronLeftIcon
-                sx={{
-                  fontSize: 18,
-                  color: theme.textPrimary,
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const prev = new Date(selectedDate);
-                  prev.setDate(prev.getDate() - 1);
-                  setSelectedDate(prev);
-                }}
-              />
-
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  color: theme.iconColor,
-                  cursor: "pointer",
-                  lineHeight: 0,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCalendarAnchorEl(e.currentTarget);
-                }}
-              >
-                <CalendarTodayIcon />
-              </Box>
-
-              <Typography
-                fontSize={14}
-                fontWeight={500}
-                sx={{
-                  cursor: "pointer",
-                  userSelect: "none",
-                  color: theme.textPrimary,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCalendarAnchorEl(e.currentTarget);
-                }}
-              >
-                {selectedDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Typography>
-
-              <ChevronRightIcon
-                sx={{
-                  fontSize: 18,
-                  color: theme.textPrimary,
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next = new Date(selectedDate);
-                  next.setDate(next.getDate() + 1);
-                  setSelectedDate(next);
-                }}
-              />
-            </Box> */}
-
-            {/* Calendar Popover */}
-            {/* <Popover
-              open={Boolean(calendarAnchorEl)}
-              anchorEl={calendarAnchorEl}
-              onClose={() => setCalendarAnchorEl(null)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-              transformOrigin={{ vertical: "top", horizontal: "center" }}
-              PaperProps={{
-                sx: {
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: theme.popoverBg,
-                  color: theme.textPrimary,
-                  borderRadius: "12px",
-                  border: `1px solid ${theme.borderColor}`,
-                  px: 1.5,
-                  transition: "background-color 0.3s, color 0.3s, border-color 0.3s",
-                  "& .MuiPickersCalendarHeader-label": {
-                    color: theme.textPrimary,
-                  },
-                  "& .MuiDayCalendar-weekDayLabel": {
-                    color: theme.textSecondary,
-                  },
-                  "& .MuiPickersDay-root": {
-                    color: theme.textPrimary,
-                  },
-                  "& .MuiPickersDay-root.Mui-selected": {
-                    backgroundColor: darkMode ? "#4DA3FF" : "#015DFF",
-                    color: "#FFFFFF",
-                  },
-                  "& .MuiPickersDay-root.Mui-selected:hover": {
-                    backgroundColor: darkMode
-                      ? "rgba(77, 163, 255, 0.85)"
-                      : "rgba(1, 93, 255, 0.85)",
-                  },
-                  "& .MuiIconButton-root": {
-                    color: theme.textPrimary,
-                  },
-                },
-              }}
-            >
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DateCalendar
-                  value={dayjs(selectedDate)}
-                  onChange={(newVal) => {
-                    setSelectedDate(newVal.toDate());
-                    setCalendarAnchorEl(null);
-                  }}
-                  sx={{
-                    width: 260,
-                    "& .MuiPickersDay-root.Mui-selected": {
-                      backgroundcolor: "#4DA3FF",
-                    },
-                    "& .MuiPickersDay-root.Mui-selected:hover": {
-                      backgroundColor: "rgba(1, 93, 255, 0.85)",
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            </Popover> */}
-
-            {/* Search Bar */}
             <Box
               sx={{
                 display: "flex",
@@ -2072,10 +1790,9 @@ export default function AllEvents() {
                 px: 1.5,
                 height: "40px",
                 gap: 1,
-                flex: { xs: "1 1 100%", lg: "0 0 350px" },
-                width: { xs: "100%", lg: "350px" },
+                flex: { xs: "1 1 100%", lg: "1 1 0" },
+                width: "100%",
                 minWidth: 0,
-                maxWidth: { xs: "100%", lg: "350px" },
                 transition: "background 0.3s, border 0.3s",
               }}
             >
@@ -2096,16 +1813,15 @@ export default function AllEvents() {
               />
             </Box>
 
-            {/* Right Side Buttons */}
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                ml: { xs: 0, lg: "auto" },
+                flexShrink: 0,
                 width: { xs: "100%", lg: "auto" },
                 justifyContent: { xs: "flex-start", lg: "flex-end" },
-                flexWrap: "wrap",
+                flexWrap: "nowrap",
               }}
             >
               <Button
@@ -2114,7 +1830,6 @@ export default function AllEvents() {
                 sx={{
                   borderRadius: "10px",
                   textTransform: "none",
-
                   border: `1.5px solid ${theme.btnOutlineBorder}`,
                   color: theme.btnOutlineText,
                   backgroundColor: theme.inputBg,
@@ -2186,19 +1901,18 @@ export default function AllEvents() {
                 overflowX: "auto",
                 overflowY: "auto",
                 WebkitOverflowScrolling: "touch",
-                "&::-webkit-scrollbar": {
-                  display: "none",
-                },
+                "&::-webkit-scrollbar": { display: "none" },
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
               }}
             >
+              {/* ✅ Fixed layout so every column keeps its explicit width */}
               <Table
                 stickyHeader
                 sx={{
                   width: "100%",
-                  minWidth: { xs: 920, sm: 1000 },
-                  tableLayout: "auto",
+                  minWidth: { xs: 960, sm: 1040 },
+                  tableLayout: "fixed",
                   borderCollapse: "separate",
                   borderSpacing: 0,
                 }}
@@ -2219,26 +1933,18 @@ export default function AllEvents() {
                         textAlign: "center",
                         transition: "background 0.3s, color 0.3s",
                       },
-                      "& .MuiTableSortLabel-root": {
-                        color: tableHeaderColor,
-                        width: "100%",
-                        display: "flex",
-                        justifyContent: "center",
-                        textAlign: "center",
-                      },
-                      "& .MuiTableSortLabel-root:hover": {
-                        color: tableHeaderColor,
-                      },
-                      "& .MuiTableSortLabel-root.Mui-active": {
-                        color: tableHeaderColor,
-                      },
                     }}
                   >
                     <TableCell
                       padding="checkbox"
                       sx={{
-                        width: activeTab === "Sidelist" ? "30px" : "40px",
-                        minWidth: activeTab === "Sidelist" ? "30px" : "40px",
+                        width: CHECKBOX_COL_WIDTH,
+                        minWidth: CHECKBOX_COL_WIDTH,
+                        maxWidth: CHECKBOX_COL_WIDTH,
+                        overflow: "visible !important",
+                        textOverflow: "clip !important",
+                        px: "0 !important",
+                        textAlign: "center",
                       }}
                     >
                       <Checkbox
@@ -2256,15 +1962,14 @@ export default function AllEvents() {
                           "&.Mui-checked": {
                             color: darkMode ? "#4DA3FF" : theme.actionIconColor,
                           },
-                          "&.MuiCheckbox-indeterminate": {
-                            color: darkMode ? "#4DA3FF" : theme.actionIconColor,
-                          },
                         }}
                       />
                     </TableCell>
+
+                    {/* Name / Age */}
                     <TableCell
                       sx={{
-                        width: "7%",
+                        width: "14%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2281,53 +1986,29 @@ export default function AllEvents() {
                         </div>
                       </Box>
                     </TableCell>
+
+                    {/* Duration */}
                     <TableCell
                       sx={{
-                        width: "12%",
+                        width: "9%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
                       <Box sx={{ lineHeight: 1.3 }}>
-                        <div>Patient</div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                            fontSize: "14px",
-                          }}
-                        >
-                          ID
-                        </div>
+                        <div>Duration</div>
                       </Box>
                     </TableCell>
+
+                    {/* Status */}
                     <TableCell
                       sx={{
-                        width: "10%",
-                        borderRight: "1px solid rgba(77,163,255,0.2)",
-                      }}
-                    >
-                      <Box sx={{ lineHeight: 1.3 }}>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                            fontSize: "14px",
-                          }}
-                        >
-                          Duration
-                        </div>
-                      </Box>
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        width: "10%",
+                        width: "9%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
                       <Box
                         sx={{
                           display: "flex",
-                          //alignItems: "center",
                           justifyContent: "center",
                           width: "100%",
                           cursor: "pointer",
@@ -2336,42 +2017,36 @@ export default function AllEvents() {
                       >
                         Status
                         <UnfoldMoreIcon
-                          sx={{
-                            fontSize: 20,
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                          }}
+                          sx={{ fontSize: 20, color: tableHeaderColor }}
                         />
                       </Box>
                     </TableCell>
+
+                    {/* Route */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "11%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
                       <Box
                         sx={{
                           display: "flex",
-                          //alignItems: "center",
                           justifyContent: "center",
                           gap: 0.5,
                         }}
                       >
                         Route
                         <KeyboardArrowDownIcon
-                          sx={{
-                            fontSize: 20,
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                          }}
+                          sx={{ fontSize: 20, color: tableHeaderColor }}
                         />
                       </Box>
                     </TableCell>
 
+                    {/* Physician */}
                     <TableCell
                       sx={{
-                        width: "10%",
+                        width: "15%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2388,18 +2063,15 @@ export default function AllEvents() {
                       >
                         Physician
                         <KeyboardArrowDownIcon
-                          sx={{
-                            fontSize: 20,
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                          }}
+                          sx={{ fontSize: 20, color: tableHeaderColor }}
                         />
                       </Box>
                     </TableCell>
 
+                    {/* Crew */}
                     <TableCell
                       sx={{
-                        width: "11%",
+                        width: "16%",
                         borderRight: "1px solid rgba(77,163,255,0.2)",
                       }}
                     >
@@ -2416,28 +2088,34 @@ export default function AllEvents() {
                       >
                         Crew
                         <KeyboardArrowDownIcon
-                          sx={{
-                            fontSize: 20,
-                            fontWeight: 600,
-                            color: tableHeaderColor,
-                          }}
+                          sx={{ fontSize: 20, color: tableHeaderColor }}
                         />
                       </Box>
                     </TableCell>
 
+                    {/* Actions / Reasons */}
                     {activeTab === "Sidelist" ? (
-                      <TableCell sx={{ width: "25%", minWidth: "200px" }}>
+                      <TableCell
+                        sx={{
+                          width: REASONS_COL_WIDTH,
+                          minWidth: REASONS_COL_WIDTH,
+                        }}
+                      >
                         Reason
                       </TableCell>
                     ) : (
                       <TableCell
                         sx={{
-                          width: "auto",
-                          minWidth: 280,
+                          width: isSidelistFilterActive
+                            ? REASONS_COL_WIDTH
+                            : ACTIONS_COL_WIDTH,
+                          minWidth: isSidelistFilterActive
+                            ? REASONS_COL_WIDTH
+                            : ACTIONS_COL_WIDTH,
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {isSidelistFilterActive ? <>Reasons</> : <> Actions</>}
+                        {isSidelistFilterActive ? <>Reasons</> : <>Actions</>}
                       </TableCell>
                     )}
                   </TableRow>
@@ -2446,7 +2124,7 @@ export default function AllEvents() {
                   {displayRows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={8}
                         align="center"
                         sx={{
                           py: 4,
@@ -2470,7 +2148,6 @@ export default function AllEvents() {
                         const isEditing = (field) =>
                           editingCell?.rowId === row.id &&
                           editingCell?.field === field;
-                        // const eyeTooltip = isRowSeen(row) ? "Seen" : "Unseen";
 
                         const EditableCell = ({ field, children, sx }) => {
                           const cellRef = React.useRef(null);
@@ -2525,7 +2202,7 @@ export default function AllEvents() {
                                 sx={{
                                   display: "inline-block",
                                   width: "fit-content",
-                                  cursor: isEditing(field) ? "text" : "defult",
+                                  cursor: isEditing(field) ? "text" : "default",
                                   minHeight: 20,
                                   outline: "none !important",
                                   border: "none !important",
@@ -2535,17 +2212,11 @@ export default function AllEvents() {
                                     ? "rgba(1, 93, 255, 0.18)"
                                     : "transparent",
                                   px: isEditing(field) ? 0.5 : 0,
-                                  // "&:hover": {
-                                  //   bgcolor: "rgba(1, 93, 255, 0.12)",
-                                  // },
                                   "&:focus": {
                                     outline: "none !important",
                                     border: "none !important",
                                     boxShadow: "none !important",
                                     bgcolor: "rgba(1, 93, 255, 0.35)",
-                                  },
-                                  "&:focus-visible": {
-                                    outline: "none !important",
                                   },
                                 }}
                               >
@@ -2583,10 +2254,13 @@ export default function AllEvents() {
                             <TableCell
                               padding="checkbox"
                               sx={{
-                                width:
-                                  activeTab === "Sidelist" ? "30px" : "40px",
-                                minWidth:
-                                  activeTab === "Sidelist" ? "30px" : "40px",
+                                width: CHECKBOX_COL_WIDTH,
+                                minWidth: CHECKBOX_COL_WIDTH,
+                                maxWidth: CHECKBOX_COL_WIDTH,
+                                overflow: "visible !important",
+                                textOverflow: "clip !important",
+                                px: "0 !important",
+                                textAlign: "center",
                               }}
                             >
                               <Checkbox
@@ -2603,7 +2277,6 @@ export default function AllEvents() {
                               />
                             </TableCell>
 
-                            {/* Name + Age/Gender */}
                             <EditableCell field="name">
                               <Box
                                 fontWeight={600}
@@ -2628,24 +2301,8 @@ export default function AllEvents() {
                               </Box>
                             </EditableCell>
 
-                            {/* Patient ID */}
-                            <EditableCell field="mrn">
-                              <Box
-                                fontWeight={600}
-                                fontSize={12}
-                                sx={{ display: "inline-block" }}
-                              >
-                                {row.mrn}
-                              </Box>
-                            </EditableCell>
-
-                            {/* Duration */}
                             <EditableCell field="duration">
-                              <Box
-                                fontWeight={600}
-                                fontSize={12}
-                                sx={{ display: "inline-block" }}
-                              >
+                              <Box fontWeight={600} fontSize={12}>
                                 {row.duration}
                               </Box>
                             </EditableCell>
@@ -2656,7 +2313,6 @@ export default function AllEvents() {
                               </Box>
                             </EditableCell>
 
-                            {/* Location chip — editable */}
                             <TableCell>
                               <Box
                                 contentEditable={isEditing("location")}
@@ -2697,20 +2353,11 @@ export default function AllEvents() {
                                   cursor: "pointer",
                                   outline: "none !important",
                                   border: "none !important",
-                                  boxShadow: "none !important",
                                   borderRadius: "4px",
                                   bgcolor: isEditing("location")
                                     ? "rgba(1, 93, 255, 0.18)"
                                     : "transparent",
                                   px: isEditing("location") ? 0.5 : 0,
-                                  "&:focus": {
-                                    outline: "none !important",
-                                    border: "none !important",
-                                    bgcolor: "rgba(1, 93, 255, 0.35)",
-                                  },
-                                  "&:focus-visible": {
-                                    outline: "none !important",
-                                  },
                                 }}
                               >
                                 {isEditing("location")
@@ -2719,76 +2366,34 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
-                            {/* Physician */}
+                            {/* Physician cell — click opens Assign modal */}
                             <TableCell>
                               <Box
-                                contentEditable={isEditing("physician")}
-                                suppressContentEditableWarning
                                 onClick={() => {
                                   if (!canAssignProvider) return;
-                                  if (!isEditing("physician")) {
-                                    setSelectedRow(row);
-                                    setAssignType("doctor");
-                                    setAssignSearch("");
-                                    setSelectedDoctor("");
-                                    setSelectedDoctorId("");
-                                    setOpenAssignModal(true);
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  if (isEditing("physician")) {
-                                    const newValue =
-                                      e.currentTarget.textContent || "";
-                                    setRows((prev) =>
-                                      prev.map((r) =>
-                                        r.id === row.id
-                                          ? { ...r, physician: newValue }
-                                          : r,
-                                      ),
-                                    );
-                                    setEditingCell(null);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    e.currentTarget.blur();
-                                  }
-                                  if (e.key === "Escape") {
-                                    setEditingCell(null);
-                                  }
+                                  handleOpenAssignModalForRow(row);
                                 }}
                                 sx={{
                                   cursor: "pointer",
                                   color: theme.actionIconColor,
                                   fontWeight: 500,
                                   display: "inline-block",
-                                  outline: "none !important",
-                                  border: "none !important",
-                                  boxShadow: "none !important",
+                                  maxWidth: "100%",
                                   borderRadius: "4px",
-                                  bgcolor: isEditing("physician")
-                                    ? "rgba(1, 93, 255, 0.18)"
-                                    : "transparent",
-                                  px: isEditing("physician") ? 0.5 : 0,
-                                  "&:focus": {
-                                    outline: "none !important",
-                                    border: "none !important",
-                                    bgcolor: "rgba(1, 93, 255, 0.35)",
-                                  },
-                                  "&:focus-visible": {
-                                    outline: "none !important",
-                                  },
                                 }}
                               >
-                                {isEditing("physician") ? (
-                                  editValue
-                                ) : row.physician ? (
+                                {row.physician ? (
                                   <Box
                                     sx={{
-                                      display: "inline-block",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 0.6,
                                       px: 1.6,
                                       py: 0.8,
+                                      maxWidth: "100%",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
                                       borderRadius: "20px",
                                       fontSize: "12px",
                                       fontWeight: 600,
@@ -2807,7 +2412,7 @@ export default function AllEvents() {
                                       borderRadius: "20px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      minWidth: "90px",
+                                      minWidth: "70px",
                                       textAlign: "center",
                                       ...getPhysicianValueStyles(false),
                                     }}
@@ -2818,69 +2423,34 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
-                            {/* Resident */}
+                            {/* Crew cell */}
                             <TableCell>
                               <Box
-                                suppressContentEditableWarning
-                                onClick={() => {}}
-                                onBlur={(e) => {
-                                  if (isEditing("resident")) {
-                                    const newValue =
-                                      e.currentTarget.textContent || "";
-                                    setRows((prev) =>
-                                      prev.map((r) =>
-                                        r.id === row.id
-                                          ? { ...r, resident: newValue }
-                                          : r,
-                                      ),
-                                    );
-                                    setEditingCell(null);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    e.currentTarget.blur();
-                                  }
-                                  if (e.key === "Escape") {
-                                    setEditingCell(null);
-                                  }
-                                }}
                                 sx={{
                                   cursor: "pointer",
                                   color: theme.actionIconColor,
                                   fontWeight: 400,
                                   display: "inline-block",
-                                  outline: "none !important",
-                                  border: "none !important",
-                                  boxShadow: "none !important",
+                                  maxWidth: "100%",
                                   borderRadius: "4px",
-                                  bgcolor: isEditing("resident")
-                                    ? "rgba(1, 93, 255, 0.18)"
-                                    : "transparent",
-                                  px: isEditing("resident") ? 0.5 : 0,
-                                  "&:focus": {
-                                    outline: "none !important",
-                                    border: "none !important",
-                                    bgcolor: "rgba(1, 93, 255, 0.35)",
-                                  },
-                                  "&:focus-visible": {
-                                    outline: "none !important",
-                                  },
                                 }}
                               >
-                                {isEditing("resident") ? (
-                                  editValue
-                                ) : row.crew || row.resident ? (
+                                {row.crew || row.resident ? (
                                   <Box
                                     sx={{
                                       display: "inline-block",
-                                      px: 1.6,
-                                      py: 0.8,
-                                      borderRadius: "20px",
+                                      px: 1.4,
+                                      py: 0.7,
+                                      maxWidth: "100%",
+                                      whiteSpace: "normal",
+                                      wordBreak: "break-word",
+                                      overflow: "visible",
+                                      textOverflow: "clip",
+                                      textAlign: "center",
+                                      borderRadius: "14px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      lineHeight: 1,
+                                      lineHeight: 1.3,
                                       ...crewValueStyles,
                                     }}
                                   >
@@ -2895,7 +2465,7 @@ export default function AllEvents() {
                                       borderRadius: "8px",
                                       fontSize: "12px",
                                       fontWeight: 600,
-                                      minWidth: "90px",
+                                      minWidth: "70px",
                                       textAlign: "center",
                                       ...crewValueStyles,
                                     }}
@@ -2906,9 +2476,13 @@ export default function AllEvents() {
                               </Box>
                             </TableCell>
 
+                            {/* Reasons (sidelist filter) / Actions */}
                             {isSidelistFilterActive ? (
                               <TableCell
-                                sx={{ width: "25%", minWidth: "200px" }}
+                                sx={{
+                                  width: REASONS_COL_WIDTH,
+                                  minWidth: REASONS_COL_WIDTH,
+                                }}
                               >
                                 <Box
                                   sx={{
@@ -2934,7 +2508,6 @@ export default function AllEvents() {
                                       color: theme.textMuted,
                                     }}
                                   >
-                                    {console.log("Rwe", row)}
                                     Added:{" "}
                                     {row.updated_at || row.created_at
                                       ? dayjs(row.sidelistTimestamp).format(
@@ -2948,37 +2521,22 @@ export default function AllEvents() {
                               <TableCell
                                 sx={{
                                   overflow: "visible !important",
-                                  width: "100%",
-                                  minWidth: { xs: 280, sm: 320, md: 220 },
+                                  width: ACTIONS_COL_WIDTH,
+                                  minWidth: ACTIONS_COL_WIDTH,
+                                  px: "4px !important",
                                 }}
                               >
                                 <Box
                                   sx={{
                                     display: "flex",
-                                    gap: 0.5,
+                                    gap: "12px",
                                     flexWrap: "nowrap",
                                     alignItems: "center",
-                                    justifyContent: "space-between",
+                                    justifyContent: "center",
                                     width: "100%",
-                                    minWidth: "fit-content",
                                   }}
                                 >
-                                  <Tooltip
-                                    // title={eyeTooltip}
-                                    arrow
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: "#000000",
-                                          color: "rgba(15, 38, 70, 1)",
-                                          fontSize: "0.75rem",
-                                          [`& .${tooltipClasses.arrow}`]: {
-                                            color: "#000000",
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
+                                  <Tooltip arrow title="Toggle Seen">
                                     <IconButton
                                       size="small"
                                       onClick={(e) => {
@@ -2988,46 +2546,28 @@ export default function AllEvents() {
                                       sx={{
                                         ...actionIconButtonSx,
                                         borderRadius: "50%",
-                                        marginRight: "15px",
-                                        position: "relative",
+                                        // Plain when not seen (transparent),
+                                        // green pill after click — matches the app
+                                        backgroundColor:
+                                          getEyeColorsForRow(row).bg,
+                                        "&:hover": {
+                                          backgroundColor:
+                                            getEyeColorsForRow(row).hoverBg,
+                                        },
+                                        "& svg path": {
+                                          fill:
+                                            getEyeColorsForRow(row).icon ===
+                                            "transparent"
+                                              ? "currentColor"
+                                              : getEyeColorsForRow(row).icon,
+                                        },
                                       }}
                                     >
                                       <VisibilityIcon />
-                                      {/* {!isRowSeen(row) && (
-                                        <Box
-                                          sx={{
-                                            position: "absolute",
-                                            top: "50%",
-                                            left: "50%",
-                                            transform: "translate(-50%, -50%)",
-                                            fontSize: "28px",
-                                            color: eyeColors.icon,
-                                            pointerEvents: "none",
-                                            lineHeight: 1,
-                                          }}
-                                        >
-                                          /
-                                        </Box>
-                                      )} */}
                                     </IconButton>
                                   </Tooltip>
 
-                                  <Tooltip
-                                    // title="List of Encounter"
-                                    arrow
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: "#000000",
-                                          color: "rgba(15, 38, 70, 1)",
-                                          fontSize: "0.75rem",
-                                          [`& .${tooltipClasses.arrow}`]: {
-                                            color: "#000000",
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
+                                  <Tooltip arrow title="Action 2">
                                     <IconButton
                                       size="small"
                                       sx={actionIconButtonSx}
@@ -3040,29 +2580,12 @@ export default function AllEvents() {
                                       <ActionIcon2 />
                                     </IconButton>
                                   </Tooltip>
+
                                   {canEditFacesheet && (
-                                    <Tooltip
-                                      // title="Facesheet"
-                                      arrow
-                                      componentsProps={{
-                                        tooltip: {
-                                          sx: {
-                                            bgcolor: "#000000",
-                                            color: "rgba(15, 38, 70, 1)",
-                                            fontSize: "0.75rem",
-                                            [`& .${tooltipClasses.arrow}`]: {
-                                              color: "#000000",
-                                            },
-                                          },
-                                        },
-                                      }}
-                                    >
+                                    <Tooltip arrow title="Action 3">
                                       <IconButton
                                         size="small"
-                                        sx={{
-                                          ...actionIconButtonSx,
-                                          boxShadow: "none",
-                                        }}
+                                        sx={actionIconButtonSx}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setSelectedPatient(row);
@@ -3074,49 +2597,17 @@ export default function AllEvents() {
                                     </Tooltip>
                                   )}
 
-                                  <Tooltip
-                                    // title="Video"
-                                    arrow
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: "#000000",
-                                          color: "rgba(15, 38, 70, 1)",
-                                          fontSize: "0.75rem",
-                                          [`& .${tooltipClasses.arrow}`]: {
-                                            color: "#000000",
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
+                                  <Tooltip arrow title="Action 4">
                                     <IconButton
                                       size="small"
                                       sx={actionIconButtonSx}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
+                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       <ActionIcon4 />
                                     </IconButton>
                                   </Tooltip>
 
-                                  <Tooltip
-                                    // title="More options"
-                                    arrow
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: "#000000",
-                                          color: "rgba(15, 38, 70, 1)",
-                                          fontSize: "0.75rem",
-                                          [`& .${tooltipClasses.arrow}`]: {
-                                            color: "#000000",
-                                          },
-                                        },
-                                      },
-                                    }}
-                                  >
+                                  <Tooltip arrow title="More">
                                     <IconButton
                                       size="small"
                                       sx={actionIconButtonSx}
@@ -3125,7 +2616,7 @@ export default function AllEvents() {
                                         handleMenuOpen(e, row.id);
                                       }}
                                     >
-                                      <MoreVertIcon fontSize="small" />
+                                      <MoreVertIcon sx={{ fontSize: 18 }} />
                                     </IconButton>
                                   </Tooltip>
                                 </Box>
@@ -3156,40 +2647,81 @@ export default function AllEvents() {
                 color: theme.textPrimary,
                 bgcolor: theme.cardBg,
                 transition: "background 0.3s, color 0.3s",
-                "& .MuiTablePagination-toolbar": {
-                  minHeight: "44px",
-                  px: { xs: 1, sm: 2 },
-                  flexWrap: "wrap",
-                  gap: 1,
-                  justifyContent: { xs: "center", sm: "flex-end" },
-                },
-                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                  {
-                    fontSize: { xs: "12px", sm: "13px" },
-                    color: theme.textSecondary,
-                  },
-                "& .MuiTablePagination-actions button": {
-                  color: theme.textPrimary,
-                },
-                "& .MuiSelect-select": { color: theme.textPrimary },
               }}
             />
           </Box>
         </Box>
+
+        {/* Status Picker Menu */}
+        <Menu
+          anchorEl={statusMenuAnchor}
+          open={Boolean(statusMenuAnchor)}
+          onClose={() => setStatusMenuAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          sx={{
+            "& .MuiPaper-root": {
+              backgroundColor: theme.menuBg,
+              borderRadius: "12px",
+              minWidth: 200,
+              border: `1px solid ${theme.menuBorder}`,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              backgroundImage: "none",
+            },
+            "& .MuiMenuItem-root": {
+              py: 1,
+              px: 2,
+              gap: 1.2,
+              fontSize: "14px",
+              color: theme.textPrimary,
+            },
+          }}
+        >
+          <Typography
+            sx={{
+              px: 2,
+              pt: 1,
+              pb: 0.5,
+              fontSize: 11,
+              fontWeight: 700,
+              color: theme.textSecondary,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Set your status
+          </Typography>
+          {MANUAL_PHYSICIAN_STATUSES.map((status) => (
+            <MenuItem
+              key={status}
+              selected={providerLiveStatus === status}
+              onClick={() => handleChangeStatus(status)}
+            >
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: PHYSICIAN_STATUS_COLORS[status],
+                  mr: 1.2,
+                  flexShrink: 0,
+                }}
+              />
+              <ListItemText
+                primary={PHYSICIAN_STATUS_SHORT_LABELS[status]}
+                primaryTypographyProps={{ fontSize: 14 }}
+              />
+            </MenuItem>
+          ))}
+        </Menu>
 
         {/* More Options Menu Popup */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
-          anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
-          }}
-          transformOrigin={{
-            vertical: "top",
-            horizontal: "right",
-          }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
           sx={{
             "& .MuiPaper-root": {
               backgroundColor: theme.menuBg,
@@ -3198,19 +2730,6 @@ export default function AllEvents() {
               border: `1px solid ${theme.menuBorder}`,
               boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
               backgroundImage: "none",
-              transition: "background 0.3s",
-            },
-            "& .MuiMenuItem-root": {
-              py: 1.2,
-              px: 2,
-              gap: 1.5,
-              fontSize: "14px",
-              color: theme.textPrimary,
-              "&:hover": { backgroundColor: "rgba(255, 122, 77, 0.1)" },
-            },
-            "& .MuiDivider-root": {
-              borderColor: theme.divider,
-              my: 0.5,
             },
           }}
         >
@@ -3220,14 +2739,7 @@ export default function AllEvents() {
               if (selectedPatient) handleViewVitalTrends(selectedPatient);
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                width: "100%",
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <ViewVitalIcon width={20} height={20} />
               <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
                 View Vital Trends
@@ -3235,22 +2747,13 @@ export default function AllEvents() {
             </Box>
           </MenuItem>
 
-          {/* <Divider /> */}
-
           <MenuItem
             onClick={() => {
               const selectedPatient = rows.find((r) => r.id === menuRowId);
               if (selectedPatient) handleViewReport(selectedPatient);
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                width: "100%",
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <ViewReportIcon width={20} height={20} />
               <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
                 View report
@@ -3258,22 +2761,13 @@ export default function AllEvents() {
             </Box>
           </MenuItem>
 
-          {/* <Divider /> */}
-
           <MenuItem
             onClick={() => {
               const selectedPatient = rows.find((r) => r.id === menuRowId);
               if (selectedPatient) handleShareReport(selectedPatient);
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                width: "100%",
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <ShareIcon width={20} height={20} />
               <Typography sx={{ fontSize: "14px", fontWeight: 500 }}>
                 Share report
@@ -3316,6 +2810,7 @@ export default function AllEvents() {
           patient={selectedPatient}
         />
 
+        {/* Filter Dialog */}
         <Dialog
           open={filterModalOpen}
           onClose={() => setFilterModalOpen(false)}
@@ -3329,9 +2824,6 @@ export default function AllEvents() {
               maxWidth: { xs: "100%", sm: "520px" },
               m: { xs: 1.5, sm: "auto" },
               bgcolor: theme.modalBg,
-              boxShadow: darkMode
-                ? "0 12px 40px rgba(0, 0, 0, 0.35)"
-                : "0 12px 40px rgba(15, 23, 42, 0.18)",
             },
           }}
         >
@@ -3385,7 +2877,6 @@ export default function AllEvents() {
                   display: "flex",
                   flexDirection: { xs: "row", sm: "column" },
                   gap: { xs: 0.5, sm: 0 },
-                  WebkitOverflowScrolling: "touch",
                 }}
               >
                 {["Sort by", "Filter by"]
@@ -3429,7 +2920,6 @@ export default function AllEvents() {
                                   ? "rgba(255,255,255,0.08)"
                                   : theme.cardBg
                                 : "transparent",
-                            transition: "background 0.2s",
                           }}
                         >
                           {category.label}
@@ -3451,11 +2941,7 @@ export default function AllEvents() {
                 {(filterOptionsByCategory[activeFilterCategory] || [])
                   .length === 0 ? (
                   <Typography
-                    sx={{
-                      py: 2,
-                      fontSize: "14px",
-                      color: theme.textSecondary,
-                    }}
+                    sx={{ py: 2, fontSize: "14px", color: theme.textSecondary }}
                   >
                     No options available
                   </Typography>
@@ -3530,11 +3016,6 @@ export default function AllEvents() {
                   color: darkMode ? theme.btnOutlineText : "#2563EB",
                   backgroundColor: "transparent",
                   minWidth: 110,
-                  "&:hover": {
-                    backgroundColor: darkMode
-                      ? "rgba(77,163,255,0.08)"
-                      : "rgba(37,99,235,0.05)",
-                  },
                 }}
               >
                 Clear all
@@ -3550,12 +3031,9 @@ export default function AllEvents() {
                   fontSize: "14px",
                   minWidth: 110,
                   color: "#FFFFFF",
-                  backgroundColor: darkMode ? "#2563EB" : "#2563EB",
+                  backgroundColor: "#2563EB",
                   boxShadow: "none",
-                  "&:hover": {
-                    backgroundColor: darkMode ? "#1D4ED8" : "#1D4ED8",
-                    boxShadow: "none",
-                  },
+                  "&:hover": { backgroundColor: "#1D4ED8", boxShadow: "none" },
                 }}
               >
                 Apply
@@ -3564,6 +3042,7 @@ export default function AllEvents() {
           </DialogContent>
         </Dialog>
 
+        {/* ASSIGN TO PROVIDER */}
         <Dialog
           open={openAssignModal}
           onClose={() => setOpenAssignModal(false)}
@@ -3596,34 +3075,20 @@ export default function AllEvents() {
               <Typography
                 fontWeight={600}
                 fontSize={18}
-                sx={{
-                  color: theme.textPrimary,
-                  mt: 2,
-                }}
+                sx={{ color: theme.textPrimary, mt: 2 }}
               >
-                {assignType === "doctor" ? "Assign to Provider" : null}
+                Assign to Provider
               </Typography>
               <IconButton
                 size="small"
                 onClick={() => setOpenAssignModal(false)}
                 disableRipple
-                sx={{
-                  mt: 2,
-                  "&:hover": { backgroundColor: "transparent" },
-                }}
+                sx={{ mt: 2, "&:hover": { backgroundColor: "transparent" } }}
               >
-                <CloseIcon
-                  sx={{ fontSize: 20, color: theme.textPrimary }}
-                />
+                <CloseIcon sx={{ fontSize: 20, color: theme.textPrimary }} />
               </IconButton>
             </Box>
-            <Box
-              sx={{
-                mt: 2,
-                height: "1px",
-                bgcolor: theme.modalDivider,
-              }}
-            />
+            <Box sx={{ mt: 2, height: "1px", bgcolor: theme.modalDivider }} />
 
             <Box
               sx={{
@@ -3666,7 +3131,6 @@ export default function AllEvents() {
                 />
               </Box>
 
-              {/* List */}
               <Box
                 sx={{
                   overflowY: "auto",
@@ -3676,119 +3140,185 @@ export default function AllEvents() {
                   scrollbarWidth: "none",
                 }}
               >
-                {filteredAssignProviders.map((doc) => (
+                {assignLoading ? (
                   <Box
-                    key={doc.id}
-                    onClick={() => {
-                      setSelectedDoctor(doc.name);
-                      setSelectedDoctorId(doc.id);
-                    }}
                     sx={{
-                      px: 2,
-                      py: 1,
-                      borderRadius: "14px",
-                      mb: 1.5,
-                      cursor: "pointer",
-                      border: "1px solid",
-                      borderColor:
-                        selectedDoctorId === doc.id
-                          ? "transparent"
-                          : theme.borderColor,
-                      bgcolor:
-                        selectedDoctorId === doc.id
-                          ? theme.modalSurface
-                          : "transparent",
                       display: "flex",
-                      justifyContent: "space-between",
+                      justifyContent: "center",
                       alignItems: "center",
-                      "&:hover": {
-                        bgcolor: theme.modalSurface,
-                        borderColor: "transparent",
-                      },
+                      py: 6,
                     }}
                   >
-                    <Box>
-                      <Typography
-                        //fontSize={12}
-                        //fontWeight={300}
-                        sx={{
-                          color: theme.textPrimary,
-                          fontSize: "14px",
-                          fontWeight: 300,
-                        }}
-                      >
-                        {doc.name}
-                      </Typography>
-                      <Typography
-                        //fontSize={10}
-                        //fontWeight={300}
-                        sx={{
-                          color: "#228B22",
-                          mt: 0.2,
-                          fontSize: "14px",
-                        }}
-                      >
-                        {[doc.status, doc.specialty]
-                          .filter(Boolean)
-                          .join(" • ") || "Available"}
-                      </Typography>
-                    </Box>
-
-                    {selectedDoctorId === doc.id && (
-                      <Box
-                        sx={{
-                          width: 20,
-                          height: 20,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Typography
-                          fontSize={12}
-                          sx={{ color: theme.actionIconColor, lineHeight: 1 }}
-                        >
-                          ✓
-                        </Typography>
-                      </Box>
-                    )}
+                    <CircularProgress size={28} sx={{ color: "#0A5FFF" }} />
                   </Box>
-                ))}
-
-                {/* {filteredAssignProviders.length === 0 && (
+                ) : assignError ? (
                   <Typography
                     sx={{
-                      px: 1,
-                      py: 2,
+                      textAlign: "center",
+                      py: 4,
+                      color: "#EF4444",
+                      fontSize: 13,
+                    }}
+                  >
+                    {assignError}
+                  </Typography>
+                ) : filteredAssignProviders.length === 0 ? (
+                  <Typography
+                    sx={{
+                      textAlign: "center",
+                      py: 4,
                       color: theme.textSecondary,
                       fontSize: 13,
                     }}
                   >
-                    {assignType === "resident"
-                      ? "No residents found."
-                      : null }
+                    No physicians found.
                   </Typography>
-                )} */}
+                ) : (
+                  filteredAssignProviders.map((doc) => {
+                    const selected = doc.id === selectedDoctorId;
+                    const assignable = isAssignable(
+                      doc.status,
+                      doc.isActive !== false,
+                    );
+                    const statusColor =
+                      PHYSICIAN_STATUS_COLORS[
+                        normalizePhysicianStatus(doc.status)
+                      ] || "#64748B";
+                    const statusLabel =
+                      PHYSICIAN_STATUS_SHORT_LABELS[
+                        normalizePhysicianStatus(doc.status)
+                      ] || "Offline";
+
+                    return (
+                      <Box
+                        key={doc.id}
+                        onClick={() => {
+                          if (!assignable) return;
+                          setSelectedDoctor(doc.name);
+                          setSelectedDoctorId(doc.id);
+                        }}
+                        sx={{
+                          px: 2,
+                          py: 1.25,
+                          borderRadius: "14px",
+                          mb: 1.5,
+                          cursor: assignable ? "pointer" : "not-allowed",
+                          opacity: assignable ? 1 : 0.5,
+                          border: "1px solid",
+                          borderColor: selected
+                            ? "transparent"
+                            : theme.borderColor,
+                          bgcolor: selected
+                            ? theme.modalSurface
+                            : "transparent",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          transition: "all 0.15s",
+                          "&:hover": assignable
+                            ? {
+                                bgcolor: theme.modalSurface,
+                                borderColor: "transparent",
+                              }
+                            : {},
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            sx={{
+                              color: theme.textPrimary,
+                              fontSize: "14px",
+                              fontWeight: 500,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {doc.name}
+                          </Typography>
+                          {doc.specialty && (
+                            <Typography
+                              sx={{
+                                color: "#228B22",
+                                mt: 0.2,
+                                fontSize: "13px",
+                              }}
+                            >
+                              {doc.specialty}
+                            </Typography>
+                          )}
+
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.75,
+                              mt: 0.5,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                bgcolor: statusColor,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: statusColor,
+                              }}
+                            >
+                              {statusLabel}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {selected && assignable && (
+                          <Box
+                            sx={{
+                              width: 20,
+                              height: 20,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <CheckIcon
+                              sx={{ fontSize: 18, color: "#0A5FFF" }}
+                            />
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  })
+                )}
               </Box>
 
-              {/* Assign Button */}
               <Button
                 fullWidth
                 variant="contained"
+                disabled={!canAssign}
                 sx={{
                   mt: 3,
                   borderRadius: "12px",
-                  py: 1,
+                  py: 1.2,
                   textTransform: "none",
-                  fontWeight: 300,
+                  fontWeight: 600,
+                  fontSize: "13px",
                   bgcolor: "#1251CC",
-                  fontSize: "14px",
-                  // bgcolor: theme.actionIconColor,
-                  // "&:hover": { bgcolor: "#1251CC" },
+                  "&:hover": { bgcolor: "#1E40AF" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#94A3B8",
+                    color: "#FFFFFF",
+                  },
                 }}
                 onClick={async () => {
-                  if (!selectedDoctor || !selectedDoctorId) return;
+                  if (!canAssign || !selectedDoctorObj) return;
 
                   const isBulkAssign = selectionModel.size > 1;
                   const targetRows = isBulkAssign
@@ -3799,22 +3329,20 @@ export default function AllEvents() {
 
                   if (targetRows.length === 0) return;
 
-                  const specialty =
-                    providerOptions.find((d) => d.id === selectedDoctorId)
-                      ?.specialty || "";
+                  const specialty = selectedDoctorObj.specialty || "";
 
                   try {
                     const results = await Promise.allSettled(
                       targetRows.map(async (row) => {
-                        await assignPhysician(row.id, selectedDoctorId);
+                        await assignPhysician(row.id, selectedDoctorObj.id);
                         await createCaseLog(row.incidentId || row.id, {
                           eventType: "PHYSICIAN_ASSIGNED",
                           eventTitle: "Physician Assigned",
-                          description: `${selectedDoctor} assigned to the case.`,
-                          performedBy: selectedDoctorId,
+                          description: `${selectedDoctorObj.name} assigned to the case.`,
+                          performedBy: selectedDoctorObj.id,
                           metadata: {
-                            physicianId: selectedDoctorId,
-                            physicianName: selectedDoctor,
+                            physicianId: selectedDoctorObj.id,
+                            physicianName: selectedDoctorObj.name,
                             specialty,
                           },
                         });
@@ -3859,15 +3387,16 @@ export default function AllEvents() {
                   setAssignSearch("");
                 }}
               >
-                {selectionModel.size > 1
-                  ? "Assign to all Selected Patients"
-                  : "Assign"}
+                {canAssign
+                  ? selectionModel.size > 1
+                    ? "Assign to all Selected Patients"
+                    : "Assign"
+                  : "Select an available physician"}
               </Button>
             </Box>
           </DialogContent>
         </Dialog>
 
-        {/* Snackbar for notifications */}
         <Snackbar
           open={snackbar.open}
           autoHideDuration={4000}

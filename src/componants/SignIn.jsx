@@ -16,8 +16,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import rightImg from "../assets/signInBgimg.png";
-import logo2 from "../assets/logo4.png";
+import rightImg from "../assets/doctor-p.png";
+import logo2 from "../assets/logo4.svg";
 import logo5 from "../assets/logo5.png";
 import { TitleRoundIcon } from "../assets/Assets";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,7 @@ import LoadingSpinner from "./LoadingSpinner";
 import { physicianLogin } from "../services/api";
 import AviationChatSocket from "../services/AviationChatSocket";
 import AviationCallSocket from "../services/AviationCallSocket";
+import PhysicianStatusService from "../services/PhysicianStatusService";
 import {
   savePhysicianSession,
   getPhysicianSession,
@@ -255,6 +256,12 @@ const SignInForm = () => {
       AviationChatSocket.connect(userId);
       AviationCallSocket.connect(userId);
 
+      // Mirror native physicianAuthSessionService.connectPhysicianAviationSession:
+      // start the PhysicianStatusService which connects, then forces "available"
+      // on login (queued + flushed on register) so the DB flips
+      // is_online=true / status='available'.
+      PhysicianStatusService.start(userId);
+
       setSnackbar({
         open: true,
         message: "Sign-in successful",
@@ -421,7 +428,7 @@ const SignInForm = () => {
                 src={isDark ? logo2 : logo5}
                 alt="Logo"
                 sx={{
-                  width: { xs: 100, sm: 120, md: 140 },
+                  width: { xs: 150, sm: 200, md: 220 },
                   height: "auto",
                 }}
               />
@@ -595,7 +602,7 @@ const SignInForm = () => {
                         WebkitTextSecurity: showPassword ? "none" : undefined,
                       },
                     }}
-                    componentsProps={{ input: { "data-ms-reveal": "false" } }}
+                    slotProps={{ input: { "data-ms-reveal": "false" } }}
                     endAdornment={
                       <InputAdornment position="end">
                         <Box
@@ -674,9 +681,13 @@ const SignInForm = () => {
                     "&:hover": { backgroundColor: "#0145cc" },
                   }}
                 >
-                    {signInLoading ? (
-                      <LoadingSpinner size="sm" variant="inline" color="#FFFFFF" />
-                    ) : (
+                  {signInLoading ? (
+                    <LoadingSpinner
+                      size="sm"
+                      variant="inline"
+                      color="#FFFFFF"
+                    />
+                  ) : (
                     "Login"
                   )}
                 </Button>

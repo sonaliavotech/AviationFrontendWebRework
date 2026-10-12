@@ -17,6 +17,7 @@ import { confirmDeleteMessages } from "../utils/aviationChatUi";
 import { formatMessageTime, mapApiMessage, normalizeChatPayload } from "../utils/chatMessageMapper";
 import { buildVoiceMessageLabel } from "../utils/aviationVoiceMessage";
 import { getPhysicianSession } from "../utils/physicianSession";
+import aviationChatUiState from "../services/aviationChatUiState";
 
 export function useAviationCaseChat({
   visible,
@@ -440,6 +441,10 @@ export function useAviationCaseChat({
 
         if (cancelled) return;
 
+        // Tell the notification system the user is looking at this exact room
+        // so it can suppress banners for messages that arrive while open/active.
+        aviationChatUiState.setActiveChat(roomRef.current, true);
+
         setMessages(
           history
             .map((msg) => mapApiMessage(msg, userId))
@@ -473,6 +478,7 @@ export function useAviationCaseChat({
     return () => {
       cancelled = true;
       detachListeners();
+      aviationChatUiState.setActiveChat(null, false);
       if (roomRef.current) {
         AviationChatSocket.leaveRoom(roomRef.current);
         roomRef.current = null;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Component, useEffect, useMemo, useRef, useState } from "react";
 import { getCaseSummary, mapVitalsToPatientData } from "../../services/api";
 import { Box, Typography, IconButton, Slide } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -28,9 +28,11 @@ const THRESHOLDS = {
   avpu: { dangerLow: 8, dangerHigh: null, warningLow: 12, warningHigh: null },
 };
 
-const getVariant = (key, val) => {
+const getVariant = (key, rawVal) => {
   const t = THRESHOLDS[key];
-  if (!t || val === null || val === undefined) return "normal";
+  if (!t || rawVal === null || rawVal === undefined || rawVal === "") return "normal";
+  const val = Number(rawVal); // API may return strings
+  if (Number.isNaN(val)) return "normal";
   const { dangerLow, dangerHigh, warningLow, warningHigh } = t;
   if ((dangerLow !== null && val < dangerLow) || (dangerHigh !== null && val > dangerHigh)) return "danger";
   if ((warningLow !== null && val < warningLow) || (warningHigh !== null && val > warningHigh)) return "warning";
@@ -52,6 +54,25 @@ const DEFAULT_VITALS = {
     avpu: { value: 15, display: "15", key: "avpu" },
     skinColour: { value: null, display: "Normal", key: null },
   },
+};
+
+/**
+ * Merge API data over defaults so that missing / null fields
+ * can NEVER crash the render (this was the cause of the white page).
+ */
+const normalizePatientData = (raw) => {
+  const patient = { ...DEFAULT_VITALS.patient, ...(raw?.patient ?? {}) };
+  const vitals = {};
+  Object.keys(DEFAULT_VITALS.vitals).forEach((k) => {
+    const incoming = raw?.vitals?.[k];
+    const merged = { ...DEFAULT_VITALS.vitals[k], ...(incoming && typeof incoming === "object" ? incoming : {}) };
+    // display must always be renderable text
+    if (merged.display === null || merged.display === undefined || typeof merged.display === "object") {
+      merged.display = "--";
+    }
+    vitals[k] = merged;
+  });
+  return { patient, vitals };
 };
 
 const CARD_H = 70;
@@ -135,10 +156,10 @@ const VitalCard = ({
       </Typography>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography sx={{ fontSize: "15px", fontWeight: 700, color: valueOf(v), lineHeight: 1 }}>
-          {display}
+          {String(display ?? "--")}
         </Typography>
         <Box sx={{ color: iconOf(v), display: "flex", alignItems: "center", flexShrink: 0 }}>
-          {children ?? (Icon && <Icon sx={{ fontSize: "22px", color: iconOf(v) }} />)}
+          {children ?? (Icon ? <Icon sx={{ fontSize: "22px", color: iconOf(v) }} /> : null)}
         </Box>
       </Box>
     </Box>
@@ -149,7 +170,7 @@ const Row = ({ children }) => (
   <Box sx={{ display: "flex", gap: `${GAP}px`, width: "100%" }}>{children}</Box>
 );
 
-const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VITALS }) => {
+const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VITALS, loading = false }) => {
   const { darkMode } = useThemeMode();
   const V = useMemo(() => getVitalsSidebarTheme(darkMode), [darkMode]);
   const styles = useMemo(() => createVitalStyles(V), [V]);
@@ -203,6 +224,7 @@ const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VIT
               </Typography>
               <Typography sx={{ fontSize: "12px", color: V.labelNml, mt: "3px" }}>
                 Flight {patient.flight} ({patient.origin} → {patient.destination})
+                {loading ? " • updating…" : ""}
               </Typography>
             </Box>
             <IconButton
@@ -232,7 +254,7 @@ const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VIT
             </Row>
             <Row>
               <VitalCard styles={styles} label="Blood Pressure" display={vitals.bloodPressure.display} icon={BloodPressureIcon} />
-              <VitalCard styles={styles} label="ECG" display={vitals.ecg.display}><ECGIcon /></VitalCard>
+              <VitalCard styles={styles} label="ECG" display={vitals.ecg.display}>{ECGIcon ? <ECGIcon /> : null}</VitalCard>
             </Row>
             <Row>
               <VitalCard styles={styles} label="Oxygen" display={vitals.oxygen.display} numericValue={vitals.oxygen.value} thresholdKey="oxygen" icon={OxygenIcon} />
@@ -256,33 +278,80 @@ const PatientVitalsSidebar = ({ open = false, onClose, patientData = DEFAULT_VIT
   );
 };
 
+/**
+ * Error boundary: if anything inside the sidebar throws, only the sidebar
+ * disappears – the rest of the app stays visible (no more white page).
+ */
+class SidebarErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("VIEW REPORT RENDER ERROR =>", error, info);
+  }
+
+  componentDidUpdate(prevProps) {
+    // reset when the sidebar is opened again
+    if (this.state.hasError && !prevProps.open && this.props.open) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 function ViewReport({ open = false, onClose, incidentId, patient }) {
   const [patientData, setPatientData] = useState(DEFAULT_VITALS);
+  const [loading, setLoading] = useState(false);
+
+  // keep latest `patient` without re-triggering the fetch on every parent render
+  const patientRef = useRef(patient);
+  useEffect(() => {
+    patientRef.current = patient;
+  }, [patient]);
 
   useEffect(() => {
     if (!open || !incidentId) return;
 
     let cancelled = false;
+    setLoading(true);
 
     getCaseSummary(incidentId)
       .then((data) => {
-        if (!cancelled && data) {
-          setPatientData(mapVitalsToPatientData(data, patient));
+        if (cancelled || !data) return;
+        try {
+          const mapped = mapVitalsToPatientData(data, patientRef.current);
+          setPatientData(normalizePatientData(mapped));
+        } catch (mapErr) {
+          console.error("VIEW REPORT MAP ERROR =>", mapErr);
+          // keep the current/default data instead of crashing
         }
       })
-      .catch((err) => console.error("VIEW REPORT FETCH ERROR =>", err));
+      .catch((err) => console.error("VIEW REPORT FETCH ERROR =>", err))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [open, incidentId, patient]);
+  }, [open, incidentId]);
 
   return (
-    <PatientVitalsSidebar
-      open={open}
-      onClose={onClose}
-      patientData={patientData}
-    />
+    <SidebarErrorBoundary open={open}>
+      <PatientVitalsSidebar
+        open={open}
+        onClose={onClose}
+        patientData={patientData}
+        loading={loading}
+      />
+    </SidebarErrorBoundary>
   );
 }
 
