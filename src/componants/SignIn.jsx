@@ -17,8 +17,8 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import rightImg from "../assets/doctor-p.png";
+import signInBgImg from "../assets/signInBgimg.png";
 import logo2 from "../assets/logo4.svg";
-import logo5 from "../assets/logo5.png";
 import { TitleRoundIcon } from "../assets/Assets";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "./LoadingSpinner";
@@ -417,23 +417,22 @@ const SignInForm = () => {
                 mb: { xs: 2, sm: 3 },
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between", // ← add this
+                justifyContent: "space-between",
                 width: "100%",
                 maxWidth: { xs: "100%", sm: 420, md: 460 },
                 mx: "auto",
               }}
             >
+              {/* Same logo (logo2) for both dark and light theme */}
               <Box
                 component="img"
-                src={isDark ? logo2 : logo5}
+                src={logo2}
                 alt="Logo"
                 sx={{
                   width: { xs: 150, sm: 200, md: 220 },
                   height: "auto",
                 }}
               />
-
-              {/* ── Theme Toggle ── */}
 
               {/* ── Theme Toggle ── */}
               <Box
